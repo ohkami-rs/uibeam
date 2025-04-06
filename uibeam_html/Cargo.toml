@@ -1,0 +1,15 @@
+[package]
+name          = "uibeam_html"
+version       = "0.1.0"
+edition       = "2024"
+authors       = ["kanarus <kanarus786@gmail.com>"]
+documentation = "https://docs.rs/uibeam_html"
+homepage      = "https://crates.io/crates/uibeam_html"
+repository    = "https://github.com/kanarus/uibeam"
+readme        = "README.md"
+license       = "MIT"
+description   = ""
+keywords      = []
+categories    = []
+
+[dependencies]
