@@ -1,5 +1,41 @@
+# UI Beam
+
+A component-based, in-code template engine for Web UI in Rust
+
+## Features
+
+- component-based, in-code
+- compile-time checked
+- lightweight
+- async-ready, no runtime dependency
+
+## Example
+
 ```rust
 use uibeam::{Beam, UI};
+
+struct Layout {
+    title: String,
+    child: UI,  // <-- `child` field
+}
+
+impl Beam for Layout {
+    type Error = std::convert::Infallible;
+
+    async fn render(self) -> Result<UI, Self::Error> {
+        Ok(UI! {
+            <html>
+                <head>
+                    <title>{self.title}</title>
+                    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+                </head>
+                <body class="bg-gray-100">
+                    {self.child}
+                </body>
+            </html>
+        })
+    }
+}
 
 struct AdminPage {}
 
@@ -125,12 +161,23 @@ impl Beam for ThreadPage {
 
 #[tokio::main]
 async fn main() {
+    // shoot directly
+
     let html = uibeam::shoot(AdminPage {});
     dbg!(html);
 
     let html = uibeam::shoot(ThreadPage {
         id: "123".to_string(),
         db: Client::new().await.unwrap(),
+    });
+    dbg!(html);
+
+    // shoot with UI!
+
+    let html = uibeam::shoot(UI! {
+        <Layout title="Admin Page">
+            <AdminPage />  // <-- `child` field is filled with `AdminPage`
+        </Layout>
     });
     dbg!(html);
 }

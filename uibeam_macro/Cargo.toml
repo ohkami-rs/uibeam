@@ -1,15 +1,15 @@
 [package]
 name          = "uibeam_macro"
-version       = "0.1.0"
-edition       = "2024"
-authors       = ["kanarus <kanarus786@gmail.com>"]
 documentation = "https://docs.rs/uibeam_macro"
-homepage      = "https://crates.io/crates/uibeam_macro"
-repository    = "https://github.com/kanarus/uibeam"
-readme        = "README.md"
-license       = "MIT"
-description   = ""
-keywords      = []
-categories    = []
+description   = "proc macro for UI Beam - A component-based, in-code template engine for Web UI in Rust"
+version       = { workspace = true }
+edition       = { workspace = true }
+authors       = { workspace = true }
+homepage      = { workspace = true }
+repository    = { workspace = true }
+readme        = { workspace = true }
+license       = { workspace = true }
+keywords      = { workspace = true }
+categories    = { workspace = true }
 
 [dependencies]
