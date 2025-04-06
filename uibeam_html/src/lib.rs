@@ -2,3 +2,7 @@
 pub struct Template {
     // todo
 }
+
+pub struct Node {
+    // todo
+}
