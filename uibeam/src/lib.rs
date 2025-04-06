@@ -31,5 +31,14 @@ impl Expression<String> for String {}
 // impl Expression for uibeam_html::Node {}
 impl<I> Expression<(I,)> for I
 where
-    I: Iterator<Item = UI>,
+    I: IntoIterator<Item = UI>,
 {}
+
+#[cfg(test)]
+fn assert_impls() {
+    fn is_expression<T, E: Expression<T>>(_: E) {}
+
+    is_expression("Hello, UI Beam!");
+    is_expression(format!("Hello, {}!", "UI Beam"));
+    is_expression(Some("Hello, UI Beam!"));
+}
