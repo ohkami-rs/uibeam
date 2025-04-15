@@ -14,12 +14,27 @@ impl FromIterator<UI> for UI {
 
 #[doc(hidden)]
 pub enum Interpolator {
+    /// interpolation of a HTML attribute value:
+    /// - `class={foo}`
+    /// - `checked={true}`
+    /// - `width={100}`
     Attribute(AttributeValue),
+    /// interpolation of HTML elements within a parent element:
+    /// - `<div>{children}</div>`
+    /// - `<div>{iter.map(|i| UI! { ... })}</div>`
+    /// - `<div>{condition.then(|| UI! { ... })}</div>`
     Children(UI),
 }
 
+#[doc(hidden)]
 impl UI {
-    #[doc(hidden)]
+    pub fn text_node(text: impl Into<Cow<'static, str>>) -> Self {
+        match text.into() {
+            Cow::Borrowed(s) => UI(html_escape(s)),
+            Cow::Owned(s) => UI(Cow::Owned(html_escape(&s).into_owned())),
+        }
+    }
+
     /// tends to be used by the `UI!` macro internally.
     /// 
     /// ## SAFETY
@@ -218,23 +233,29 @@ const _: () = {
     }
 };
 
-pub trait IntoChildren {
+pub trait IntoChildren<T> {
     fn into_children(self) -> UI;
 }
 const _: () = {
-    impl IntoChildren for UI {
+    impl IntoChildren<UI> for UI {
         fn into_children(self) -> UI {
             self
         }
     }
 
     // note `Option<UI>` implements `IntoChildren` because `Option` is `IntoIterator`
-    impl<I> IntoChildren for I
+    impl<I> IntoChildren<(I,)> for I
     where
         I: IntoIterator<Item = UI>,
     {
         fn into_children(self) -> UI {
             UI::from_iter(self)
+        }
+    }
+
+    impl<S: Into<Cow<'static, str>>> IntoChildren<S> for S {
+        fn into_children(self) -> UI {
+            UI::text_node(self)
         }
     }
 };
@@ -245,7 +266,7 @@ mod test {
 
     /* compiles */
     fn __assert_impls__() {
-        fn is_children<C: IntoChildren>(_: C) {}
+        fn is_children<X, C: IntoChildren<X>>(_: C) {}
         
         fn dummy_ui() -> UI {todo!()}
         
@@ -338,7 +359,9 @@ mod test {
                                 r##"</p>"##,
                             ],
                             [
-                                Interpolator::Attribute(AttributeValue::from(i)),
+                                Interpolator::Children(IntoChildren::into_children(
+                                    i.to_string()
+                                )),
                             ]
                         ))
                     )),
