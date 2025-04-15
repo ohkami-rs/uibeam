@@ -1,6 +1,7 @@
 [workspace]
 resolver = "3"
 members  = ["uibeam", "uibeam_html", "uibeam_macro"]
+exclude  = ["sandbox"]
 
 [workspace.package]
 version    = "0.0.0"

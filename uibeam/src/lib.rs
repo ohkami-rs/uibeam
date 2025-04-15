@@ -1,5 +1,7 @@
 use std::borrow::Cow;
 
+pub use uibeam_macro::UI;
+
 pub struct UI(Cow<'static, str>);
 
 impl FromIterator<UI> for UI {
@@ -19,10 +21,11 @@ pub enum Interpolator {
     /// - `checked={true}`
     /// - `width={100}`
     Attribute(AttributeValue),
-    /// interpolation of HTML elements within a parent element:
+    /// interpolation of HTML elements or nodes within a parent element:
     /// - `<div>{children}</div>`
     /// - `<div>{iter.map(|i| UI! { ... })}</div>`
     /// - `<div>{condition.then(|| UI! { ... })}</div>`
+    /// - `<p>My name is {me.name}</p>` (in text node)
     Children(UI),
 }
 
