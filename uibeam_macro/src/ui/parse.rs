@@ -94,7 +94,7 @@ impl Parse for ContentPiecesTokens {
             } else if input.peek(token::Bracket) {
 
             } // ...
-            // avoided `TokenTree::Group` that can hide Brace or <
+            // avoided `TokenTree::Group` that can hide Brace or < in it
             else {
                 let one_token = input.parse::<TokenTree>()?;
                 content.extend(quote! { #one_token });
