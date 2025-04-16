@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use uibeam_html::html_escape;
 
 pub use uibeam_macro::UI;
 
@@ -44,7 +45,10 @@ impl UI {
     /// 
     /// 1. `template_pieces` must have 0 or exactly `N + 1` pieces.
     /// 2. `template_pieces` must be concatenated into
-    ///   a valid HTML string with any `interpolators` in place.
+    ///    a valid HTML string with any `interpolators` in place.
+    /// 3. Each piece in `template_pieces` must be already HTML-escaped.
+    ///    (intended to be escaped in `UI!` macro internally /
+    ///     `new_unchecked` itself does not check or escape)
     pub unsafe fn new_unchecked<const N: usize>(
         template_pieces: &'static [&'static str],
         interpolators: [Interpolator; N],
@@ -127,57 +131,6 @@ impl UI {
 #[inline(always)]
 pub const fn is_ascii_whitespace(c: char) -> bool {
     matches!(c, ' ' | '\t' | '\n' | '\x0C' | '\r')
-}
-
-// referencing Go standard library: <https://github.com/golang/go/blob/a2c959fe97e094f337f46e529e9e7d1a34a7c26a/src/html/escape.go#L166-L180>
-pub fn html_escape(s: &str) -> Cow<'_, str> {
-    let mut first_special = None;
-    for i in 0..s.len() {
-        match &s.as_bytes()[i] {
-            b'&' | b'<' | b'>' | b'"' | b'\'' => {
-                first_special = Some(i);
-                break;
-            }
-            _ => ()
-        }
-    }
-
-    match first_special {
-        None => {
-            Cow::Borrowed(s)
-        }
-        Some(f) => {
-            let mut escaped = Vec::with_capacity(s.len() + 10);
-            escaped.extend_from_slice(&s.as_bytes()[..f]);
-            for b in &s.as_bytes()[f..] {
-                match b {
-                    b'&'  => escaped.extend_from_slice(b"&amp;"),
-                    b'<'  => escaped.extend_from_slice(b"&lt;"),
-                    b'>'  => escaped.extend_from_slice(b"&gt;"),
-                    b'"'  => escaped.extend_from_slice(b"&#34;"), // "&#34;" is shorter than "&quot;".
-                    b'\'' => escaped.extend_from_slice(b"&#39;"), // "&#39;" is shorter than "&apos;" and apos was not in HTML until HTML5.
-                    _ => escaped.push(*b), // no need to escape.
-                    // this may make `escaped` invalid UTF-8 **temporarily**, but finally it **builds** a valid UTF-8 bytes.
-                }
-            }
-            // SAFETY: `escaped` is a valid UTF-8 bytes because:
-            // 
-            // - original `s` is valid UTF-8
-            // - we just replaced some ascii bytes with valid UTF-8 bytes
-            // - the rest of `escaped` is unchanged, directly copied from `s`
-            Cow::Owned(unsafe {String::from_utf8_unchecked(escaped)})
-        }
-    }
-}
-
-pub enum UIBeamError {
-    Html(
-        uibeam_html::Error,
-    ),
-    InterpolationMismatch {
-        expected: usize,
-        found: usize,
-    },
 }
 
 pub enum AttributeValue {

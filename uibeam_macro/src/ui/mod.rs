@@ -9,7 +9,7 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
 
     let parse::UITokens { nodes } = syn::parse2(input)?;
 
-    let uis = nodes.into_iter().map(|node| {
+    let nodes = nodes.into_iter().map(|node| {
         let (literals, expressions) = transform::transform(node);
         quote! {
             unsafe {::uibeam::UI::new_unchecked(
@@ -21,7 +21,7 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
 
     Ok(quote! {
         <::uibeam::UI as ::std::iter::FromIterator>::from_iter([
-            #(#uis),*
+            #(#nodes),*
         ])
     })
 }
