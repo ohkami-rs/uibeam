@@ -1,7 +1,7 @@
-use proc_macro2::TokenStream;
-use syn::{Ident, Expr, LitStr};
-use syn::{token, Token};
+use proc_macro2::{TokenStream, TokenTree};
+use quote::{quote, quote_spanned, ToTokens};
 use syn::parse::{Parse, ParseStream};
+use syn::{token, Token, Ident, Expr, LitStr};
 
 /// Parsed representation of the UI macro input.
 /// 
@@ -16,7 +16,7 @@ pub(super) enum NodeTokens {
         tag: Ident,
         attributes: Vec<AttributeTokens>,
         _start_close: Token![>],
-        content: Vec<ContentPieceTokens>,
+        content: ContentPiecesTokens,
         _end_open: Token![<],
         _slash: Token![/],
         _tag: Ident,
@@ -30,14 +30,17 @@ pub(super) enum NodeTokens {
         _end: Token![>],
     },
     TextNode {
-        pieces: Vec<ContentPieceTokens>,
-    }
+        pieces: ContentPiecesTokens,
+    },
 }
 
-pub(super) enum ContentPieceTokens {
+pub(super) struct ContentPiecesTokens(
+    Vec<ContentPiece>
+);
+enum ContentPiece {
     Interpolation(InterpolationTokens),
-    StaticText(/* TODO */),
     Node(NodeTokens),
+    Content(TokenStream),
 }
 
 pub(super)struct InterpolationTokens {
@@ -72,17 +75,35 @@ impl Parse for NodeTokens {
     }
 }
 
-impl Parse for ContentPieceTokens {
+impl Parse for ContentPiecesTokens {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         if input.peek(token::Brace) {
-            Ok(ContentPieceTokens::Interpolation(input.parse()?))
-        } else if input.peek(Token![<]) {
-            Ok(ContentPieceTokens::Node(input.parse()?))
-        } else {
-
-
-            Err(input.error("Expected interpolation, static text, or node"))
+            return Ok(Self(vec![ContentPiece::Interpolation(input.parse()?)]));
         }
+
+        if input.peek(Token![<]) {
+            return Ok(Self(vec![ContentPiece::Node(input.parse()?)]));
+        }
+
+        let mut pieces = Vec::new();
+
+        let mut content = TokenStream::new();
+        while !input.is_empty() && !input.peek(Token![<]) && !input.peek(token::Brace) {
+            if input.peek(token::Paren) {
+
+            } else if input.peek(token::Bracket) {
+
+            } // ...
+            // avoided `TokenTree::Group` that can hide Brace or <
+            else {
+                let one_token = input.parse::<TokenTree>()?;
+                content.extend(quote! { #one_token });
+            }
+
+            todo!()
+        }
+
+        Ok(Self(pieces))
     }
 }
 
