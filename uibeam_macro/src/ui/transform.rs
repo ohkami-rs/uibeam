@@ -26,15 +26,17 @@ impl ToTokens for Piece {
         }
     }
 }
-impl Default for Piece {
-    fn default() -> Self {
+impl Piece {
+    fn none() -> Self {
         Self {
             text: String::new(),
             span: None,
         }
     }
-}
-impl Piece {
+    fn is_none(&self) -> bool {
+        self.text.is_empty() && self.span.is_none()
+    }
+
     fn new(text: String, span: Span) -> Self {
         Self { text, span: Some(span) }
     }
@@ -98,7 +100,7 @@ pub(super) fn transform(
 ) {
     let (mut pieces, mut interpolations) = (Vec::new(), Vec::new());
 
-    let mut piece = Piece::default();
+    let mut piece = Piece::none();
 
     match tokens {
         NodeTokens::EnclosingTag {
@@ -147,8 +149,14 @@ pub(super) fn transform(
                         if let Some(first_child_piece) = child_pieces.next() {
                             piece.push(&first_child_piece.text, first_child_piece.span.unwrap());
                         }
-                        pieces.extend(child_pieces);
-                        interpolations.extend(child_interpolations);
+                        for i in child_interpolations {
+                            piece.commit(&mut pieces);
+                            interpolations.push(i);
+                            piece = child_pieces.next().unwrap();
+                        }
+                        #[cfg(debug_assertions)] {
+                            assert!(child_pieces.next().is_none());
+                        }
                     }
                 }
             }
@@ -193,8 +201,7 @@ pub(super) fn transform(
                     ContentPieceTokens::Interpolation(InterpolationTokens { rust_expression, _brace }) => {
                         if last_was_interplolation {
                             #[cfg(debug_assertions)] {// commited by the last interpolation
-                                assert!(piece.text.is_empty());
-                                assert!(piece.span.is_none());
+                                assert!(piece.is_none());
                             }
                             Piece::commit(
                                 &mut Piece::new(String::new(), _brace.span.span()),
@@ -207,14 +214,19 @@ pub(super) fn transform(
                         last_was_interplolation = true;
                     }
                     ContentPieceTokens::Node(node) => {
-                        last_was_interplolation = false;
                         let (child_pieces, child_interpolations) = transform(node);
                         let mut child_pieces = child_pieces.into_iter();
                         if let Some(first_child_piece) = child_pieces.next() {
                             piece.push(&first_child_piece.text, first_child_piece.span.unwrap());
                         }
-                        pieces.extend(child_pieces);
-                        interpolations.extend(child_interpolations);
+                        for i in child_interpolations {
+                            piece.commit(&mut pieces);
+                            interpolations.push(i);
+                            piece = child_pieces.next().unwrap();
+                        }
+                        #[cfg(debug_assertions)] {
+                            assert!(child_pieces.next().is_none());
+                        }
                     }
                 }
             }

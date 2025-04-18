@@ -10,7 +10,7 @@ fn main() {
             "Hello "{name}"!"
             <br/>
             "こんにちは"
-            <a>"@"{user_name}"!"</a>"!"
+            <a>"@"{user_name}"!"</a>
         </div>
     }));
 }
