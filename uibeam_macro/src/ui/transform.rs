@@ -6,7 +6,7 @@ use syn::{spanned::Spanned, LitStr, Expr};
 macro_rules! joined_span {
     ($span:expr $( , $other_span:expr )*) => {
         {
-            let mut span = $span;
+            let mut span: proc_macro2::Span = $span;
             $(
                 span = span.join($other_span).unwrap_or(span);
             )+
@@ -17,26 +17,53 @@ macro_rules! joined_span {
 
 pub(super) struct Piece {
     text: String,
-    span: Span,
+    span: Option<Span>,
 }
 impl ToTokens for Piece {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        LitStr::new(&self.text, self.span).to_tokens(tokens);
+        if let Some(span) = self.span {
+            LitStr::new(&self.text, span).to_tokens(tokens);
+        }
+    }
+}
+impl Default for Piece {
+    fn default() -> Self {
+        Self {
+            text: String::new(),
+            span: None,
+        }
     }
 }
 impl Piece {
     fn new(text: String, span: Span) -> Self {
-        Self { text, span }
+        Self { text, span: Some(span) }
     }
 
-    fn push(&mut self, text: &str, span: Span) {
-        self.text.push_str(text);
-        self.span = joined_span!(self.span, span);
+    fn push(&mut self, text: impl AsRef<str>, span: Span) {
+        match &mut self.span {
+            Some(existing_span) => {
+                *existing_span = existing_span.join(span).unwrap_or(*existing_span);
+                self.text.push_str(text.as_ref());
+            }
+            None => {
+                #[cfg(debug_assertions)] {
+                    assert!(self.text.is_empty());
+                }
+                self.span = Some(span);
+                self.text = text.as_ref().into();
+            }
+        }
     }
 
     fn commit(&mut self, pieces: &mut Vec<Self>) {
-        pieces.push(Piece::new(std::mem::take(&mut self.text), self.span));
-        self.span = Span::call_site();
+        if let Some(span) = self.span {
+            self.span = None;
+            pieces.push(Piece::new(std::mem::take(&mut self.text), span));
+        } else {
+            #[cfg(debug_assertions)] {
+                assert!(self.text.is_empty());
+            }
+        }
     }
 }
 
@@ -71,6 +98,8 @@ pub(super) fn transform(
 ) {
     let (mut pieces, mut interpolations) = (Vec::new(), Vec::new());
 
+    let mut piece = Piece::default();
+
     match tokens {
         NodeTokens::EnclosingTag {
             _start_open,
@@ -83,7 +112,7 @@ pub(super) fn transform(
             _tag,
             _end_close,
         } => {
-            let mut piece = Piece::new(
+            piece.push(
                 format!("<{tag}"),
                 joined_span!(_start_open.span(), tag.span())
             );
@@ -122,14 +151,10 @@ pub(super) fn transform(
                 &format!("</{tag}>"),
                 joined_span!(_end_open.span(), _slash.span(), _tag.span(), _end_close.span())
             );
-            piece.commit(&mut pieces);
         }
 
         NodeTokens::SelfClosingTag { _open, tag, attributes, _slash, _end } => {
-            let mut piece = Piece::new(
-                format!("<{tag}"),
-                joined_span!(_open.span(), tag.span())
-            );
+            piece.push(format!("<{tag}"), joined_span!(_open.span(), tag.span()));
             for AttributeTokens { name, _eq, value } in attributes {
                 match value {
                     AttributeValueTokens::StringLiteral(lit) => {
@@ -145,31 +170,23 @@ pub(super) fn transform(
                 }
             }
             piece.push("/>", joined_span!(_slash.span(), _end.span()));
-            piece.commit(&mut pieces);
         }
 
         NodeTokens::TextNode(node_pieces) => {
-            let mut piece = None::<Piece>;
             for np in node_pieces {
                 match np {
                     ContentPieceTokens::StaticText(text) => {
-                        let (text, span) = (text.value(), text.span());
-                        let text = uibeam_html::html_escape(&text);
-                        match piece.as_mut() {
-                            Some(piece) => piece.push(&text, span),
-                            None => piece = Some(Piece::new(text.into_owned(), span)),
-                        }
+                        piece.push(
+                            uibeam_html::html_escape(&text.value()),
+                            text.span()
+                        );
                     }
                     ContentPieceTokens::Interpolation(InterpolationTokens { rust_expression, .. }) => {
-                        if let Some(mut piece) = piece.take() {
-                            piece.commit(&mut pieces);
-                        }
+                        piece.commit(&mut pieces);
                         interpolations.push(Interpolation::Children(rust_expression));
                     }
                     ContentPieceTokens::Node(node) => {
-                        if let Some(mut piece) = piece.take() {
-                            piece.commit(&mut pieces);
-                        }
+                        piece.commit(&mut pieces);
                         let (child_pieces, child_interpolations) = transform(node);
                         pieces.extend(child_pieces);
                         interpolations.extend(child_interpolations);
@@ -178,6 +195,8 @@ pub(super) fn transform(
             }
         }
     }
+
+    piece.commit(&mut pieces);
 
     (pieces, interpolations)
 }

@@ -6,7 +6,7 @@ fn main() {
     println!("{}", uibeam::shoot(UI! {
         <div>
             "Hello "{name}"!"
-            // <br>
+            <br/>
             // こんにちは @{name}!
         </div>
     }));
