@@ -142,6 +142,10 @@ pub(super) fn transform(
                     }
                     ContentPieceTokens::Node(node) => {
                         let (child_pieces, child_interpolations) = transform(node);
+                        let mut child_pieces = child_pieces.into_iter();
+                        if let Some(first_child_piece) = child_pieces.next() {
+                            piece.push(&first_child_piece.text, first_child_piece.span.unwrap());
+                        }
                         pieces.extend(child_pieces);
                         interpolations.extend(child_interpolations);
                     }
@@ -186,8 +190,11 @@ pub(super) fn transform(
                         interpolations.push(Interpolation::Children(rust_expression));
                     }
                     ContentPieceTokens::Node(node) => {
-                        piece.commit(&mut pieces);
                         let (child_pieces, child_interpolations) = transform(node);
+                        let mut child_pieces = child_pieces.into_iter();
+                        if let Some(first_child_piece) = child_pieces.next() {
+                            piece.push(&first_child_piece.text, first_child_piece.span.unwrap());
+                        }
                         pieces.extend(child_pieces);
                         interpolations.extend(child_interpolations);
                     }
