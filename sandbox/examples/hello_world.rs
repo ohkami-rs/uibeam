@@ -10,7 +10,14 @@ fn main() {
             "Hello "{name}"!"
             <br/>
             "こんにちは"
-            <a>"@"{user_name}"!"</a>
+            <a
+                class="user"
+                style="color: blue;"
+                data-user-id="123"
+                href="https://example-chatapp.com/users/123"
+            >
+                "@"{user_name}"!"
+            </a>
         </div>
     }));
 }

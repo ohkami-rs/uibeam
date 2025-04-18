@@ -1,5 +1,7 @@
 use syn::parse::{Parse, ParseStream};
+use syn::spanned::Spanned;
 use syn::{token, Token, Ident, Expr, LitStr};
+use syn::punctuated::Punctuated;
 
 /// Parsed representation of the UI macro input.
 /// 
@@ -42,9 +44,29 @@ pub(super) struct InterpolationTokens {
 }
 
 pub(super) struct AttributeTokens {
-    pub(super) name: Ident,
+    pub(super) name: AttributeNameTokens,
     pub(super) _eq: Token![=],
     pub(super) value: AttributeValueTokens,
+}
+
+pub(super) struct AttributeNameTokens(
+    /// supporting hyphenated identifiers like `data-foo`
+    Punctuated<Ident, Token![-]>,
+);
+impl AttributeNameTokens {
+    pub(super) fn span(&self) -> proc_macro2::Span {
+        self.0.span()
+    }
+}
+impl std::fmt::Display for AttributeNameTokens {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join("-")
+        )
+    }
 }
 
 pub(super) enum AttributeValueTokens {
@@ -192,10 +214,29 @@ impl Parse for InterpolationTokens {
 
 impl Parse for AttributeTokens {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let name: Ident = input.parse()?;
+        let name: AttributeNameTokens = input.parse()?;
         let _eq: Token![=] = input.parse()?;
         let value: AttributeValueTokens = input.parse()?;
         Ok(AttributeTokens { name, _eq, value })
+    }
+}
+
+impl Parse for AttributeNameTokens {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let mut name = Punctuated::new();
+        while input.peek(Ident) {
+            name.push_value(input.parse()?);
+            if !input.peek(Token![-]) {
+                break;
+            }
+            name.push_punct(input.parse()?);
+        }
+
+        if name.is_empty() {
+            return Err(input.error("Expected an identifier for the attribute name"));
+        }
+
+        Ok(Self(name))
     }
 }
 
