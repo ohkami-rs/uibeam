@@ -32,13 +32,6 @@ pub enum Interpolator {
 
 #[doc(hidden)]
 impl UI {
-    pub fn text_node(text: impl Into<Cow<'static, str>>) -> Self {
-        match text.into() {
-            Cow::Borrowed(s) => UI(html_escape(s)),
-            Cow::Owned(s) => UI(Cow::Owned(html_escape(&s).into_owned())),
-        }
-    }
-
     /// tends to be used by the `UI!` macro internally.
     /// 
     /// ## SAFETY
@@ -199,7 +192,7 @@ const _: () = {
         }
     }
 
-    // note `Option<UI>` implements `IntoChildren` because `Option` is `IntoIterator`
+    // note that `Option<UI>` implements `IntoChildren` because `Option` is `IntoIterator`
     impl<I> IntoChildren<(I,)> for I
     where
         I: IntoIterator<Item = UI>,
@@ -209,9 +202,19 @@ const _: () = {
         }
     }
 
-    impl<S: Into<Cow<'static, str>>> IntoChildren<S> for S {
+    impl<D: std::fmt::Display> IntoChildren<&dyn std::fmt::Display> for D {
         fn into_children(self) -> UI {
-            UI::text_node(self)
+            let s = self.to_string();
+            match html_escape(&s) {
+                Cow::Owned(escaped) => {
+                    UI(Cow::Owned(escaped))
+                }
+                Cow::Borrowed(_) => {
+                    // this means `s` is already escaped, so we can avoid allocation,
+                    // just using `s` directly
+                    UI(Cow::Owned(s))
+                }
+            }
         }
     }
 };

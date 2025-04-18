@@ -16,7 +16,7 @@ pub(super) enum NodeTokens {
         tag: Ident,
         attributes: Vec<AttributeTokens>,
         _start_close: Token![>],
-        content: ContentPiecesTokens,
+        content: Vec<ContentPieceTokens>,
         _end_open: Token![<],
         _slash: Token![/],
         _tag: Ident,
@@ -30,25 +30,22 @@ pub(super) enum NodeTokens {
         _end: Token![>],
     },
     TextNode {
-        pieces: ContentPiecesTokens,
+        pieces: Vec<ContentPieceTokens>,
     },
 }
 
-pub(super) struct ContentPiecesTokens(
-    Vec<ContentPiece>
-);
-enum ContentPiece {
+pub(super) enum ContentPieceTokens {
     Interpolation(InterpolationTokens),
+    StaticText(LitStr),
     Node(NodeTokens),
-    Content(TokenStream),
 }
 
-pub(super)struct InterpolationTokens {
+pub(super) struct InterpolationTokens {
     _brace: token::Brace,
     pub(super) rust_expression: Expr,
 }
 
-pub(super)struct AttributeTokens {
+pub(super) struct AttributeTokens {
     pub(super) name: Ident,
     _eq: Token![=],
     pub(super) value: AttributeValueTokens,
@@ -71,39 +68,93 @@ impl Parse for UITokens {
 
 impl Parse for NodeTokens {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        todo!()
+        if input.peek(Token![<]) {
+            // reject empty tags (`<>`) or end tags (`</name>`)
+            if !input.peek2(Ident) {
+                return Err(input.error("Expected a tag name after '<' for a start tag"));
+            }
+
+            let _start_open: Token![<] = input.parse()?;
+            let tag: Ident = input.parse()?;
+
+            let mut attributes = Vec::new();
+            while let Ok(attribute) = input.parse::<AttributeTokens>() {
+                attributes.push(attribute);
+            }
+
+            if input.peek(Token![/]) {
+                let _slash: Token![/] = input.parse()?;
+                let _end: Token![>] = input.parse()?;
+                
+                Ok(NodeTokens::SelfClosingTag {
+                    _open: _start_open,
+                    tag,
+                    attributes,
+                    _slash,
+                    _end,
+                })
+
+            } else if input.peek(Token![>]) {
+                let _start_close: Token![>] = input.parse()?;
+
+                let mut content = Vec::new();
+                while let Ok(content_piece_tokens) = input.parse::<ContentPieceTokens>() {
+                    content.push(content_piece_tokens);
+                }
+
+                let _end_open: Token![<] = input.parse()?;
+                let _slash: Token![/] = input.parse()?;
+
+                let _tag: Ident = input.parse()?;
+                if _tag != tag {
+                    return Err(input.error(format!(
+                        "Expected </{}> but found </{}>",
+                        tag, input.parse::<Ident>()?.to_string()
+                    )));
+                }
+
+                let _end_close: Token![>] = input.parse()?;
+
+                Ok(NodeTokens::EnclosingTag {
+                    _start_open,
+                    tag,
+                    attributes,
+                    _start_close,
+                    content,
+                    _end_open,
+                    _slash,
+                    _tag,
+                    _end_close,
+                })
+
+            } else {
+                Err(input.error("Expected '>' or '/>' at the end of a tag"))
+            }
+
+        } else {
+            let mut pieces = Vec::new();
+            while let Ok(content_piece_tokens) = input.parse::<ContentPieceTokens>() {
+                pieces.push(content_piece_tokens);
+            }
+            Ok(NodeTokens::TextNode { pieces })
+        }
     }
 }
 
-impl Parse for ContentPiecesTokens {
+impl Parse for ContentPieceTokens {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         if input.peek(token::Brace) {
-            return Ok(Self(vec![ContentPiece::Interpolation(input.parse()?)]));
+            Ok(Self::Interpolation(input.parse()?))
+
+        } else if input.peek(LitStr) {
+            Ok(Self::StaticText(input.parse()?))
+
+        } else if input.peek(Token![<]) {
+            Ok(Self::Node(input.parse()?))
+
+        } else {
+            Err(input.error("Expected interpolation, node, or static text"))
         }
-
-        if input.peek(Token![<]) {
-            return Ok(Self(vec![ContentPiece::Node(input.parse()?)]));
-        }
-
-        let mut pieces = Vec::new();
-
-        let mut content = TokenStream::new();
-        while !input.is_empty() && !input.peek(Token![<]) && !input.peek(token::Brace) {
-            if input.peek(token::Paren) {
-
-            } else if input.peek(token::Bracket) {
-
-            } // ...
-            // avoided `TokenTree::Group` that can hide Brace or < in it
-            else {
-                let one_token = input.parse::<TokenTree>()?;
-                content.extend(quote! { #one_token });
-            }
-
-            todo!()
-        }
-
-        Ok(Self(pieces))
     }
 }
 
@@ -130,8 +181,10 @@ impl Parse for AttributeValueTokens {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         if input.peek(LitStr) {
             Ok(AttributeValueTokens::StringLiteral(input.parse()?))
+
         } else if input.peek(token::Brace) {
             Ok(AttributeValueTokens::Interpolation(input.parse()?))
+
         } else {
             Err(input.error("Expected string literal or interpolation"))
         }

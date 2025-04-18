@@ -47,10 +47,10 @@ impl Beam for AdminPage {
             <main class="container mx-auto flex-grow py-8 px-4">
                 <section class="bg-white shadow-md rounded-lg p-6">
                     <h1 class="text-2xl font-bold text-gray-800 mb-6">
-                        パスワード確認
+                        "パスワード確認"
                     </h1>
                     <h2 class="text-xl font-semibold text-gray-700 mb-4">
-                        パスワードを確認します。
+                        "パスワードを確認します。"
                     </h2>
                     <form method="post" action="" class="w-full">
                         <div class="flex flex-col gap-4">
@@ -59,33 +59,23 @@ impl Beam for AdminPage {
                                     for="adminPassword"
                                     class="text-gray-700 text-sm font-bold mb-1"
                                 >
-                                    パスワード
+                                    "パスワード"
                                 </label>
                                 <input
                                     required
                                     type="password"
                                     id="adminPassword"
                                     name="adminPassword"
-                                    class="
-                                        py-2 px-3
-                                        border border-gray-400 rounded
-                                        focus:outline-none focus:shadow-outline
-                                    "
+                                    class="py-2 px-3 border border-gray-400 rounded focus:outline-none focus:shadow-outline"
                                 </input>
                             </div>
                         </div>
                         <div class="mt-6">
                             <button
                                 type="submit"
-                                class="
-                                    bg-purple-500 hover:bg-purple-700
-                                    text-white
-                                    py-2 px-4
-                                    rounded
-                                    focus:outline-none focus:shadow-outline
-                                "
+                                class="bg-purple-500 hover:bg-purple-700 text-white py-2 px-4 rounded focus:outline-none focus:shadow-outline"
                             >
-                                送信
+                                "送信"
                             </button>
                         </div>
                     </form>
@@ -134,8 +124,7 @@ impl Beam for ThreadPage {
                 <section class="bg-white shadow-md rounded-lg p-6 mb-8">
                     <div>
                         <h3 class="text-purple-600 text-xl font-bold mb-4">
-                            {thread.title}
-                            ({thread.responses.len()} 件)
+                            {format!("{} ({} 件)", thread.title, thread.responses.len())}
                         </h3>
                         {thread.responses.iter().map(|res| UI! {
                             <div
@@ -172,7 +161,7 @@ async fn main() {
     });
     dbg!(html);
 
-    // shoot with UI!
+    // shoot with `UI!`
 
     let html = uibeam::shoot(UI! {
         <Layout title="Admin Page">
