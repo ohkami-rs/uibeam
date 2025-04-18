@@ -117,11 +117,12 @@ pub(super) fn transform(
                 joined_span!(_start_open.span(), tag.span())
             );
             for AttributeTokens { name, _eq, value } in attributes {
+                piece.push(format!(" {name}="), joined_span!(name.span(), _eq.span()));
                 match value {
                     AttributeValueTokens::StringLiteral(lit) => {
                         piece.push(
-                            &format!(" {}=\"{}\"", name, uibeam_html::html_escape(&lit.value())),
-                            joined_span!(lit.span(), _eq.span, name.span())
+                            &format!("\"{}\"", uibeam_html::html_escape(&lit.value())),
+                            lit.span()
                         );
                     }
                     AttributeValueTokens::Interpolation(InterpolationTokens { rust_expression, .. }) => {
@@ -160,11 +161,12 @@ pub(super) fn transform(
         NodeTokens::SelfClosingTag { _open, tag, attributes, _slash, _end } => {
             piece.push(format!("<{tag}"), joined_span!(_open.span(), tag.span()));
             for AttributeTokens { name, _eq, value } in attributes {
+                piece.push(format!(" {name}="), joined_span!(name.span(), _eq.span()));
                 match value {
                     AttributeValueTokens::StringLiteral(lit) => {
                         piece.push(
-                            &format!(" {}=\"{}\"", name, uibeam_html::html_escape(&lit.value())),
-                            joined_span!(lit.span(), _eq.span, name.span())
+                            &format!("\"{}\"", uibeam_html::html_escape(&lit.value())),
+                            lit.span()
                         );
                     }
                     AttributeValueTokens::Interpolation(InterpolationTokens { rust_expression, .. }) => {
