@@ -98,6 +98,12 @@ impl Parse for NodeTokens {
                     content.push(content_piece_tokens);
                 }
 
+                if !input.peek(Token![<]) {// for better error messages
+                    return Err(input.error(format!(
+                        "Expected one of: </{tag}>, another start tag, interpolation, or string literal"
+                    )));
+                }
+
                 let _end_open: Token![<] = input.parse()?;
                 let _slash: Token![/] = input.parse()?;
 
@@ -149,7 +155,7 @@ impl Parse for ContentPieceTokens {
             Ok(Self::Node(input.parse()?))
 
         } else {
-            Err(input.error("Expected interpolation, node, or static text"))
+            Err(input.error("Expected one of: start tag, interpolation, or string literal"))
         }
     }
 }

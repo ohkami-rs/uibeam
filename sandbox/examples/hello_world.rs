@@ -7,7 +7,7 @@ fn main() {
         <div>
             "Hello "{name}"!"
             <br/>
-            // こんにちは @{name}!
+            "こんにちは" //@{name}!
         </div>
     }));
 }
