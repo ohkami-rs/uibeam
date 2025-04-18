@@ -20,7 +20,7 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
     });
 
     Ok(quote! {
-        <::uibeam::UI as ::std::iter::FromIterator>::from_iter([
+        <::uibeam::UI as ::std::iter::FromIterator::<::uibeam::UI>>::from_iter([
             #(#nodes),*
         ])
     })

@@ -5,6 +5,10 @@ pub use uibeam_macro::UI;
 
 pub struct UI(Cow<'static, str>);
 
+pub fn shoot(ui: UI) -> Cow<'static, str> {
+    ui.0
+}
+
 impl FromIterator<UI> for UI {
     #[inline]
     fn from_iter<T: IntoIterator<Item = UI>>(iter: T) -> Self {
