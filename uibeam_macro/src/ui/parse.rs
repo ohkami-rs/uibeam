@@ -43,7 +43,7 @@ pub(super) struct InterpolationTokens {
 
 pub(super) struct AttributeTokens {
     pub(super) name: Ident,
-    _eq: Token![=],
+    pub(super) _eq: Token![=],
     pub(super) value: AttributeValueTokens,
 }
 

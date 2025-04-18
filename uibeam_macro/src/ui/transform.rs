@@ -1,7 +1,44 @@
 use super::parse::{NodeTokens, ContentPieceTokens, InterpolationTokens, AttributeTokens, AttributeValueTokens};
 use proc_macro2::{TokenStream, Span};
 use quote::{quote, ToTokens};
-use syn::{LitStr, Expr};
+use syn::{spanned::Spanned, LitStr, Expr};
+
+macro_rules! joined_span {
+    ($span:expr $( , $other_span:expr )*) => {
+        {
+            let mut span = $span;
+            $(
+                span = span.join($other_span).unwrap_or(span);
+            )+
+            span
+        }
+    };
+}
+
+pub(super) struct Piece {
+    text: String,
+    span: Span,
+}
+impl ToTokens for Piece {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        LitStr::new(&self.text, self.span).to_tokens(tokens);
+    }
+}
+impl Piece {
+    fn new(text: String, span: Span) -> Self {
+        Self { text, span }
+    }
+
+    fn push(&mut self, text: &str, span: Span) {
+        self.text.push_str(text);
+        self.span = joined_span!(self.span, span);
+    }
+
+    fn commit(&mut self, pieces: &mut Vec<Self>) {
+        pieces.push(Piece::new(std::mem::take(&mut self.text), self.span));
+        self.span = Span::call_site();
+    }
+}
 
 pub(super) enum Interpolation {
     Attribute(Expr),
@@ -29,49 +66,49 @@ impl ToTokens for Interpolation {
 pub(super) fn transform(
     tokens: NodeTokens,
 ) -> (
-    Vec<LitStr>,
+    Vec<Piece>,
     Vec<Interpolation>,
 ) {
     let (mut pieces, mut interpolations) = (Vec::new(), Vec::new());
 
     match tokens {
-        NodeTokens::EnclosingTag { tag, attributes, content, .. } => {
-            let mut piece = format!("<{tag}");
-
-            macro_rules! commit_piece {
-                () => {
-                    pieces.push(LitStr::new(
-                        &std::mem::take(&mut piece),
-                        tag.span()
-                    ));
-                };
-            }
-
-            for AttributeTokens { name, value, .. } in attributes {
+        NodeTokens::EnclosingTag {
+            _start_open,
+            tag,
+            attributes,
+            _start_close,
+            content,
+            _end_open,
+            _slash,
+            _tag,
+            _end_close,
+        } => {
+            let mut piece = Piece::new(
+                format!("<{tag}"),
+                joined_span!(_start_open.span(), tag.span())
+            );
+            for AttributeTokens { name, _eq, value } in attributes {
                 match value {
                     AttributeValueTokens::StringLiteral(lit) => {
-                        piece.push_str(&format!(
-                            " {}=\"{}\"",
-                            name,
-                            uibeam_html::html_escape(&lit.value()),
-                        ));
+                        piece.push(
+                            &format!(" {}=\"{}\"", name, uibeam_html::html_escape(&lit.value())),
+                            joined_span!(lit.span(), _eq.span, name.span())
+                        );
                     }
                     AttributeValueTokens::Interpolation(InterpolationTokens { rust_expression, .. }) => {
-                        commit_piece!();
+                        piece.commit(&mut pieces);
                         interpolations.push(Interpolation::Attribute(rust_expression));
                     }
                 }
             }
-
-            piece.push('>');
-
+            piece.push(">", _start_close.span());
             for c in content {
                 match c {
                     ContentPieceTokens::StaticText(text) => {
-                        piece.push_str(&uibeam_html::html_escape(&text.value()));
+                        piece.push(&uibeam_html::html_escape(&text.value()), text.span());
                     }
                     ContentPieceTokens::Interpolation(InterpolationTokens { rust_expression, .. }) => {
-                        commit_piece!();
+                        piece.commit(&mut pieces);
                         interpolations.push(Interpolation::Children(rust_expression));
                     }
                     ContentPieceTokens::Node(node) => {
@@ -81,66 +118,58 @@ pub(super) fn transform(
                     }
                 }
             }
-
-            piece.push_str(&format!("</{tag}>"));
-
-            commit_piece!();
+            piece.push(
+                &format!("</{tag}>"),
+                joined_span!(_end_open.span(), _slash.span(), _tag.span(), _end_close.span())
+            );
+            piece.commit(&mut pieces);
         }
 
-        NodeTokens::SelfClosingTag { tag, attributes, .. } => {
-            let mut piece = format!("<{tag}");
-
-            macro_rules! commit_piece {
-                () => {
-                    pieces.push(LitStr::new(
-                        &std::mem::take(&mut piece),
-                        tag.span()
-                    ));
-                };
-            }
-
-            for AttributeTokens { name, value, .. } in attributes {
+        NodeTokens::SelfClosingTag { _open, tag, attributes, _slash, _end } => {
+            let mut piece = Piece::new(
+                format!("<{tag}"),
+                joined_span!(_open.span(), tag.span())
+            );
+            for AttributeTokens { name, _eq, value } in attributes {
                 match value {
                     AttributeValueTokens::StringLiteral(lit) => {
-                        piece.push_str(&format!(
-                            " {}=\"{}\"",
-                            name,
-                            uibeam_html::html_escape(&lit.value()),
-                        ));
+                        piece.push(
+                            &format!(" {}=\"{}\"", name, uibeam_html::html_escape(&lit.value())),
+                            joined_span!(lit.span(), _eq.span, name.span())
+                        );
                     }
                     AttributeValueTokens::Interpolation(InterpolationTokens { rust_expression, .. }) => {
-                        commit_piece!();
+                        piece.commit(&mut pieces);
                         interpolations.push(Interpolation::Attribute(rust_expression));
                     }
                 }
             }
-
-            piece.push_str("/>");
-
-            commit_piece!();
+            piece.push("/>", joined_span!(_slash.span(), _end.span()));
+            piece.commit(&mut pieces);
         }
 
         NodeTokens::TextNode(node_pieces) => {
-            let mut piece = String::new();
-            macro_rules! commit_piece {
-                () => {
-                    pieces.push(LitStr::new(
-                        &std::mem::take(&mut piece),
-                        Span::call_site()
-                    ));
-                };
-            }
+            let mut piece = None::<Piece>;
             for np in node_pieces {
                 match np {
                     ContentPieceTokens::StaticText(text) => {
-                        piece.push_str(&uibeam_html::html_escape(&text.value()));
+                        let (text, span) = (text.value(), text.span());
+                        let text = uibeam_html::html_escape(&text);
+                        match piece.as_mut() {
+                            Some(piece) => piece.push(&text, span),
+                            None => piece = Some(Piece::new(text.into_owned(), span)),
+                        }
                     }
                     ContentPieceTokens::Interpolation(InterpolationTokens { rust_expression, .. }) => {
-                        commit_piece!();
+                        if let Some(mut piece) = piece.take() {
+                            piece.commit(&mut pieces);
+                        }
                         interpolations.push(Interpolation::Children(rust_expression));
                     }
                     ContentPieceTokens::Node(node) => {
-                        commit_piece!();
+                        if let Some(mut piece) = piece.take() {
+                            piece.commit(&mut pieces);
+                        }
                         let (child_pieces, child_interpolations) = transform(node);
                         pieces.extend(child_pieces);
                         interpolations.extend(child_interpolations);
