@@ -93,15 +93,29 @@ impl Parse for NodeTokens {
             } else if input.peek(Token![>]) {
                 let _start_close: Token![>] = input.parse()?;
 
-                let mut content = Vec::new();
-                while let Ok(content_piece_tokens) = input.parse::<ContentPieceTokens>() {
-                    content.push(content_piece_tokens);
+                let (mut content, mut err) = (Vec::new(), None);
+                while !input.is_empty() {
+                    match input.parse::<ContentPieceTokens>() {
+                        Ok(content_piece_tokens) => content.push(content_piece_tokens),
+                        Err(e) => {err = Some(e); break}
+                    }
                 }
 
-                if !input.peek(Token![<]) {// for better error messages
-                    return Err(input.error(format!(
-                        "Expected one of: </{tag}>, another start tag, interpolation, or string literal"
-                    )));
+                // for better error messages
+                if !input.peek(Token![<]) {
+                    return Err(
+                        if err.as_ref().is_some_and(|e| e.to_string().contains("expression")) {
+                            err.unwrap()
+                        } else {
+                            input.error(format!(
+                                "Unexpected {}: expected one of `</{tag}>`, another start tag, `{{expression}}`, or string literal",
+                                input.cursor()
+                                    .token_tree()
+                                    .map(|(tt, _)| format!("`{tt}`"))
+                                    .unwrap_or_else(|| "end of input".to_string())
+                            ))
+                        }
+                    );
                 }
 
                 let _end_open: Token![<] = input.parse()?;
@@ -155,14 +169,20 @@ impl Parse for ContentPieceTokens {
             Ok(Self::Node(input.parse()?))
 
         } else {
-            Err(input.error("Expected one of: start tag, interpolation, or string literal"))
+            Err(input.error("Expected one of: start tag, `{{expression}}`, or string literal"))
         }
     }
 }
 
 impl Parse for InterpolationTokens {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let content;
+        let mut content;
+        {
+            syn::braced!(content in input.fork());
+            if !Expr::peek(&content) {
+                return Err(input.error("Expected a Rust expression inside the braces"));
+            }
+        }
         Ok(InterpolationTokens {
             _brace: syn::braced!(content in input),
             rust_expression: content.parse()?,
