@@ -37,7 +37,7 @@ pub(super) enum ContentPieceTokens {
 }
 
 pub(super) struct InterpolationTokens {
-    _brace: token::Brace,
+    pub(super) _brace: token::Brace,
     pub(super) rust_expression: Expr,
 }
 
