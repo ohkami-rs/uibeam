@@ -1,5 +1,3 @@
-use proc_macro2::{TokenStream, TokenTree};
-use quote::{quote, quote_spanned, ToTokens};
 use syn::parse::{Parse, ParseStream};
 use syn::{token, Token, Ident, Expr, LitStr};
 
@@ -29,9 +27,7 @@ pub(super) enum NodeTokens {
         _slash: Token![/],
         _end: Token![>],
     },
-    TextNode {
-        pieces: Vec<ContentPieceTokens>,
-    },
+    TextNode(Vec<ContentPieceTokens>),
 }
 
 pub(super) enum ContentPieceTokens {
@@ -85,7 +81,7 @@ impl Parse for NodeTokens {
             if input.peek(Token![/]) {
                 let _slash: Token![/] = input.parse()?;
                 let _end: Token![>] = input.parse()?;
-                
+
                 Ok(NodeTokens::SelfClosingTag {
                     _open: _start_open,
                     tag,
@@ -136,7 +132,7 @@ impl Parse for NodeTokens {
             while let Ok(content_piece_tokens) = input.parse::<ContentPieceTokens>() {
                 pieces.push(content_piece_tokens);
             }
-            Ok(NodeTokens::TextNode { pieces })
+            Ok(NodeTokens::TextNode(pieces))
         }
     }
 }

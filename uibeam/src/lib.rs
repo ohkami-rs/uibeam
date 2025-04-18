@@ -6,6 +6,7 @@ pub use uibeam_macro::UI;
 pub struct UI(Cow<'static, str>);
 
 impl FromIterator<UI> for UI {
+    #[inline]
     fn from_iter<T: IntoIterator<Item = UI>>(iter: T) -> Self {
         let mut result = String::new();
         for item in iter {
