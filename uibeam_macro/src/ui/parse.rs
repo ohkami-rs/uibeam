@@ -31,6 +31,45 @@ pub(super) enum NodeTokens {
     },
     TextNode(Vec<ContentPieceTokens>),
 }
+impl NodeTokens {
+    pub(super) fn as_beam(&self) -> Option<Beam<'_>> {
+        let is_beam_ident = |ident: &Ident| {
+            ident.to_string().chars().next().unwrap().is_ascii_uppercase()
+        };
+
+        match self {
+            NodeTokens::EnclosingTag { tag, attributes, content, .. } => {
+                if is_beam_ident(tag) {
+                    Some(Beam {
+                        tag,
+                        attributes,
+                        content: (!content.is_empty()).then_some(content),
+                    })
+                } else {
+                    None
+                }
+            }
+            NodeTokens::SelfClosingTag { tag, attributes, .. } => {
+                if is_beam_ident(tag) {
+                    Some(Beam {
+                        tag,
+                        attributes,
+                        content: None,
+                    })
+                } else {
+                    None
+                }
+            }
+            NodeTokens::TextNode(_) => None,
+        }
+    }
+}
+
+pub(super) struct Beam<'n> {
+    pub(super) tag: &'n Ident,
+    pub(super) attributes: &'n [AttributeTokens],
+    pub(super) content: Option<&'n [ContentPieceTokens]>,
+}
 
 pub(super) enum ContentPieceTokens {
     Interpolation(InterpolationTokens),

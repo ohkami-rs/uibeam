@@ -1,8 +1,10 @@
+#![feature(default_field_values)]
+
 use uibeam::{UI, Beam};
 
 struct Hello {
     user_name: String,
-    style: Option<String>,
+    style: Option<String> = None,
 }
 impl Beam for Hello {
     fn render(self) -> UI {
@@ -32,6 +34,6 @@ impl Beam for Hello {
 fn main() {
     println!("{}", uibeam::shoot(Hello {
         user_name: "uibeam".to_string(),
-        style: None,
+        ..
     }.render()));
 }
