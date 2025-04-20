@@ -5,6 +5,10 @@ pub use uibeam_macro::UI;
 
 pub struct UI(Cow<'static, str>);
 
+pub trait Beam {
+    fn render(self) -> UI;
+}
+
 pub fn shoot(ui: UI) -> Cow<'static, str> {
     ui.0
 }

@@ -1,23 +1,37 @@
-use uibeam::UI;
+use uibeam::{UI, Beam};
+
+struct Hello {
+    user_name: String,
+    style: Option<String>,
+}
+impl Beam for Hello {
+    fn render(self) -> UI {
+        let style = self.style.unwrap_or_else(|| format!("\
+            color: red; \
+            font-size: 20px; \
+        "));
+
+        UI! {
+            <p class="hello" style={style}>
+                "Welcome to the world of uibeam!"
+                <br>
+                "こんにちは"
+                <a
+                    class="user"
+                    style="color: blue;"
+                    data-user-id="123"
+                    href="https://example-chatapp.com/users/123"
+                >
+                    "@"{&self.user_name}"!"
+                </a>
+            </p>
+        }
+    }
+}
 
 fn main() {
-    let name = "world";
-    let style = "color: red; font-size: 20px;";
-    let user_name = "Mr.<script>alert('XSS');</script>";
-
-    println!("{}", uibeam::shoot(UI! {
-        <div class="hello" style={style}>
-            "Hello "{name}"!"
-            <br>
-            "こんにちは"
-            <a
-                class="user"
-                style="color: blue;"
-                data-user-id="123"
-                href="https://example-chatapp.com/users/123"
-            >
-                "@"{user_name}"!"
-            </a>
-        </div>
-    }));
+    println!("{}", uibeam::shoot(Hello {
+        user_name: "uibeam".to_string(),
+        style: None,
+    }.render()));
 }

@@ -107,6 +107,30 @@ pub(super) fn transform(
 
     let mut piece = Piece::none();
 
+    fn handle_node_tokens(
+        node: NodeTokens,
+        current_piece: &mut Piece,
+        pieces: &mut Vec<Piece>,
+        interpolations: &mut Vec<Interpolation>,
+    ) {
+        let (child_pieces, child_interpolations) = transform(node);
+
+        let mut child_pieces = child_pieces.into_iter();
+
+        if let Some(first_child_piece) = child_pieces.next() {
+            current_piece.push(&first_child_piece.text, first_child_piece.span.unwrap());
+        }
+        for i in child_interpolations {
+            current_piece.commit(pieces);
+            interpolations.push(i);
+            *current_piece = child_pieces.next().unwrap();
+        }
+        
+        #[cfg(debug_assertions)] {
+            assert!(child_pieces.next().is_none());
+        }
+    }
+
     match tokens {
         NodeTokens::EnclosingTag {
             _start_open,
@@ -148,21 +172,12 @@ pub(super) fn transform(
                         piece.commit(&mut pieces);
                         interpolations.push(Interpolation::Children(rust_expression));
                     }
-                    ContentPieceTokens::Node(node) => {
-                        let (child_pieces, child_interpolations) = transform(node);
-                        let mut child_pieces = child_pieces.into_iter();
-                        if let Some(first_child_piece) = child_pieces.next() {
-                            piece.push(&first_child_piece.text, first_child_piece.span.unwrap());
-                        }
-                        for i in child_interpolations {
-                            piece.commit(&mut pieces);
-                            interpolations.push(i);
-                            piece = child_pieces.next().unwrap();
-                        }
-                        #[cfg(debug_assertions)] {
-                            assert!(child_pieces.next().is_none());
-                        }
-                    }
+                    ContentPieceTokens::Node(node) => handle_node_tokens(
+                        node,
+                        &mut piece,
+                        &mut pieces,
+                        &mut interpolations,
+                    ),
                 }
             }
             piece.push(
@@ -218,21 +233,12 @@ pub(super) fn transform(
                         interpolations.push(Interpolation::Children(rust_expression));
                         last_was_interplolation = true;
                     }
-                    ContentPieceTokens::Node(node) => {
-                        let (child_pieces, child_interpolations) = transform(node);
-                        let mut child_pieces = child_pieces.into_iter();
-                        if let Some(first_child_piece) = child_pieces.next() {
-                            piece.push(&first_child_piece.text, first_child_piece.span.unwrap());
-                        }
-                        for i in child_interpolations {
-                            piece.commit(&mut pieces);
-                            interpolations.push(i);
-                            piece = child_pieces.next().unwrap();
-                        }
-                        #[cfg(debug_assertions)] {
-                            assert!(child_pieces.next().is_none());
-                        }
-                    }
+                    ContentPieceTokens::Node(node) => handle_node_tokens(
+                        node,
+                        &mut piece,
+                        &mut pieces,
+                        &mut interpolations,
+                    ),
                 }
             }
         }
