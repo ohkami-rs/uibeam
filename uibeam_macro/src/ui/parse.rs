@@ -115,6 +115,18 @@ impl Parse for NodeTokens {
             } else if input.peek(Token![>]) {
                 let _start_close: Token![>] = input.parse()?;
 
+                // tolerantly accept `<br>` as a self-closing tag
+                // without a slash
+                if tag == "br" {
+                    return Ok(NodeTokens::SelfClosingTag {
+                        _open: _start_open,
+                        tag,
+                        attributes,
+                        _slash: Token![/](input.span()),
+                        _end: _start_close,
+                    });
+                }
+
                 let (mut content, mut err) = (Vec::new(), None);
                 while !input.is_empty() {
                     match input.parse::<ContentPieceTokens>() {

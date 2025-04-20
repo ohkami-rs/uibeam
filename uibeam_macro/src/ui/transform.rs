@@ -21,8 +21,13 @@ pub(super) struct Piece {
 }
 impl ToTokens for Piece {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        if let Some(span) = self.span {
-            LitStr::new(&self.text, span).to_tokens(tokens);
+        if let Some(_) = self.span {
+            LitStr::new(
+                &self.text,
+                // not using `self.span` to avoid syntax highlighting pieces as
+                // str literals, which would be less readable
+                Span::call_site()
+            ).to_tokens(tokens);
         }
     }
 }

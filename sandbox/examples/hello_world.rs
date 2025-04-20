@@ -8,7 +8,7 @@ fn main() {
     println!("{}", uibeam::shoot(UI! {
         <div class="hello" style={style}>
             "Hello "{name}"!"
-            <br/>
+            <br>
             "こんにちは"
             <a
                 class="user"
