@@ -31,6 +31,11 @@ pub(super) enum NodeTokens {
     },
     TextNode(Vec<ContentPieceTokens>),
 }
+pub(super) struct Beam<'n> {
+    pub(super) tag: &'n Ident,
+    pub(super) attributes: &'n [AttributeTokens],
+    pub(super) content: Option<&'n [ContentPieceTokens]>,
+}
 impl NodeTokens {
     pub(super) fn as_beam(&self) -> Option<Beam<'_>> {
         let is_beam_ident = |ident: &Ident| {
@@ -43,7 +48,7 @@ impl NodeTokens {
                     Some(Beam {
                         tag,
                         attributes,
-                        content: (!content.is_empty()).then_some(content),
+                        content: Some(content),
                     })
                 } else {
                     None
@@ -63,12 +68,6 @@ impl NodeTokens {
             NodeTokens::TextNode(_) => None,
         }
     }
-}
-
-pub(super) struct Beam<'n> {
-    pub(super) tag: &'n Ident,
-    pub(super) attributes: &'n [AttributeTokens],
-    pub(super) content: Option<&'n [ContentPieceTokens]>,
 }
 
 pub(super) enum ContentPieceTokens {
@@ -93,8 +92,8 @@ pub(super) struct AttributeNameTokens(
     Punctuated<Ident, Token![-]>,
 );
 impl AttributeNameTokens {
-    pub(super) fn span(&self) -> proc_macro2::Span {
-        self.0.span()
+    pub(super) fn as_ident(&self) -> Option<&Ident> {
+        (self.0.len() == 1).then_some(self.0.first().unwrap())
     }
 }
 impl std::fmt::Display for AttributeNameTokens {
@@ -112,6 +111,8 @@ pub(super) enum AttributeValueTokens {
     StringLiteral(LitStr),
     Interpolation(InterpolationTokens),
 }
+
+//////////////////////////////////////////////////////////////////////////////////////////
 
 impl Parse for UITokens {
     fn parse(input: ParseStream) -> syn::Result<Self> {
@@ -154,8 +155,7 @@ impl Parse for NodeTokens {
             } else if input.peek(Token![>]) {
                 let _start_close: Token![>] = input.parse()?;
 
-                // tolerantly accept `<br>` as a self-closing tag
-                // without a slash
+                // tolerantly accept `<br>` as a self-closing tag without a slash
                 if tag == "br" {
                     return Ok(NodeTokens::SelfClosingTag {
                         _open: _start_open,
@@ -166,29 +166,9 @@ impl Parse for NodeTokens {
                     });
                 }
 
-                let (mut content, mut err) = (Vec::new(), None);
-                while !input.is_empty() {
-                    match input.parse::<ContentPieceTokens>() {
-                        Ok(content_piece_tokens) => content.push(content_piece_tokens),
-                        Err(e) => {err = Some(e); break}
-                    }
-                }
-
-                // for better error messages
-                if !input.peek(Token![<]) {
-                    return Err(
-                        if err.as_ref().is_some_and(|e| e.to_string().contains("expression")) {
-                            err.unwrap()
-                        } else {
-                            input.error(format!(
-                                "Unexpected {}: expected one of `</{tag}>`, another start tag, `{{expression}}`, or string literal",
-                                input.cursor()
-                                    .token_tree()
-                                    .map(|(tt, _)| format!("`{tt}`"))
-                                    .unwrap_or_else(|| "end of input".to_string())
-                            ))
-                        }
-                    );
+                let mut content = Vec::<ContentPieceTokens>::new();
+                while (!input.is_empty()) && !(input.peek(Token![<]) && input.peek2(Token![/])) {
+                    content.push(input.parse()?);
                 }
 
                 let _end_open: Token![<] = input.parse()?;
@@ -196,10 +176,7 @@ impl Parse for NodeTokens {
 
                 let _tag: Ident = input.parse()?;
                 if _tag != tag {
-                    return Err(input.error(format!(
-                        "Expected </{}> but found </{}>",
-                        tag, input.parse::<Ident>()?.to_string()
-                    )));
+                    return Err(syn::Error::new(tag.span(), format!("Not closing tag: no corresponded `/>` or `</{tag}>` exists")))
                 }
 
                 let _end_close: Token![>] = input.parse()?;
@@ -242,7 +219,7 @@ impl Parse for ContentPieceTokens {
             Ok(Self::Node(input.parse()?))
 
         } else {
-            Err(input.error("Expected one of: start tag, `{{expression}}`, or string literal"))
+            Err(input.error("Expected one of: start tag, string literal, {expression}"))
         }
     }
 }
@@ -301,6 +278,100 @@ impl Parse for AttributeValueTokens {
 
         } else {
             Err(input.error("Expected string literal or interpolation"))
+        }
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////
+
+fn collect_span(iter: impl Iterator<Item = proc_macro2::Span>) -> proc_macro2::Span {
+    iter.reduce(|s1, s2| joined_span!(s1, s2)).unwrap_or(proc_macro2::Span::call_site())
+}
+
+impl NodeTokens {
+    pub(super) fn span(&self) -> proc_macro2::Span {
+        match self {
+            NodeTokens::EnclosingTag {
+                _start_open,
+                tag,
+                attributes,
+                _start_close,
+                content,
+                _end_open,
+                _slash,
+                _tag,
+                _end_close,
+            } => {
+                joined_span!(
+                    _start_open.span(),
+                    tag.span(),
+                    collect_span(attributes.iter().map(AttributeTokens::span)),
+                    _start_close.span(),
+                    collect_span(content.iter().map(ContentPieceTokens::span)),
+                    _end_open.span(),
+                    _slash.span(),
+                    _tag.span(),
+                    _end_close.span(),
+                )
+            }
+            NodeTokens::SelfClosingTag {
+                _open,
+                tag,
+                attributes,
+                _slash,
+                _end,
+            } => {
+                joined_span!(
+                    _open.span(),
+                    tag.span(),
+                    collect_span(attributes.iter().map(AttributeTokens::span)),
+                    _slash.span(),
+                    _end.span(),
+                )
+            }
+            NodeTokens::TextNode(pieces) => {
+                collect_span(pieces.iter().map(ContentPieceTokens::span))
+            }
+        }
+    }
+}
+
+impl ContentPieceTokens {
+    pub(super) fn span(&self) -> proc_macro2::Span {
+        match self {
+            ContentPieceTokens::Interpolation(interpolation) => interpolation.span(),
+            ContentPieceTokens::StaticText(lit_str) => lit_str.span(),
+            ContentPieceTokens::Node(node) => node.span(),
+        }
+    }
+}
+
+impl InterpolationTokens {
+    pub(super) fn span(&self) -> proc_macro2::Span {
+        self._brace.span.span()
+    }
+}
+
+impl AttributeTokens {
+    pub(super) fn span(&self) -> proc_macro2::Span {
+        joined_span!(
+            self.name.span(),
+            self._eq.span(),
+            self.value.span(),
+        )
+    }
+}
+impl AttributeNameTokens {
+    pub(super) fn span(&self) -> proc_macro2::Span {
+        self.0.span()
+    }
+
+}
+impl AttributeValueTokens {
+    pub(super) fn span(&self) -> proc_macro2::Span {
+        match self {
+            AttributeValueTokens::StringLiteral(lit_str) => lit_str.span(),
+            AttributeValueTokens::Interpolation(interpolation) => interpolation.span(),
         }
     }
 }

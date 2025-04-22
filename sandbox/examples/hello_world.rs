@@ -13,7 +13,7 @@ impl Beam for Hello {
 
         UI! {
             <p class="hello" style={style}>
-                "Welcome to the world of uibeam!"
+                "Welcome to the world of UIBeam!"
                 <br>
                 "こんにちは"
                 <a
@@ -30,8 +30,20 @@ impl Beam for Hello {
 }
 
 fn main() {
-    // println!("{}", uibeam::shoot(Hello {
-    //     user_name: "uibeam".to_string(),
-    //     ..
-    // }.render()));
+    println!("{}", uibeam::shoot(UI! {
+        <body>
+            <h1>"UIBeam example"</h1>
+            <Hello
+                user_name="uibeam"
+                style={format!("\
+                    color: green; \
+                    font-size: 30px; \
+                    text-decoration: underline; \
+                ")}
+            >
+                // "compile error if you uncomment this line"
+                // "because `Hello` doesn't have `children` field"
+            </Hello>
+        </body>
+    }));
 }

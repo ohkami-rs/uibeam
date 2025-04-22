@@ -1,3 +1,15 @@
+macro_rules! joined_span {
+    ($span:expr $( , $other_span:expr )* $(,)?) => {
+        {
+            let mut span: proc_macro2::Span = $span;
+            $(
+                span = span.join($other_span).unwrap_or(span);
+            )+
+            span
+        }
+    };
+}
+
 mod ui;
 
 #[proc_macro]

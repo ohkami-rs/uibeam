@@ -1,19 +1,7 @@
-use super::parse::{NodeTokens, ContentPieceTokens, InterpolationTokens, AttributeTokens, AttributeValueTokens};
+use super::parse::{Beam, NodeTokens, ContentPieceTokens, InterpolationTokens, AttributeTokens, AttributeValueTokens};
 use proc_macro2::{TokenStream, Span};
 use quote::{quote, ToTokens};
 use syn::{spanned::Spanned, LitStr, Expr};
-
-macro_rules! joined_span {
-    ($span:expr $( , $other_span:expr )*) => {
-        {
-            let mut span: proc_macro2::Span = $span;
-            $(
-                span = span.join($other_span).unwrap_or(span);
-            )+
-            span
-        }
-    };
-}
 
 pub(super) struct Piece {
     text: String,
@@ -131,17 +119,39 @@ pub(super) fn transform(
         }
     }
 
-    if let Some(beam) = tokens.as_beam() {
+    if let Some(Beam { tag, attributes, content }) = tokens.as_beam() {
         piece.push("", Span::call_site());
         piece.commit(&mut pieces);
-        {
-            interpolations.push(Interpolation::Children(syn::parse2(quote! {
-                // ::uibeam::Beam::render(#ident {
-                //     #(attributes),*
-                //     #children,
-                // })
-            }).unwrap()));
-        }
+        interpolations.push(Interpolation::Children({
+            let ident = tag;
+            let attributes = attributes.iter().map(|a| {
+                let name = a.name.as_ident().expect("Beam attribute name must be a valid Rust identifier");
+                let value = match &a.value {
+                    AttributeValueTokens::StringLiteral(lit) => {
+                        lit.into_token_stream()
+                    }
+                    AttributeValueTokens::Interpolation(InterpolationTokens { rust_expression, .. }) => {
+                        rust_expression.into_token_stream()
+                    }
+                };
+                quote! {
+                    #name: #value.into(),
+                }
+            });
+            let children = content
+                .and_then(|c| c.iter().map(|c| c.span()).reduce(|s1, s2| joined_span!(s1, s2)))
+                .and_then(|s| s.source_text())
+                .and_then(|t| syn::parse_str::<TokenStream>(&t).ok())
+                .map(|t| quote! {
+                    children: ::uibeam::UI! { #t },
+                });
+            syn::parse2(quote! {
+                ::uibeam::Beam::render(#ident {
+                    #(#attributes)*
+                    #children
+                })
+            }).unwrap()
+        }));
         piece.push("", Span::call_site());
         piece.commit(&mut pieces);
 
