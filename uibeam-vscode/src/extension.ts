@@ -47,20 +47,21 @@ export function activate(context: ExtensionContext) {
         text: string,
         offset: number,
     ): boolean => {
-        const s = htmlLS.createScanner(text);
-
-        let token = s.scan();
-        while (token !== TokenType.EOS) {
-            if (s.getTokenOffset() <= offset && offset <= s.getTokenEnd()) {
-                /** TODO: improve the logic */
-
-                const text = s.getTokenText();
-                return text.startsWith('{') && text.endsWith('}');
-            }
-            token = s.scan();
-        }
-
         return false;
+        // const s = htmlLS.createScanner(text);
+
+        // let token = s.scan();
+        // while (token !== TokenType.EOS) {
+        //     if (s.getTokenOffset() <= offset && offset <= s.getTokenEnd()) {
+        //         /** TODO: improve the logic */
+
+        //         const text = s.getTokenText();
+        //         return text.startsWith('{') && text.endsWith('}');
+        //     }
+        //     token = s.scan();
+        // }
+
+        // return false;
     };
 
     const virtualDocumentUriOf = (document: TextDocument, position: Position): Uri => {
@@ -72,7 +73,7 @@ export function activate(context: ExtensionContext) {
         virtualDocuments.set(Uri.parse(originalUri), content);
 
         const virtualDocUri = Uri.parse(
-            `embedded-content://html/${encodeURIComponent(originalUri)}.${insideRust ? 'rs' : 'html'}`
+            `embedded-content://rust/${encodeURIComponent(originalUri)}.${insideRust ? 'rs' : 'html'}`
         );
         return virtualDocUri;
     };

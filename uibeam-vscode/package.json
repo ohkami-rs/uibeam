@@ -21,16 +21,17 @@
   "activationEvents": [
     "onLanguage:rust"
   ],
-  "main": "./out/main.js",
+  "main": "./out/extension.js",
   "scripts": {
-    "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./"
+    "vscode:prepublish": "npm run compile",
+    "vscode:package": "vsce package -o ./out/uibeam.vsix"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
     "@types/vscode": "^1.99.1",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vsce": "^2.15.0"
   },
   "dependencies": {
     "vscode-html-languageservice": "^5.3.3"
