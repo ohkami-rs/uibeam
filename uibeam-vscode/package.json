@@ -1,13 +1,31 @@
 {
-  "name": "uibeam-vscode",
+  "name": "uibeam",
   "version": "1.0.0",
   "description": "",
-  "license": "ISC",
-  "author": "",
-  "type": "commonjs",
-  "main": "index.js",
+  "license": "MIT",
+  "publisher": "<!-- TODO -->",
+  "author": {
+    "name": "kanarus",
+    "email": "kanarus786@gmail.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://<!-- TODO -->"
+  },
+  "bugs": {
+    "url": "https://<!-- TODO -->"
+  },
+  "engines": {
+    "vscode": "^1.99.1"
+  },
+  "activationEvents": [
+    "onLanguage:rust"
+  ],
+  "main": "./out/main.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
