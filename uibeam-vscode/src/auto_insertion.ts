@@ -7,7 +7,10 @@
 
 import { window, workspace, Disposable, TextDocument, Position, SnippetString, TextDocumentChangeEvent, TextDocumentChangeReason, TextDocumentContentChangeEvent, languages, DocumentFilter } from 'vscode';
 
-export function activateAutoInsertion(provider: (kind: 'autoQuote' | 'autoClose', document: TextDocument, position: Position) => Thenable<string>, documentSelector: DocumentFilter): Disposable {
+export function activateAutoInsertion(
+  documentSelector: DocumentFilter,
+  provider: (kind: 'autoQuote' | 'autoClose', document: TextDocument, position: Position) => Thenable<string>,
+): Disposable {
   const disposables: Disposable[] = [];
   workspace.onDidChangeTextDocument(onDidChangeTextDocument, null, disposables);
 

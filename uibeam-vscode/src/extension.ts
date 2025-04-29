@@ -10,10 +10,16 @@ import {
     Hover,
     CompletionList,
     Location,
+    LinkedEditingRanges,
+    Range,
 } from 'vscode';
 import {
     getLanguageService,
+    TokenType,
+    TextDocument as HTMLTextDocument,
+    HTMLDocument,
 } from 'vscode-html-languageservice';
+import { activateAutoInsertion } from './auto_insertion';
 
 export function activate(context: ExtensionContext) {
     const htmlLS = getLanguageService();
@@ -26,16 +32,47 @@ export function activate(context: ExtensionContext) {
         pattern: '**/*.rs',
     };
 
-    const virtualDocumentUriOf = (d: TextDocument, p: Position): Uri => {
-        const text = d.getText();
-        const isRust = false; // TODO
-        const content = isRust ? text /* TODO */ : text;
+    const HTMLTextDocumentFrom = (document: TextDocument): HTMLTextDocument => {
+        return {
+            ...document,
+            uri: document.uri.toString()
+        }
+    };
 
-        const originalUri = d.uri.toString(true/* skip encoding */);
+    const HTMLDocumentFrom = (document: TextDocument): HTMLDocument => {
+        return htmlLS.parseHTMLDocument(HTMLTextDocumentFrom(document));
+    };
+
+    const isInsideRustRegion = (
+        text: string,
+        offset: number,
+    ): boolean => {
+        const s = htmlLS.createScanner(text);
+
+        let token = s.scan();
+        while (token !== TokenType.EOS) {
+            if (s.getTokenOffset() <= offset && offset <= s.getTokenEnd()) {
+                /** TODO: improve the logic */
+
+                const text = s.getTokenText();
+                return text.startsWith('{') && text.endsWith('}');
+            }
+            token = s.scan();
+        }
+
+        return false;
+    };
+
+    const virtualDocumentUriOf = (document: TextDocument, position: Position): Uri => {
+        const text = document.getText();
+        const insideRust = isInsideRustRegion(text, document.offsetAt(position));
+        const content = insideRust ? text /* TODO */ : text;
+
+        const originalUri = document.uri.toString(true/* skip encoding */);
         virtualDocuments.set(Uri.parse(originalUri), content);
 
         const virtualDocUri = Uri.parse(
-            `embedded-content://html/${encodeURIComponent(originalUri)}.${isRust ? 'rs' : 'html'}`
+            `embedded-content://html/${encodeURIComponent(originalUri)}.${insideRust ? 'rs' : 'html'}`
         );
         return virtualDocUri;
     };
@@ -60,25 +97,62 @@ export function activate(context: ExtensionContext) {
     }));
 
     context.subscriptions.push(languages.registerCompletionItemProvider(rustFilter, {
-        async provideCompletionItems(d, p, _callcellation_token, completion_context) {
+        async provideCompletionItems(document, position, _callcellation_token, completion_context) {
             return await commands.executeCommand<CompletionList>(
                 'vscode.executeCompletionItemProvider',
-                virtualDocumentUriOf(d, p),
-                p,
+                virtualDocumentUriOf(document, position),
+                position,
                 completion_context.triggerCharacter
             );
         }
     }, '<', '>'));
 
     context.subscriptions.push(languages.registerDefinitionProvider(rustFilter, {
-        async provideDefinition(d, p) {
+        async provideDefinition(document, position) {
             return await commands.executeCommand<Location[]>(
                 'vscode.executeDefinitionProvider',
-                virtualDocumentUriOf(d, p),
-                p
+                virtualDocumentUriOf(document, position),
+                position
             );
         }
     }));
 
-    context.subscriptions.push(languages.registerLinkedEditingRangeProvider());
+    context.subscriptions.push(languages.registerLinkedEditingRangeProvider(rustFilter, {
+        async provideLinkedEditingRanges(document, position, _token) {
+            const text = document.getText();
+            const insideRust = isInsideRustRegion(text, document.offsetAt(position));
+            if (insideRust) return;
+
+            const ranges = htmlLS.findLinkedEditingRanges(
+                HTMLTextDocumentFrom(document),
+                position,
+                HTMLDocumentFrom(document),
+            );
+            if (!ranges) return;
+
+            return new LinkedEditingRanges(ranges.map((r) => new Range(
+                r.start.line,
+                r.start.character,
+                r.end.line,
+                r.end.character
+            )));
+        } 
+    }));
+
+    context.subscriptions.push(activateAutoInsertion(rustFilter, async (kind, document, position) => {
+        const insideRust = isInsideRustRegion(document.getText(), document.offsetAt(position));
+        if (insideRust) return '';
+
+        const htmlDocument = HTMLDocumentFrom(document);
+        const textDocument = HTMLTextDocumentFrom(document);
+
+        switch (kind) {
+            case 'autoQuote':
+                return htmlLS.doQuoteComplete(textDocument, position, htmlDocument) ?? '';
+            case 'autoClose':
+                return htmlLS.doTagComplete(textDocument, position, htmlDocument) ?? '';
+            default:
+                throw new Error(kind satisfies never);
+        }
+    }));
 }
