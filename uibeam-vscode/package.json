@@ -23,6 +23,7 @@
   ],
   "main": "./out/extension.js",
   "scripts": {
+    "test": "vitest run",
     "compile": "tsc -p ./",
     "vscode:prepublish": "npm run compile",
     "vscode:package": "vsce package -o ./out/uibeam.vsix"
@@ -31,6 +32,7 @@
     "@types/node": "^22.15.0",
     "@types/vscode": "^1.99.1",
     "typescript": "^5.8.3",
+    "vitest": "^3.1.2",
     "vsce": "^2.15.0"
   },
   "dependencies": {

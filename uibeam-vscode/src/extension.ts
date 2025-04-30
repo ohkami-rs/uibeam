@@ -18,7 +18,18 @@ import {
     TextDocument as HTMLTextDocument,
 } from 'vscode-html-languageservice';
 import { ActivateAutoInsertion } from './auto_insertion';
-import { FindUIInputRanges } from './find_ui';
+import { findUIInputOffsets } from './find_ui';
+
+function FindUIInputRanges(document: TextDocument): Range[] {
+    if (!document.fileName.endsWith('.rs')) {
+        return [];
+    }
+
+    return findUIInputOffsets(document.getText()).map(([start, end]) => new Range(
+        document.positionAt(start),
+        document.positionAt(end),
+    ));
+}
 
 type VirtualDocument = {
     range: Range;

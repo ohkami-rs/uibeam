@@ -1,60 +1,46 @@
-import {
-    commands,
-    ExtensionContext,
-    Position,
-    Range,
-    TextDocument,
-    TextEditor,
-    Uri,
-    ViewColumn,
-    window,
-    workspace,
-} from 'vscode';
-
-export function FindUIInputRanges(document: TextDocument): Range[] {
-    if (!document.fileName.endsWith('.rs')) {
-        return [];
-    }
-
-    const text = document.getText();
-    
-    let UIs: Range[] = [];
+export function findUIInputOffsets(text: string): [number, number][] {
+    let ranges: [number, number][] = [];
     {
-        let UICall: RegExpExecArray | null;
-        while ((UICall = /UI!\s*{/g.exec(text)) !== null) {
+        console.debug(/UI!\s*{/g.exec(text));
+        for (const match of text.matchAll(/UI!\s*{/g)) {
+            console.debug('[match]', match);
+
             // index of the first charactor in `UI!{}`
-            const start = UICall.index + UICall[0].length;
+            const start = match.index! + match[0].length;
             if (start >= text.length) {
                 break;
             }
+
+            console.debug(`found UI input at ${start}: '${match[0]}'`);
 
             // index of the last charactor in `UI!{}`
             let end = start;
             {
                 let depth = 1;
-                while (depth > 0 && (end + 1) < text.length) {
-                    switch (text[(end + 1)]) {
-                        case '}':
-                            depth -= 1;
-                            break;
-                        case '{':
-                            depth += 1;
-                            break;
+                while (end < text.length) {
+                    console.debug(`depth: ${depth}, end: ${end}, char: '${text[end]}'`);
+                    if (text[end] === '}') {
+                        depth -= 1;
+                    } else if (text[end] === '{') {
+                        depth += 1;
                     }
-                    end += 1;
+                    
+                    if (depth === 0) {
+                        break;
+                    } else {
+                        end += 1;
+                    }
                 }
-                if (depth !== 0) {
-                    // Unmatched braces, skip this UI
-                    break;
+                if (depth > 0) {
+                    console.debug(`not found matching '}' for UI input at ${start}`);
+                    continue;
                 }
             }
 
-            UIs.push(new Range(
-                document.positionAt(start),
-                document.positionAt(end)
-            ));
+            ranges.push([start, end]);
+            console.debug(`pushed input ${start}:${end}: '${text.substring(start, end)}'`);
         }
     }
 
-    return UIs;
+    return ranges;
 }
