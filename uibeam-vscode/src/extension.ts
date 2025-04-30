@@ -54,9 +54,9 @@ export function activate(context: ExtensionContext) {
             let vdocs: VirtualDocument[] = [];
             for (const range of FindUIInputRanges(document)) {
                 const originalUri = document.uri.toString(true/* skip encoding */);
-                const virtualUri = `${originalUri}-${range.start.line}:${range.start.character}-${range.end.line}:${range.end.character}`;
+                const virtualUri = `${originalUri}-${range.start.line}.${range.start.character}-${range.end.line}.${range.end.character}`;
                 const htmlTextDocument = HTMLTextDocument.create(
-                    `embedded-content://html/${virtualUri}.html`,
+                    `embedded-content://html/${encodeURIComponent(virtualUri)}.html`,
                     'html',
                     0,
                     text.substring(document.offsetAt(range.start), document.offsetAt(range.end)),
