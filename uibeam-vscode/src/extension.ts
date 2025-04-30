@@ -15,93 +15,98 @@ import {
 } from 'vscode';
 import {
     getLanguageService,
-    TokenType,
     TextDocument as HTMLTextDocument,
-    HTMLDocument,
 } from 'vscode-html-languageservice';
-import { activateAutoInsertion } from './auto_insertion';
+import { ActivateAutoInsertion } from './auto_insertion';
+import { FindUIInputRanges } from './find_ui';
+
+type VirtualDocument = {
+    range: Range;
+    htmlTextDocument: HTMLTextDocument;
+};
 
 export function activate(context: ExtensionContext) {
     const htmlLS = getLanguageService();
 
-    const virtualDocuments = new Map<Uri, string>();
+    const rustFilter: DocumentFilter = { scheme: 'file', pattern: '**/*.rs', language: 'rust' };
 
-    const rustFilter: DocumentFilter = {
-        scheme: 'file',
-        language: 'rust',
-        pattern: '**/*.rs',
-    };
+    const virtualDocuments = new Map<Uri, VirtualDocument[]>();
 
-    const HTMLTextDocumentFrom = (document: TextDocument): HTMLTextDocument => {
-        return {
-            ...document,
-            uri: document.uri.toString()
+    const virtualDocumentsOf = (document: TextDocument): VirtualDocument[] => {
+        if (!document.fileName.endsWith('.rs')) {
+            throw new Error('Not a Rust file');
         }
+
+        if (!virtualDocuments.has(document.uri)) {
+            const text = document.getText();
+
+            let vdocs: VirtualDocument[] = [];
+            for (const range of FindUIInputRanges(document)) {
+                const originalUri = document.uri.toString(true/* skip encoding */);
+                const virtualUri = `${originalUri}-${range.start.line}:${range.start.character}-${range.end.line}:${range.end.character}`;
+                const htmlTextDocument = HTMLTextDocument.create(
+                    `embedded-content://html/${virtualUri}.html`,
+                    'html',
+                    0,
+                    text.substring(document.offsetAt(range.start), document.offsetAt(range.end)),
+                );
+                vdocs.push({ range, htmlTextDocument });
+            }
+
+            virtualDocuments.set(document.uri, vdocs);
+        }
+
+        return virtualDocuments.get(document.uri)!;
     };
 
-    const HTMLDocumentFrom = (document: TextDocument): HTMLDocument => {
-        return htmlLS.parseHTMLDocument(HTMLTextDocumentFrom(document));
-    };
-
-    const isInsideRustRegion = (
-        text: string,
-        offset: number,
-    ): boolean => {
-        return false;
-        // const s = htmlLS.createScanner(text);
-
-        // let token = s.scan();
-        // while (token !== TokenType.EOS) {
-        //     if (s.getTokenOffset() <= offset && offset <= s.getTokenEnd()) {
-        //         /** TODO: improve the logic */
-
-        //         const text = s.getTokenText();
-        //         return text.startsWith('{') && text.endsWith('}');
-        //     }
-        //     token = s.scan();
-        // }
-
-        // return false;
-    };
-
-    const virtualDocumentUriOf = (document: TextDocument, position: Position): Uri => {
-        const text = document.getText();
-        const insideRust = isInsideRustRegion(text, document.offsetAt(position));
-        const content = insideRust ? text /* TODO */ : text;
-
-        const originalUri = document.uri.toString(true/* skip encoding */);
-        virtualDocuments.set(Uri.parse(originalUri), content);
-
-        const virtualDocUri = Uri.parse(
-            `embedded-content://rust/${encodeURIComponent(originalUri)}.${insideRust ? 'rs' : 'html'}`
-        );
-        return virtualDocUri;
+    const getVirtualDocumentAround = (
+        position: Position,
+        document: TextDocument,
+    ): VirtualDocument | null => {
+        const vdocs = virtualDocumentsOf(document);
+        return vdocs.find((vdoc) => vdoc.range.contains(position)) ?? null;
     };
 
     context.subscriptions.push(workspace.registerTextDocumentContentProvider('embedded-content', {
         provideTextDocumentContent: (uri) => {
-            const originalUri = uri.path.slice(1).slice(0, uri.path.lastIndexOf('.') - 1);
-            const decoded = decodeURIComponent(originalUri);
-            return virtualDocuments.get(Uri.parse(decoded));
+            const virtualDocumentUri = Uri.parse(decodeURIComponent(uri.path.slice(1, uri.path.lastIndexOf('.') - 1)));
+            for (const vdocs of virtualDocuments.values()) {
+                for (const vdoc of vdocs) {
+                    if (vdoc.htmlTextDocument.uri.toString() === virtualDocumentUri.toString()) {
+                        return vdoc.htmlTextDocument.getText();
+                    }
+                }
+            }
+            return '';
         }
     }));
 
     context.subscriptions.push(languages.registerHoverProvider(rustFilter, {
         async provideHover(document, position) {
+            const vdocUri = getVirtualDocumentAround(position, document)?.htmlTextDocument?.uri;
+            if (!vdocUri) {
+                return null;
+            }
+
             const hovers = await commands.executeCommand<Hover[]>(
                 'vscode.executeHoverProvider',
-                virtualDocumentUriOf(document, position),
+                vdocUri,
                 position
             );
-            return (hovers?.length) ? hovers[0] : null;
+            return (hovers?.length > 0) ? hovers[0] : null;
         }
     }));
 
     context.subscriptions.push(languages.registerCompletionItemProvider(rustFilter, {
         async provideCompletionItems(document, position, _callcellation_token, completion_context) {
+            const vdocUri = getVirtualDocumentAround(position, document)?.htmlTextDocument?.uri;
+            if (!vdocUri) {
+                return null;
+            }
+
             return await commands.executeCommand<CompletionList>(
                 'vscode.executeCompletionItemProvider',
-                virtualDocumentUriOf(document, position),
+                vdocUri,
                 position,
                 completion_context.triggerCharacter
             );
@@ -110,9 +115,14 @@ export function activate(context: ExtensionContext) {
 
     context.subscriptions.push(languages.registerDefinitionProvider(rustFilter, {
         async provideDefinition(document, position) {
+            const vdocUri = getVirtualDocumentAround(position, document)?.htmlTextDocument?.uri;
+            if (!vdocUri) {
+                return null;
+            }
+
             return await commands.executeCommand<Location[]>(
                 'vscode.executeDefinitionProvider',
-                virtualDocumentUriOf(document, position),
+                vdocUri,
                 position
             );
         }
@@ -120,14 +130,15 @@ export function activate(context: ExtensionContext) {
 
     context.subscriptions.push(languages.registerLinkedEditingRangeProvider(rustFilter, {
         async provideLinkedEditingRanges(document, position, _token) {
-            const text = document.getText();
-            const insideRust = isInsideRustRegion(text, document.offsetAt(position));
-            if (insideRust) return;
+            const vdoc = getVirtualDocumentAround(position, document);
+            if (!vdoc) {
+                return null;
+            }
 
             const ranges = htmlLS.findLinkedEditingRanges(
-                HTMLTextDocumentFrom(document),
+                vdoc.htmlTextDocument,
                 position,
-                HTMLDocumentFrom(document),
+                htmlLS.parseHTMLDocument(vdoc.htmlTextDocument),
             );
             if (!ranges) return;
 
@@ -140,12 +151,14 @@ export function activate(context: ExtensionContext) {
         } 
     }));
 
-    context.subscriptions.push(activateAutoInsertion(rustFilter, async (kind, document, position) => {
-        const insideRust = isInsideRustRegion(document.getText(), document.offsetAt(position));
-        if (insideRust) return '';
+    context.subscriptions.push(ActivateAutoInsertion(rustFilter, async (kind, document, position) => {
+        const vdoc = getVirtualDocumentAround(position, document);
+        if (!vdoc) {
+            return '';
+        }
 
-        const htmlDocument = HTMLDocumentFrom(document);
-        const textDocument = HTMLTextDocumentFrom(document);
+        const textDocument = vdoc.htmlTextDocument;
+        const htmlDocument = htmlLS.parseHTMLDocument(textDocument);
 
         switch (kind) {
             case 'autoQuote':
