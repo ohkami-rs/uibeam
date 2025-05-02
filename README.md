@@ -11,14 +11,49 @@
 - efficient : Emitting efficient code, avoiding redundant memory allocations as smartly as possible
 - providing [VSCode extension](./support/vscode)
 
-## Example
+## Examples
+
+### `UI!` syntax
+
+```rust
+use uibeam::UI;
+
+fn main() {
+    let user_name = "foo".to_string();
+
+    let style = "
+        color: red; \
+        font-size: 20px; \
+    ";
+    
+    let ui: UI = UI! {
+        <p class="hello" style={style}>
+            "Welcome to the world of UIBeam!"
+            <br>
+            "こんにちは"
+            <a
+                class="user"
+                style="color: blue;"
+                data-user-id="123"
+                href="https://example-chatapp.com/users/123"
+            >
+                "@"{user_name}"!"
+            </a>
+        </p>
+    };
+
+    dbg!(ui);
+}
+```
+
+### Components with `Beam`
 
 ```rust
 use uibeam::{Beam, UI};
 
 struct Layout {
     title: String,
-    child: UI,  // <-- `child` field
+    children: UI,  // `children` field
 }
 
 impl Beam for Layout {
@@ -30,7 +65,7 @@ impl Beam for Layout {
                     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
                 </head>
                 <body class="bg-gray-100">
-                    {self.child}
+                    {self.children}
                 </body>
             </html>
         }
