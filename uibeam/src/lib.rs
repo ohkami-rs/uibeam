@@ -21,7 +21,42 @@ impl FromIterator<UI> for UI {
         for item in iter {
             result.push_str(&item.0);
         }
-        UI(result.into())
+        UI(Cow::Owned(result))
+    }
+}
+
+impl UI {
+    pub const EMPTY: UI = UI(Cow::Borrowed(""));
+
+    #[inline]
+    pub fn concat<const N: usize>(uis: [UI; N]) -> Self {
+        match uis.len() {
+            0 => UI::EMPTY,
+            1 => unsafe {
+                // SAFETY:
+                // * original `uis` is moved to this function
+                //   and never used again by anyone
+                // * `ManuallyDrop` prevents double free
+                //   and returned `Self`'s destructor will free this memory
+                std::ptr::read(
+                    // SAFETY:
+                    // * Here `uis` is `[UI; 1]`
+                    // * `[T; 1]` has the same layout as `T`
+                    // * `ManuallyDrop<T>` has the same layout as `T`
+                    &*std::mem::ManuallyDrop::new(uis)
+                        as *const [UI]
+                        as *const [UI; 1]
+                        as *const UI
+                )
+            }
+            _ => {
+                let mut buf = String::with_capacity(uis.iter().map(|ui| ui.0.len()).sum());
+                for ui in uis {
+                    buf.push_str(&ui.0);
+                }
+                UI(Cow::Owned(buf))
+            }
+        }
     }
 }
 
@@ -56,15 +91,15 @@ impl UI {
         template_pieces: &'static [&'static str],
         interpolators: [Interpolator; N],
     ) -> Self {
-        UI(match template_pieces.len() {
-            0 => Cow::Borrowed(""),
-            1 => Cow::Borrowed(template_pieces[0]),
+        match template_pieces.len() {
+            0 => UI::EMPTY,
+            1 => UI(Cow::Borrowed(template_pieces[0])),
             _ => {
-                let mut ui = String::from(template_pieces[0]);
+                let mut buf = String::from(template_pieces[0]);
                 for i in 0..N {
                     match &interpolators[i] {
                         Interpolator::Children(children) => {
-                            ui.push_str(&children.0);
+                            buf.push_str(&children.0);
                         }
                         Interpolator::Attribute(value) => {
                             #[cfg(debug_assertions)] {
@@ -75,19 +110,19 @@ impl UI {
                                 //            |
                                 //            /-- this `value` is here
                                 // ```
-                                assert!(ui.ends_with('='));
+                                assert!(buf.ends_with('='));
                             }
                             match value {
                                 AttributeValue::Text(text) => {
-                                    ui.push('"');
-                                    ui.push_str(&html_escape(text));
-                                    ui.push('"');
+                                    buf.push('"');
+                                    buf.push_str(&html_escape(text));
+                                    buf.push('"');
                                 }
                                 AttributeValue::Uint(uint) => {
                                     // here we don't need to escape
-                                    ui.push('"');
-                                    ui.push_str(&uint.to_string());
-                                    ui.push('"');
+                                    buf.push('"');
+                                    buf.push_str(&uint.to_string());
+                                    buf.push('"');
                                 }
                                 AttributeValue::Boolean(boolean) => {
                                     // if `boolean` is `true`, we'll just leave the attribute name :
@@ -110,24 +145,24 @@ impl UI {
                                     // <input type="checkbox"
                                     // ```
                                     //
-                                    // this can be done by removing after the last whitespace of current `ui`
-                                    // (because the SAFETY contract encusres `ui` is a part of a valid HTML string
+                                    // this can be done by removing after the last whitespace of current `buf`
+                                    // (because the SAFETY contract encusres `buf` is a part of a valid HTML string
                                     // and then at least one whitespace exists before an attribute name)
-                                    let Some('=') = ui.pop() else {unreachable!()};
+                                    let Some('=') = buf.pop() else {unreachable!()};
                                     if !*boolean {
-                                        let Some(sp) = ui.rfind(is_ascii_whitespace) else {unreachable!()};
-                                        ui.truncate(sp);
+                                        let Some(sp) = buf.rfind(is_ascii_whitespace) else {unreachable!()};
+                                        buf.truncate(sp);
                                     }
-                                    ui.push(' ');
+                                    buf.push(' ');
                                 }
                             }
                         }
                     }
-                    ui.push_str(template_pieces[i + 1]);
+                    buf.push_str(template_pieces[i + 1]);
                 }
-                Cow::Owned(ui)
+                UI(Cow::Owned(buf))
             }
-        })
+        }
     }
 }
 
