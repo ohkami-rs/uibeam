@@ -18,8 +18,6 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
     });
 
     Ok(quote! {
-        <::uibeam::UI as ::std::iter::FromIterator::<::uibeam::UI>>::from_iter([
-            #(#nodes),*
-        ])
+        <::uibeam::UI>::concat([#(#nodes),*])
     })
 }
