@@ -47,4 +47,35 @@ export function findUIInputRangeOffsets(text: string): [number, number][] {
     return ranges;
 }
 
-// export function makeWhitespace
+// This function clears its parts not included in the ranges as whitespaces.
+export function clearExcludedFromRanges(
+    text: string,
+    ranges: [number, number][],
+): string {
+    let buf = "";
+
+    const mutate_buf = {
+        copyFromOriginalText: (from: number, to: number) => {
+            buf += text.substring(from, to);
+        },
+        fillWithWhiteSpace: (from: number, to: number) => {
+            for (let i = from; i < to; i++) {
+                if (text[i] === '\n') {
+                    buf += '\n';
+                } else {
+                    buf += ' ';
+                }
+            }
+        },
+    };
+
+    let lastEnd = 0;
+    for (const [start, end] of ranges) {
+        mutate_buf.fillWithWhiteSpace(lastEnd, start);
+        mutate_buf.copyFromOriginalText(start, end);
+        lastEnd = end;
+    }
+    mutate_buf.fillWithWhiteSpace(lastEnd, text.length);
+
+    return buf;
+}

@@ -23,7 +23,7 @@
   ],
   "main": "./out/extension.js",
   "scripts": {
-    "test": "vitest run",
+    "test": "vitest run --root ./src",
     "compile": "tsc -p ./",
     "vscode:prepublish": "npm run compile",
     "vscode:package": "vsce package -o ./out/uibeam.vsix"

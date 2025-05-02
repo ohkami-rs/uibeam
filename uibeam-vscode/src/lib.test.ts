@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { findUIInputRangeOffsets } from './lib';
+import { clearExcludedFromRanges, findUIInputRangeOffsets } from './lib';
 
 test('findUIInputRangeOffsets when not found', () => {
     expect(findUIInputRangeOffsets(``)).toEqual([]);
@@ -87,4 +87,39 @@ test('findUIInputRangeOffsets with interpolations', () => {
                 </p>
             `
     );
+});
+
+test('clearExcludedFromRanges for empty', () => {
+    const text = '';
+
+    const offsets = findUIInputRangeOffsets(text);
+
+    expect(clearExcludedFromRanges(text, offsets)).toEqual('');
+});
+
+test('clearExcludedFromRanges', () => {
+    const text = `
+        fn main() {
+            let name = "world";
+            let ui = UI! {
+                <p>
+                    "Hello, "{name}"!"
+                </p>
+            };
+        }
+    `;
+
+    const offsets = findUIInputRangeOffsets(text);
+
+    /* !!! WHITESPACES MATTERS !!! */
+    expect(clearExcludedFromRanges(text, offsets)).toEqual(`
+                   
+                               
+                          
+                <p>
+                    "Hello, "{name}"!"
+                </p>
+              
+         
+    `);
 });
