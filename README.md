@@ -46,6 +46,50 @@ fn main() {
 }
 ```
 
+### Conditional & Iterating rendering
+
+`{}` at node-position in `UI!` can render, in addition to string or integer, any `impl IntoIterator<Item = UI>`. This includes `Option<UI>` or any iterator yielding `UI` !
+
+```rust
+use uibeam::{UI, Beam};
+
+struct Task {
+    id: u64,
+    title: String,
+    subtasks: Vec<String>,
+    completed: bool,
+}
+impl Beam for T
+
+fn main() {
+    let t = Task {
+        id: 42,
+        title: "try uibeam".to_string(),
+        subtasks: vec![],
+        completed: false,
+    };
+
+    let task_ui = UI! {
+        <div id={format!("task-{t.id}")}>
+            <h2>{t.title}</h2>
+
+            <h3>"subtasks"</h3>
+            <ul>
+                {t.subtasks.iter().map(|s| UI! {
+                    <li>{s}</li>
+                })}
+            </ul>
+
+            {t.completed.then_some(UI! {
+                <i><strong>"completed"</strong></i>
+            })}
+        </div>
+    };
+
+    dbg!(task_ui);
+}
+```
+
 ### Components with `Beam`
 
 ```rust
