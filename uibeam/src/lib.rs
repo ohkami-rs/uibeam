@@ -9,6 +9,7 @@ pub trait Beam {
     fn render(self) -> UI;
 }
 
+#[inline(always)]
 pub fn shoot(ui: UI) -> Cow<'static, str> {
     ui.0
 }
@@ -147,6 +148,7 @@ const _: () = {
         }
     }
     impl From<String> for AttributeValue {
+        #[inline(always)]
         fn from(value: String) -> Self {
             AttributeValue::Text(value.into())
         }
@@ -158,6 +160,7 @@ const _: () = {
     }
 
     impl From<bool> for AttributeValue {
+        #[inline(always)]
         fn from(value: bool) -> Self {
             AttributeValue::Boolean(value)
         }
@@ -167,6 +170,7 @@ const _: () = {
         ($($t:ty),+) => {
             $(
                 impl From<$t> for AttributeValue {
+                    #[inline]
                     fn from(it: $t) -> Self {
                         AttributeValue::Uint(it.into())
                     }
@@ -177,6 +181,7 @@ const _: () = {
     uint_attribute_values!(u8, u16, u32, u64);
 
     impl From<usize> for AttributeValue {
+        #[inline(always)]
         fn from(it: usize) -> Self {
             if cfg!(any(
                 target_pointer_width = "16",
@@ -206,6 +211,7 @@ const _: () = {
     where
         I: IntoIterator<Item = UI>,
     {
+        #[inline(always)]
         fn into_children(self) -> UI {
             UI::from_iter(self)
         }
