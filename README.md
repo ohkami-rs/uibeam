@@ -59,7 +59,6 @@ struct Task {
     subtasks: Vec<String>,
     completed: bool,
 }
-impl Beam for T
 
 fn main() {
     let t = Task {
