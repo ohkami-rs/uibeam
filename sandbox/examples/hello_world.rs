@@ -37,7 +37,9 @@ impl Beam for Counter {
         UI! {
             <div id="counter">
                 <a id="" class=""></a>
+                <button id=""></button>
             </div>
+            <p></p>
         }
     }
 }

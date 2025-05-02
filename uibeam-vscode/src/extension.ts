@@ -33,7 +33,8 @@ function DEBUG(message: string, panic: boolean = false) {
 
 type VirtualHTMLDocument = {
     ranges: Range[];
-    htmlTextDocument: HTMLTextDocument;
+    content: string;
+    uri: Uri
 };
 const VirtualHTMLDocument = {
     from(document: TextDocument): VirtualHTMLDocument | null {
@@ -58,14 +59,9 @@ const VirtualHTMLDocument = {
         const content = clearExcludedFromRanges(text, rangeOffsets);
         
         const originalUri = document.uri.toString(true /* skip encoding */);
-        const htmlTextDocument = HTMLTextDocument.create(
-            `embedded-content://html/${encodeURIComponent(originalUri)}.html`,
-            'html',
-            0,
-            content,
-        );
+        const uri = Uri.parse(`embedded-content://html/${encodeURIComponent(originalUri)}.html`);
 
-        return { ranges, htmlTextDocument };
+        return { ranges, content, uri };
     }
 };
 
@@ -104,7 +100,7 @@ export function activate(context: ExtensionContext) {
                 for originalUri: '${originalUri}' \
                 where the map: ${JSON.stringify(virtualHTMLDocuments)} \
             `);
-            return vdoc?.htmlTextDocument?.getText() ?? '';
+            return vdoc?.content ?? '';
         }
     }));
 
@@ -122,7 +118,7 @@ export function activate(context: ExtensionContext) {
 
             const hovers = await commands.executeCommand<Hover[]>(
                 'vscode.executeHoverProvider',
-                Uri.parse(vdoc.htmlTextDocument.uri),
+                vdoc.uri,
                 position
             );
             return (hovers?.length > 0) ? hovers[0] : null;
@@ -143,7 +139,7 @@ export function activate(context: ExtensionContext) {
 
             return await commands.executeCommand<CompletionList>(
                 'vscode.executeCompletionItemProvider',
-                Uri.parse(vdoc.htmlTextDocument.uri),
+                vdoc.uri,
                 position,
                 completion_context.triggerCharacter
             );
@@ -164,7 +160,7 @@ export function activate(context: ExtensionContext) {
 
             return await commands.executeCommand<Location[]>(
                 'vscode.executeDefinitionProvider',
-                Uri.parse(vdoc.htmlTextDocument.uri),
+                vdoc.uri,
                 position
             );
         }
@@ -195,7 +191,7 @@ export function activate(context: ExtensionContext) {
             return '';
         }
 
-        const textDocument = vdoc.htmlTextDocument;
+        const textDocument = HTMLTextDocument.create(vdoc.uri.toString(true /* skip encoding */), 'html', 1, vdoc.content);
         const htmlDocument = htmlLS.parseHTMLDocument(textDocument);
 
         switch (kind) {
@@ -206,6 +202,19 @@ export function activate(context: ExtensionContext) {
             default:
                 throw new Error(kind satisfies never);
         }
+    }));
+
+    context.subscriptions.push(workspace.onDidChangeTextDocument(event => {
+        event.contentChanges.forEach(({ rangeOffset, rangeLength, range, text }) => {
+            const changedUri = event.document.uri.toString(true /* skip encoding */);
+            if (virtualHTMLDocuments.has(changedUri)) {
+                // TODO: more efficient way to update
+                const newVdoc = VirtualHTMLDocument.from(event.document);
+                if (newVdoc) {
+                    virtualHTMLDocuments.set(changedUri, newVdoc);
+                }
+            }
+        });
     }));
 
     DEBUG(`[activateed]`);
