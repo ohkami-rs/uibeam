@@ -19,6 +19,18 @@ import {
 import { ActivateAutoInsertion } from './auto_insertion';
 import { findUIInputRangeOffsets, clearExcludedFromRanges } from './lib';
 
+import { writeFileSync } from 'node:fs';
+function DEBUG(message: string, panic: boolean = false) {
+    console.error(`[uibeam-vscode] ${message}`);
+    writeFileSync(
+        `${__dirname}/../log.txt`,
+        `[uibeam-vscode] ${message}`
+    );
+    if (panic) {
+        throw new Error(message);
+    }
+}
+
 type VirtualHTMLDocument = {
     ranges: Range[];
     htmlTextDocument: HTMLTextDocument;
@@ -58,32 +70,55 @@ const VirtualHTMLDocument = {
 };
 
 export function activate(context: ExtensionContext) {
+    DEBUG(`[activate]`);
+
     const htmlLS = getLanguageService();
 
     const rustFilter: DocumentFilter = { scheme: 'file', pattern: '**/*.rs', language: 'rust' };
 
     const virtualHTMLDocuments = new Map<Uri, VirtualHTMLDocument>();
 
+    const getVirtualHTMLDocumentOf = (document: TextDocument): VirtualHTMLDocument | null => {
+        if (!virtualHTMLDocuments.has(document.uri)) {
+            const vdoc = VirtualHTMLDocument.from(document);
+            if (!vdoc) {DEBUG(`vdoc is null`, true);
+                return null;
+            }
+            virtualHTMLDocuments.set(document.uri, vdoc);
+        }
+        return virtualHTMLDocuments.get(document.uri)!;
+    };
+
     context.subscriptions.push(workspace.registerTextDocumentContentProvider('embedded-content', {
         provideTextDocumentContent: (uri) => {
-            const virtualDocumentUri = Uri.parse(decodeURIComponent(uri.path.slice(1, uri.path.lastIndexOf('.') - 1)));
-            return virtualHTMLDocuments.get(virtualDocumentUri)?.htmlTextDocument.getText() ?? '';
+            DEBUG(`[provideTextDocumentContent] uri: ${uri}`);
+            const originalUri = Uri.parse(decodeURIComponent(uri.path.substring(1, uri.path.lastIndexOf('.'))));
+            DEBUG(`[provideTextDocumentContent] originalUri: ${originalUri}`);
+            const vdoc = virtualHTMLDocuments.get(originalUri);
+            DEBUG(`\
+                [provideTextDocumentContent] vdoc: ${JSON.stringify(vdoc)} \
+                for originalUri: '${originalUri}' \
+                where the map: ${JSON.stringify(virtualHTMLDocuments)} \
+            `, true);
+            return vdoc?.htmlTextDocument?.getText() ?? '';
         }
     }));
 
     context.subscriptions.push(languages.registerHoverProvider(rustFilter, {
         async provideHover(document, position) {
-            const vdoc = virtualHTMLDocuments.get(document.uri);
-            if (!vdoc) {
+            DEBUG(`[provideHover] document: ${document.uri}, position: ${JSON.stringify(position)}`);
+            const vdoc = getVirtualHTMLDocumentOf(document);
+            if (!vdoc) {DEBUG(`vdoc is null`, true);
                 return null;
             }
             if (!vdoc.ranges.some(r => r.contains(position))) {
                 return null;
             }
+            DEBUG(`[provideHover] vdoc: ${JSON.stringify(vdoc)}`);
 
             const hovers = await commands.executeCommand<Hover[]>(
                 'vscode.executeHoverProvider',
-                vdoc.htmlTextDocument.uri,
+                Uri.parse(vdoc.htmlTextDocument.uri),
                 position
             );
             return (hovers?.length > 0) ? hovers[0] : null;
@@ -92,17 +127,19 @@ export function activate(context: ExtensionContext) {
 
     context.subscriptions.push(languages.registerCompletionItemProvider(rustFilter, {
         async provideCompletionItems(document, position, _callcellation_token, completion_context) {
-            const vdoc = virtualHTMLDocuments.get(document.uri);
-            if (!vdoc) {
+            DEBUG(`[provideHover] document: ${document.uri}, position: ${JSON.stringify(position)}`);
+            const vdoc = getVirtualHTMLDocumentOf(document);
+            if (!vdoc) {DEBUG(`vdoc is null`, true);
                 return null;
             }
             if (!vdoc.ranges.some(r => r.contains(position))) {
                 return null;
             }
+            DEBUG(`[provideHover] vdoc: ${JSON.stringify(vdoc)}`);
 
             return await commands.executeCommand<CompletionList>(
                 'vscode.executeCompletionItemProvider',
-                vdoc.htmlTextDocument.uri,
+                Uri.parse(vdoc.htmlTextDocument.uri),
                 position,
                 completion_context.triggerCharacter
             );
@@ -111,17 +148,19 @@ export function activate(context: ExtensionContext) {
 
     context.subscriptions.push(languages.registerDefinitionProvider(rustFilter, {
         async provideDefinition(document, position) {
-            const vdoc = virtualHTMLDocuments.get(document.uri);
-            if (!vdoc) {
+            DEBUG(`[provideHover] document: ${document.uri}, position: ${JSON.stringify(position)}`);
+            const vdoc = getVirtualHTMLDocumentOf(document);
+            if (!vdoc) {DEBUG(`vdoc is null`, true);
                 return null;
             }
             if (!vdoc.ranges.some(r => r.contains(position))) {
                 return null;
             }
+            DEBUG(`[provideHover] vdoc: ${JSON.stringify(vdoc)}`);
 
             return await commands.executeCommand<Location[]>(
                 'vscode.executeDefinitionProvider',
-                vdoc.htmlTextDocument.uri,
+                Uri.parse(vdoc.htmlTextDocument.uri),
                 position
             );
         }
@@ -129,20 +168,22 @@ export function activate(context: ExtensionContext) {
 
     context.subscriptions.push(languages.registerLinkedEditingRangeProvider(rustFilter, {
         async provideLinkedEditingRanges(document, position, _token) {
-            const vdoc = virtualHTMLDocuments.get(document.uri);
-            if (!vdoc) {
+            DEBUG(`[provideHover] document: ${document.uri}, position: ${JSON.stringify(position)}`);
+            const vdoc = getVirtualHTMLDocumentOf(document);
+            if (!vdoc) {DEBUG(`vdoc is null`, true);
                 return null;
             }
             if (!vdoc.ranges.some(r => r.contains(position))) {
                 return null;
             }
+            DEBUG(`[provideHover] vdoc: ${JSON.stringify(vdoc)}`);
 
             return new LinkedEditingRanges(vdoc.ranges);
         } 
     }));
 
     context.subscriptions.push(ActivateAutoInsertion(rustFilter, async (kind, document, position) => {
-        const vdoc = virtualHTMLDocuments.get(document.uri);
+        const vdoc = getVirtualHTMLDocumentOf(document);
         if (!vdoc) {
             return '';
         }
@@ -162,4 +203,6 @@ export function activate(context: ExtensionContext) {
                 throw new Error(kind satisfies never);
         }
     }));
+
+    DEBUG(`[activateed]`);
 }

@@ -35,7 +35,7 @@ struct Counter {
 impl Beam for Counter {
     fn render(self) -> UI {
         UI! {
-            <div id="counter" class="">
+            <div id="counter">
                 <a></a>
             </div>
         }
