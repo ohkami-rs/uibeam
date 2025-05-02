@@ -1,0 +1,41 @@
+{
+  "name": "uibeam",
+  "version": "1.0.0",
+  "description": "",
+  "license": "MIT",
+  "publisher": "<!-- TODO -->",
+  "author": {
+    "name": "kanarus",
+    "email": "kanarus786@gmail.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://<!-- TODO -->"
+  },
+  "bugs": {
+    "url": "https://<!-- TODO -->"
+  },
+  "engines": {
+    "vscode": "^1.99.1"
+  },
+  "activationEvents": [
+    "onLanguage:rust"
+  ],
+  "main": "./out/extension.js",
+  "scripts": {
+    "test": "vitest run --root ./src",
+    "compile": "tsc -p ./",
+    "vscode:prepublish": "rm -rf ./out && npm run compile",
+    "vscode:package": "vsce package --out ./out/uibeam.vsix"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@types/vscode": "^1.99.1",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.2",
+    "vsce": "^2.15.0"
+  },
+  "dependencies": {
+    "vscode-html-languageservice": "^5.3.3"
+  }
+}

@@ -29,6 +29,21 @@ impl Beam for Hello {
     }
 }
 
+struct Counter {
+    initial_count: u32,
+}
+impl Beam for Counter {
+    fn render(self) -> UI {
+        UI! {
+            <div id="counter">
+                <a id="" class=""></a>
+                <button id=""></button>
+            </div>
+            <p></p>
+        }
+    }
+}
+
 fn main() {
     println!("{}", uibeam::shoot(UI! {
         <body>
