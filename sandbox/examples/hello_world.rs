@@ -36,7 +36,7 @@ impl Beam for Counter {
     fn render(self) -> UI {
         UI! {
             <div id="counter">
-                <a></a>
+                <a id="" class=""></a>
             </div>
         }
     }

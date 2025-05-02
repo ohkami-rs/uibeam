@@ -76,30 +76,34 @@ export function activate(context: ExtensionContext) {
 
     const rustFilter: DocumentFilter = { scheme: 'file', pattern: '**/*.rs', language: 'rust' };
 
-    const virtualHTMLDocuments = new Map<Uri, VirtualHTMLDocument>();
+    const virtualHTMLDocuments = new Map<
+        string/* Uri.toString(true) // need to be a primitive type */,
+        VirtualHTMLDocument
+    >();
 
     const getVirtualHTMLDocumentOf = (document: TextDocument): VirtualHTMLDocument | null => {
-        if (!virtualHTMLDocuments.has(document.uri)) {
+        const originalUri = document.uri.toString(true /* skip encoding */);
+        if (!virtualHTMLDocuments.has(originalUri)) {
             const vdoc = VirtualHTMLDocument.from(document);
             if (!vdoc) {DEBUG(`vdoc is null`, true);
                 return null;
             }
-            virtualHTMLDocuments.set(document.uri, vdoc);
+            virtualHTMLDocuments.set(originalUri, vdoc);
         }
-        return virtualHTMLDocuments.get(document.uri)!;
+        return virtualHTMLDocuments.get(originalUri)!;
     };
 
     context.subscriptions.push(workspace.registerTextDocumentContentProvider('embedded-content', {
         provideTextDocumentContent: (uri) => {
             DEBUG(`[provideTextDocumentContent] uri: ${uri}`);
-            const originalUri = Uri.parse(decodeURIComponent(uri.path.substring(1, uri.path.lastIndexOf('.'))));
+            const originalUri = decodeURIComponent(uri.path.substring(1, uri.path.lastIndexOf('.')));
             DEBUG(`[provideTextDocumentContent] originalUri: ${originalUri}`);
             const vdoc = virtualHTMLDocuments.get(originalUri);
             DEBUG(`\
                 [provideTextDocumentContent] vdoc: ${JSON.stringify(vdoc)} \
                 for originalUri: '${originalUri}' \
                 where the map: ${JSON.stringify(virtualHTMLDocuments)} \
-            `, true);
+            `);
             return vdoc?.htmlTextDocument?.getText() ?? '';
         }
     }));
