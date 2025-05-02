@@ -25,8 +25,8 @@
   "scripts": {
     "test": "vitest run --root ./src",
     "compile": "tsc -p ./",
-    "vscode:prepublish": "npm run compile",
-    "vscode:package": "vsce package -o ./out/uibeam.vsix"
+    "vscode:prepublish": "rm -rf ./out && npm run compile",
+    "vscode:package": "vsce package --out ./out/uibeam.vsix"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
