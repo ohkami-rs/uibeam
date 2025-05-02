@@ -1,4 +1,6 @@
-export function findUIInputOffsets(text: string): [number, number][] {
+// pure utility logics for this extension, not depending on vscode
+
+export function findUIInputRangeOffsets(text: string): [number, number][] {
     let ranges: [number, number][] = [];
     {
         console.debug(/UI!\s*{/g.exec(text));
@@ -44,3 +46,5 @@ export function findUIInputOffsets(text: string): [number, number][] {
 
     return ranges;
 }
+
+// export function makeWhitespace

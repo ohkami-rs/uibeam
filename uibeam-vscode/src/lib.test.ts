@@ -1,10 +1,10 @@
 import { expect, test } from 'vitest';
-import { findUIInputOffsets } from './find_ui';
+import { findUIInputRangeOffsets } from './lib';
 
-test('findUIInputOffsets when not found', () => {
-    expect(findUIInputOffsets(``)).toEqual([]);
+test('findUIInputRangeOffsets when not found', () => {
+    expect(findUIInputRangeOffsets(``)).toEqual([]);
 
-    expect(findUIInputOffsets(`
+    expect(findUIInputRangeOffsets(`
         struct Hello<'h> {
             name: &'h str,
         }
@@ -21,14 +21,14 @@ test('findUIInputOffsets when not found', () => {
     `)).toEqual([]);
 });
 
-test('findUIInputOffsets when empty UI! {}', () => {
+test('findUIInputRangeOffsets when empty UI! {}', () => {
     const text = `
         fn main() {
             let ui = UI! {};
         }
     `;
 
-    const offsets = findUIInputOffsets(text);
+    const offsets = findUIInputRangeOffsets(text);
 
     expect(offsets).toEqual([
         [47, 47],
@@ -38,7 +38,7 @@ test('findUIInputOffsets when empty UI! {}', () => {
     );
 });
 
-test('findUIInputOffsets only with literals', () => {
+test('findUIInputRangeOffsets only with literals', () => {
     const text = `
         fn main() {
             let ui = UI! {
@@ -49,7 +49,7 @@ test('findUIInputOffsets only with literals', () => {
         }
     `;
 
-    const offsets = findUIInputOffsets(text);
+    const offsets = findUIInputRangeOffsets(text);
 
     expect(offsets).toEqual([
         [47, 137],
@@ -63,7 +63,7 @@ test('findUIInputOffsets only with literals', () => {
     );
 });
 
-test('findUIInputOffsets with interpolations', () => {
+test('findUIInputRangeOffsets with interpolations', () => {
     const text = `
         fn main() {
             let name = "world";
@@ -75,7 +75,7 @@ test('findUIInputOffsets with interpolations', () => {
         }
     `;
 
-    const offsets = findUIInputOffsets(text);
+    const offsets = findUIInputRangeOffsets(text);
 
     expect(offsets).toEqual([
         [79, 172],
