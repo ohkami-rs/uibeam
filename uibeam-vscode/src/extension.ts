@@ -6,7 +6,6 @@ import {
     ExtensionContext,
     Uri,
     TextDocument,
-    Position,
     Hover,
     CompletionList,
     Location,
@@ -18,7 +17,7 @@ import {
     TextDocument as HTMLTextDocument,
 } from 'vscode-html-languageservice';
 import { ActivateAutoInsertion } from './auto_insertion';
-import { findUIInputRangeOffsets } from './lib';
+import { findUIInputRangeOffsets, clearExcludedFromRanges } from './lib';
 
 type VirtualHTMLDocument = {
     ranges: Range[];
@@ -44,15 +43,7 @@ const VirtualHTMLDocument = {
 
         // The same string as the original text, but with
         // non-UI input parts replaced with whitespaces.
-        const content = ((originalText: string) => {
-            let buf = ' '.repeat(rangeOffsets[0][0] - 0);
-            for (let i = 0; i < rangeOffsets.length; i++) {
-                const [start, end] = rangeOffsets[i];
-                buf += originalText.substring(start, end);
-                buf += (i < rangeOffsets.length - 1) ? ' '.repeat(rangeOffsets[i + 1][0] - end) : '';
-            }
-            return buf;
-        })(text);
+        const content = clearExcludedFromRanges(text, rangeOffsets);
         
         const originalUri = document.uri.toString(true /* skip encoding */);
         const htmlTextDocument = HTMLTextDocument.create(
