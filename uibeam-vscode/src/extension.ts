@@ -60,7 +60,7 @@ export function activate(context: ExtensionContext) {
     const rustFilter: DocumentFilter = { scheme: 'file', pattern: '**/*.rs', language: 'rust' };
 
     const virtualHTMLDocuments = new Map<
-        string/* Uri.toString(true) // need to be a primitive type */,
+        string/* Uri.toString(true) // need to be primitive type to avoid comparing object reference */,
         VirtualHTMLDocument
     >();
 
