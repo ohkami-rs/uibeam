@@ -169,14 +169,10 @@ fn main() {
     });
     dbg!(ui);
 
-    // shoot directly
-
-    let ui = uibeam::shoot(AdminPage {});
-    dbg!(ui);
-
+    // shoot directly :
     let ui = uibeam::shoot(Layout {
         title: "admin page".to_string(),
-        children: uibeam::shoot(AdminPage {}),
+        children: (AdminPage {}).render(),
     });
     dbg!(ui);
 }
