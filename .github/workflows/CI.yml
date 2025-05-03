@@ -25,7 +25,7 @@ jobs:
           echo 'linker    = "clang"'                                   >> $HOME/.cargo/config.toml
           echo 'rustflags = ["-C", "link-arg=-fuse-ld=/usr/bin/mold"]' >> $HOME/.cargo/config.toml
 
-      - name: Test crate
+      - name: Test crates
         run: cargo test
 
       - name: Test examples
