@@ -1,19 +1,19 @@
 {
   "name": "uibeam",
   "version": "1.0.0",
-  "description": "",
+  "description": "Official uibeam extension for VSCode.",
   "license": "MIT",
-  "publisher": "<!-- TODO -->",
+  "publisher": "ohkami-rs",
   "author": {
     "name": "kanarus",
     "email": "kanarus786@gmail.com"
   },
   "repository": {
     "type": "git",
-    "url": "https://<!-- TODO -->"
+    "url": "https://github.com/ohkami-rs/uibeam"
   },
   "bugs": {
-    "url": "https://<!-- TODO -->"
+    "url": "https://github.com/ohkami-rs/uibeam/issues"
   },
   "engines": {
     "vscode": "^1.99.1"
