@@ -1,7 +1,7 @@
 [package]
 name          = "uibeam"
 documentation = "https://docs.rs/uibeam"
-description   = "A component-based, in-code template engine for Web UI in Rust"
+description   = "A component-based, in-source template engine for Web UI in Rust"
 version       = { workspace = true }
 edition       = { workspace = true }
 authors       = { workspace = true }
@@ -13,5 +13,5 @@ keywords      = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-uibeam_html.workspace = true
-uibeam_macro.workspace = true
+uibeam_html  = { path = "../uibeam_html",  version = "=0.1.0" }
+uibeam_macro = { path = "../uibeam_macro", version = "=0.1.0" }

@@ -4,16 +4,12 @@ members  = ["uibeam", "uibeam_html", "uibeam_macro"]
 exclude  = ["sandbox"]
 
 [workspace.package]
-version    = "0.0.0"
+version    = "0.1.0"
 edition    = "2024"
 authors    = ["kanarus <kanarus786@gmail.com>"]
 homepage   = "https://crates.io/uibeam"
-repository = "https://gitub.com/kanarus/uibeam"
+repository = "https://gitub.com/ohkami-rs/uibeam"
 readme     = "README.md"
 license    = "MIT"
 keywords   = []
 categories = ["template-engine", "web-programming"]
-
-[workspace.dependencies]
-uibeam_html  = { path = "uibeam_html" }
-uibeam_macro = { path = "uibeam_macro" }
