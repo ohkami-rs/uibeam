@@ -7,9 +7,9 @@
 
 - `UI!` : HTML-like template syntax in Rust source, compile-time checked
 - `Beam` : Component support
-- simple : Simply organized codebase with zero external dependencies
-- efficient : Emitting efficient code, avoiding redundant memory allocations as smartly as possible
-- providing [VSCode extension](./support/vscode)
+- simple : Simply organized API and codebase, with zero external dependencies
+- efficient : Emitting efficient codes, avoiding redundant memory allocations as smartly as possible
+- providing [VSCode extension](./support/vscode) for HTML completion and hover in `UI!`
 
 ## Examples
 
@@ -48,7 +48,7 @@ fn main() {
 
 ### Conditional & Iterating rendering
 
-`{}` at node-position in `UI!` can render, in addition to string or integer, any `impl IntoIterator<Item = UI>`. This includes `Option<UI>` or any iterator yielding `UI` !
+`{}` at node-position in `UI!` can render, in addition to `Display`-able values, any `impl IntoIterator<Item = UI>`. This includes `Option<UI>` or any other iterators yielding `UI` !
 
 ```rust
 use uibeam::{UI, Beam};
