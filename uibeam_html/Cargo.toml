@@ -1,7 +1,7 @@
 [package]
 name          = "uibeam_html"
 documentation = "https://docs.rs/uibeam_html"
-description   = "HTML implementation for UI Beam - A component-based, in-source template engine for Web UI in Rust"
+description   = "shared HTML library for UIBeam - A lightweight, JSX-style HTML template engine for Rust"
 version       = { workspace = true }
 edition       = { workspace = true }
 authors       = { workspace = true }
