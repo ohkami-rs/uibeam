@@ -1,3 +1,4 @@
+use quote::ToTokens;
 use syn::parse::{Parse, ParseStream};
 use syn::spanned::Spanned;
 use syn::{token, Token, Ident, Expr, LitStr};
@@ -89,18 +90,29 @@ pub(super) struct AttributeTokens {
 
 pub(super) struct AttributeNameTokens(
     /// supporting hyphenated identifiers like `data-foo`
-    Punctuated<Ident, Token![-]>,
+    Punctuated<AttributeNameToken, Token![-]>,
 );
+enum AttributeNameToken {
+    Ident(Ident),
+    // support Rust keywords as attribute names like `<input type="text" for="foo" />`
+    Keyword(proc_macro2::TokenStream),
+}
 impl AttributeNameTokens {
-    pub(super) fn as_ident(&self) -> Option<&Ident> {
-        (self.0.len() == 1).then_some(self.0.first().unwrap())
+    pub(super) fn as_ident(&self) -> Option<Ident> {
+        (self.0.len() == 1).then_some(match self.0.first().unwrap() {
+            AttributeNameToken::Ident(ident) => ident.clone(),
+            AttributeNameToken::Keyword(keyword) => Ident::new_raw(&keyword.to_string(), keyword.span()),
+        })
     }
 }
 impl std::fmt::Display for AttributeNameTokens {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.0
             .iter()
-            .map(ToString::to_string)
+            .map(|token| match token {
+                AttributeNameToken::Ident(ident) => ident.to_string(),
+                AttributeNameToken::Keyword(keyword) => keyword.to_string(),
+            })
             .collect::<Vec<_>>()
             .join("-")
         )
@@ -155,8 +167,13 @@ impl Parse for NodeTokens {
             } else if input.peek(Token![>]) {
                 let _start_close: Token![>] = input.parse()?;
 
-                // tolerantly accept `<br>` as a self-closing tag without a slash
-                if tag == "br" {
+                // tolerantly accept some self-closing tags without a slash
+                if tag == "br"
+                || tag == "li"
+                || tag == "meta"
+                || tag == "link"
+                || tag == "hr"
+                {
                     return Ok(NodeTokens::SelfClosingTag {
                         _open: _start_open,
                         tag,
@@ -252,12 +269,51 @@ impl Parse for AttributeTokens {
 impl Parse for AttributeNameTokens {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut name = Punctuated::new();
-        while input.peek(Ident) {
-            name.push_value(input.parse()?);
-            if !input.peek(Token![-]) {
+
+        macro_rules! push_ident_or_keyword {
+            ($($keyword:tt)*) => {
+                if input.peek(Ident) {
+                    name.push_value(AttributeNameToken::Ident(input.parse()?));
+                }
+                $(
+                    else if input.peek(Token![$keyword]) {
+                        name.push_value(AttributeNameToken::Keyword(input.parse::<Token![$keyword]>()?.into_token_stream()));
+                    }
+                )*
+                else {
+                    break;
+                }
+            };
+        }
+
+        loop {
+            push_ident_or_keyword![
+                abstract as async await
+                become box break
+                const continue crate
+                do dyn
+                else enum extern
+                final fn for
+                // gen
+                if impl in
+                let loop
+                macro match mod move
+                override
+                priv pub
+                ref return
+                self Self static struct super
+                trait type typeof try
+                unsafe unsized use
+                virtual
+                where while
+                yield
+            ];
+
+            if input.peek(Token![-]) {
+                name.push_punct(input.parse()?);
+            } else {
                 break;
             }
-            name.push_punct(input.parse()?);
         }
 
         if name.is_empty() {
@@ -363,7 +419,14 @@ impl AttributeTokens {
 }
 impl AttributeNameTokens {
     pub(super) fn span(&self) -> proc_macro2::Span {
-        self.0.span()
+        self.0
+            .iter()
+            .map(|token| match token {
+                AttributeNameToken::Ident(ident) => ident.span(),
+                AttributeNameToken::Keyword(keyword) => keyword.span(),
+            })
+            .reduce(|s1, s2| joined_span!(s1, s2))
+            .expect("AttributeNameTokens must have at least one token")
     }
 
 }
