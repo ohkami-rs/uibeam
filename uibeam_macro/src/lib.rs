@@ -3,7 +3,10 @@ macro_rules! joined_span {
         {
             let mut span: proc_macro2::Span = $span;
             $(
-                span = span.join($other_span).unwrap_or(span);
+                let other_span: Option<proc_macro2::Span> = $other_span.into();
+                if let Some(other_span) = other_span {
+                    span = span.join(other_span).unwrap_or(span);
+                }
             )+
             span
         }

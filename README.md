@@ -138,12 +138,12 @@ impl Beam for AdminPage {
                                     "password"
                                 </label>
                                 <input
-                                    required
+                                    required={true}
                                     type="password"
                                     id="adminPassword"
                                     name="adminPassword"
                                     class="py-2 px-3 border border-gray-400 rounded focus:outline-none focus:shadow-outline"
-                                </input>
+                                />
                             </div>
                         </div>
                         <div class="mt-6">

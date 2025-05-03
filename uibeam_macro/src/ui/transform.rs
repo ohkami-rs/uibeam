@@ -139,7 +139,7 @@ pub(super) fn transform(
                 }
             });
             let children = content
-                .and_then(|c| c.iter().map(|c| c.span()).reduce(|s1, s2| joined_span!(s1, s2)))
+                .and_then(|c| c.iter().flat_map(|c| c.span()).reduce(|s1, s2| joined_span!(s1, s2)))
                 .and_then(|s| s.source_text())
                 .and_then(|t| syn::parse_str::<TokenStream>(&t).ok())
                 .map(|t| quote! {
@@ -173,7 +173,7 @@ pub(super) fn transform(
                     joined_span!(_start_open.span(), tag.span())
                 );
                 for AttributeTokens { name, _eq, value } in attributes {
-                    piece.push(format!(" {name}="), joined_span!(name.span(), _eq.span()));
+                    piece.push(format!(" {name}="), joined_span!(name.span().unwrap(), _eq.span()));
                     match value {
                         AttributeValueTokens::StringLiteral(lit) => {
                             piece.push(
@@ -214,7 +214,7 @@ pub(super) fn transform(
             NodeTokens::SelfClosingTag { _open, tag, attributes, _slash, _end } => {
                 piece.push(format!("<{tag}"), joined_span!(_open.span(), tag.span()));
                 for AttributeTokens { name, _eq, value } in attributes {
-                    piece.push(format!(" {name}="), joined_span!(name.span(), _eq.span()));
+                    piece.push(format!(" {name}="), joined_span!(name.span().unwrap(), _eq.span()));
                     match value {
                         AttributeValueTokens::StringLiteral(lit) => {
                             piece.push(

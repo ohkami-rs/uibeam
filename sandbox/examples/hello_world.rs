@@ -3,6 +3,7 @@ use uibeam::{UI, Beam};
 struct Hello {
     user_name: String,
     style: Option<String>,
+    children: UI,
 }
 impl Beam for Hello {
     fn render(self) -> UI {
@@ -24,6 +25,8 @@ impl Beam for Hello {
                 >
                     "@"{&self.user_name}"!"
                 </a>
+                <br>
+                {self.children}
             </p>
         }
     }
@@ -41,8 +44,7 @@ fn main() {
                     text-decoration: underline; \
                 ")}
             >
-                // "compile error if you uncomment this line"
-                // "because `Hello` doesn't have `children` field"
+                <p>"[message] this is a test message"</p>
             </Hello>
         </body>
     }));

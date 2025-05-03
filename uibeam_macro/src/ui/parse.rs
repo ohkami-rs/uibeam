@@ -42,7 +42,6 @@ impl NodeTokens {
         let is_beam_ident = |ident: &Ident| {
             ident.to_string().chars().next().unwrap().is_ascii_uppercase()
         };
-
         match self {
             NodeTokens::EnclosingTag { tag, attributes, content, .. } => {
                 if is_beam_ident(tag) {
@@ -169,7 +168,6 @@ impl Parse for NodeTokens {
 
                 // tolerantly accept some self-closing tags without a slash
                 if tag == "br"
-                || tag == "li"
                 || tag == "meta"
                 || tag == "link"
                 || tag == "hr"
@@ -340,12 +338,14 @@ impl Parse for AttributeValueTokens {
 
 //////////////////////////////////////////////////////////////////////////////////////////
 
-fn collect_span(iter: impl Iterator<Item = proc_macro2::Span>) -> proc_macro2::Span {
-    iter.reduce(|s1, s2| joined_span!(s1, s2)).unwrap_or(proc_macro2::Span::call_site())
+fn collect_span(
+    iter: impl Iterator<Item = proc_macro2::Span>,
+) -> Option<proc_macro2::Span> {
+    iter.reduce(|s1, s2| joined_span!(s1, s2))
 }
 
 impl NodeTokens {
-    pub(super) fn span(&self) -> proc_macro2::Span {
+    pub(super) fn span(&self) -> Option<proc_macro2::Span> {
         match self {
             NodeTokens::EnclosingTag {
                 _start_open,
@@ -358,17 +358,17 @@ impl NodeTokens {
                 _tag,
                 _end_close,
             } => {
-                joined_span!(
+                Some(joined_span!(
                     _start_open.span(),
                     tag.span(),
-                    collect_span(attributes.iter().map(AttributeTokens::span)),
+                    collect_span(attributes.iter().flat_map(AttributeTokens::span)),
                     _start_close.span(),
-                    collect_span(content.iter().map(ContentPieceTokens::span)),
+                    collect_span(content.iter().flat_map(ContentPieceTokens::span)),
                     _end_open.span(),
                     _slash.span(),
                     _tag.span(),
                     _end_close.span(),
-                )
+                ))
             }
             NodeTokens::SelfClosingTag {
                 _open,
@@ -377,63 +377,69 @@ impl NodeTokens {
                 _slash,
                 _end,
             } => {
-                joined_span!(
+                Some(joined_span!(
                     _open.span(),
                     tag.span(),
-                    collect_span(attributes.iter().map(AttributeTokens::span)),
+                    collect_span(attributes.iter().flat_map(AttributeTokens::span)),
                     _slash.span(),
                     _end.span(),
-                )
+                ))
             }
             NodeTokens::TextNode(pieces) => {
-                collect_span(pieces.iter().map(ContentPieceTokens::span))
+                collect_span(pieces.iter().flat_map(ContentPieceTokens::span))
             }
         }
     }
 }
 
 impl ContentPieceTokens {
-    pub(super) fn span(&self) -> proc_macro2::Span {
+    pub(super) fn span(&self) -> Option<proc_macro2::Span> {
         match self {
             ContentPieceTokens::Interpolation(interpolation) => interpolation.span(),
-            ContentPieceTokens::StaticText(lit_str) => lit_str.span(),
+            ContentPieceTokens::StaticText(lit_str) => Some(lit_str.span()),
             ContentPieceTokens::Node(node) => node.span(),
         }
     }
 }
 
 impl InterpolationTokens {
-    pub(super) fn span(&self) -> proc_macro2::Span {
-        self._brace.span.span()
+    pub(super) fn span(&self) -> Option<proc_macro2::Span> {
+        Some(self._brace.span.span())
     }
 }
 
 impl AttributeTokens {
-    pub(super) fn span(&self) -> proc_macro2::Span {
-        joined_span!(
-            self.name.span(),
+    pub(super) fn span(&self) -> Option<proc_macro2::Span> {
+        Some(joined_span!(
+            self.name.span()?,
             self._eq.span(),
             self.value.span(),
-        )
+        ))
     }
 }
 impl AttributeNameTokens {
-    pub(super) fn span(&self) -> proc_macro2::Span {
-        self.0
-            .iter()
-            .map(|token| match token {
-                AttributeNameToken::Ident(ident) => ident.span(),
-                AttributeNameToken::Keyword(keyword) => keyword.span(),
+    pub(super) fn span(&self) -> Option<proc_macro2::Span> {
+        Some(self.0
+            .pairs()
+            .map(|token_punct| {
+                let token_span = match token_punct.value() {
+                    AttributeNameToken::Ident(ident) => ident.span(),
+                    AttributeNameToken::Keyword(keyword) => keyword.span(),
+                };
+                match token_punct.punct() {
+                    None => token_span,
+                    Some(p) => joined_span!(token_span, p.span()),
+                }
             })
             .reduce(|s1, s2| joined_span!(s1, s2))
             .expect("AttributeNameTokens must have at least one token")
+        )
     }
-
 }
 impl AttributeValueTokens {
-    pub(super) fn span(&self) -> proc_macro2::Span {
+    pub(super) fn span(&self) -> Option<proc_macro2::Span> {
         match self {
-            AttributeValueTokens::StringLiteral(lit_str) => lit_str.span(),
+            AttributeValueTokens::StringLiteral(lit_str) => Some(lit_str.span()),
             AttributeValueTokens::Interpolation(interpolation) => interpolation.span(),
         }
     }
