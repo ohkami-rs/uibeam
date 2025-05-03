@@ -1,3 +1,3 @@
-# VSCode extension for UI Beam
+# VSCode extension for UIBeam
 
 Enable HTML completion and hover in `UI!`

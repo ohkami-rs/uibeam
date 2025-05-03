@@ -1,15 +1,15 @@
 <div align="center">
-    <h1>UI Beam</h1>
-    A component-based, in-source template engine for Web UI in Rust
+    <h1>UIBeam</h1>
+    A lightweight, JSX-style HTML template engine for Rust
 </div>
 
 ## Features
 
-- `UI!` : HTML-like template syntax in Rust source, compile-time checked
+- `UI!` : JSX-style template syntax with compile-time checks
 - `Beam` : Component support
 - simple : Simply organized API and codebase, with zero external dependencies
 - efficient : Emitting efficient codes, avoiding redundant memory allocations as smartly as possible
-- providing [VSCode extension](./support/vscode) for HTML completion and hover in `UI!`
+- providing [VSCode extension](./support/vscode) for better UX : HTML completion and hover in `UI!`
 
 ## Examples
 
@@ -162,24 +162,18 @@ impl Beam for AdminPage {
 }
 
 fn main() {
-    // shoot directly
-
-    let html = uibeam::shoot(AdminPage {});
-    dbg!(html);
-
-    let html = uibeam::shoot(Layout {
-        title: "admin page".to_string(),
-        children: uibeam::shoot(AdminPage {}),
-    });
-    dbg!(html);
-
-    // shoot with `UI!`
-
-    let html = uibeam::shoot(UI! {
+    let ui = uibeam::shoot(UI! {
         <Layout title="admin page">  // `title` is filled with `"admin page".into()`
             <AdminPage />  // `children` is filled with `AdminPage {}`
         </Layout>
     });
-    dbg!(html);
+    dbg!(ui);
+
+    // shoot directly :
+    let ui = uibeam::shoot(Layout {
+        title: "admin page".to_string(),
+        children: (AdminPage {}).render(),
+    });
+    dbg!(ui);
 }
 ```
