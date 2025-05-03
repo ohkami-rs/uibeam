@@ -29,6 +29,7 @@ jobs:
         run: cargo test
 
       - name: Test examples
+        working-directory: sandbox
         run: |
           for example in examples/*.rs; do
             cargo run --example $(basename $example .rs)
