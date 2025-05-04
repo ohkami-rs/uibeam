@@ -155,7 +155,6 @@ impl UI {
                                         let Some(sp) = buf.rfind(is_ascii_whitespace) else {unreachable!()};
                                         buf.truncate(sp);
                                     }
-                                    buf.push(' ');
                                 }
                             }
                         }
