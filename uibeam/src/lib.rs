@@ -1,3 +1,5 @@
+#![doc = include_str!("../../README.md")]
+
 use std::borrow::Cow;
 use uibeam_html::html_escape;
 
