@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { clearExcludedFromRanges, findUIInputRangeOffsets } from '../src/lib';
+import { clearExcludedFromRanges, findUIInputRangeOffsets } from './lib';
 
 test('findUIInputRangeOffsets when not found', () => {
     expect(findUIInputRangeOffsets(``)).toEqual([]);
