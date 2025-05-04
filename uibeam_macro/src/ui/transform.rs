@@ -1,63 +1,45 @@
 use super::parse::{Beam, NodeTokens, ContentPieceTokens, InterpolationTokens, AttributeTokens, AttributeValueTokens};
 use proc_macro2::{TokenStream, Span};
 use quote::{quote, ToTokens};
-use syn::{spanned::Spanned, LitStr, Expr};
+use syn::{LitStr, Expr};
 
-pub(super) struct Piece {
-    text: String,
-    span: Option<Span>,
-}
+pub(super) struct Piece(Option<String>);
 impl ToTokens for Piece {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        if let Some(_) = self.span {
-            LitStr::new(
-                &self.text,
-                // not using `self.span` to avoid syntax highlighting pieces as
-                // str literals, which would be less readable
-                Span::call_site()
-            ).to_tokens(tokens);
+        if let Some(text) = &self.0 {
+            LitStr::new(text, Span::call_site()).to_tokens(tokens);
         }
     }
 }
 impl Piece {
     fn none() -> Self {
-        Self {
-            text: String::new(),
-            span: None,
-        }
+        Self(None)
     }
     fn is_none(&self) -> bool {
-        self.text.is_empty() && self.span.is_none()
+        self.0.is_none()
     }
 
-    fn new(text: String, span: Span) -> Self {
-        Self { text, span: Some(span) }
+    fn new_empty() -> Self {
+        Self(Some(String::new()))
+    }
+    fn new(text: impl Into<String>) -> Self {
+        Self(Some(text.into()))
     }
 
-    fn push(&mut self, text: impl AsRef<str>, span: Span) {
-        match &mut self.span {
-            Some(existing_span) => {
-                *existing_span = existing_span.join(span).unwrap_or(*existing_span);
-                self.text.push_str(text.as_ref());
+    fn join(&mut self, other: Piece) {
+        match &mut self.0 {
+            Some(text) => if let Some(other_text) = other.0 {
+                text.push_str(&other_text);
             }
             None => {
-                #[cfg(debug_assertions)] {
-                    assert!(self.text.is_empty());
-                }
-                self.span = Some(span);
-                self.text = text.as_ref().into();
+                self.0 = other.0;
             }
         }
     }
 
     fn commit(&mut self, pieces: &mut Vec<Self>) {
-        if let Some(span) = self.span {
-            self.span = None;
-            pieces.push(Piece::new(std::mem::take(&mut self.text), span));
-        } else {
-            #[cfg(debug_assertions)] {
-                assert!(self.text.is_empty());
-            }
+        if let Some(text) = self.0.take() {
+            pieces.push(Piece::new(text));
         }
     }
 }
@@ -106,7 +88,7 @@ pub(super) fn transform(
         let mut child_pieces = child_pieces.into_iter();
         
         if let Some(first_child_piece) = child_pieces.next() {
-            current_piece.push(&first_child_piece.text, first_child_piece.span.unwrap());
+            current_piece.join(first_child_piece);
         }
         for i in child_interpolations {
             current_piece.commit(pieces);
@@ -120,7 +102,7 @@ pub(super) fn transform(
     }
 
     if let Some(Beam { tag, attributes, content }) = tokens.as_beam() {
-        piece.push("", Span::call_site());
+        piece.join(Piece::new_empty());
         piece.commit(&mut pieces);
         interpolations.push(Interpolation::Children({
             let ident = tag;
@@ -139,9 +121,7 @@ pub(super) fn transform(
                 }
             });
             let children = content
-                .and_then(|c| c.iter().flat_map(|c| c.span()).reduce(|s1, s2| joined_span!(s1, s2)))
-                .and_then(|s| s.source_text())
-                .and_then(|t| syn::parse_str::<TokenStream>(&t).ok())
+                .and_then(|c| c.iter().map(|c| c.restore()).reduce(|mut t1, t2| {t1.extend(t2); t1}))
                 .map(|t| quote! {
                     children: ::uibeam::UI! { #t },
                 });
@@ -152,7 +132,7 @@ pub(super) fn transform(
                 })
             }).unwrap()
         }));
-        piece.push("", Span::call_site());
+        piece.join(Piece::new_empty());
         piece.commit(&mut pieces);
 
     } else {
@@ -168,18 +148,15 @@ pub(super) fn transform(
                 _tag,
                 _end_close,
             } => {
-                piece.push(
-                    format!("<{tag}"),
-                    joined_span!(_start_open.span(), tag.span())
-                );
+                piece.join(Piece::new(format!("<{tag}")));
                 for AttributeTokens { name, _eq, value } in attributes {
-                    piece.push(format!(" {name}="), joined_span!(name.span().unwrap(), _eq.span()));
+                    piece.join(Piece::new(format!(" {name}=")));
                     match value {
                         AttributeValueTokens::StringLiteral(lit) => {
-                            piece.push(
-                                &format!("\"{}\"", uibeam_html::html_escape(&lit.value())),
-                                lit.span()
-                            );
+                            piece.join(Piece::new(format!(
+                                "\"{}\"",
+                                uibeam_html::html_escape(&lit.value())
+                            )));
                         }
                         AttributeValueTokens::Interpolation(InterpolationTokens { rust_expression, .. }) => {
                             piece.commit(&mut pieces);
@@ -187,11 +164,13 @@ pub(super) fn transform(
                         }
                     }
                 }
-                piece.push(">", _start_close.span());
+                piece.join(Piece::new(">"));
                 for c in content {
                     match c {
                         ContentPieceTokens::StaticText(text) => {
-                            piece.push(&uibeam_html::html_escape(&text.value()), text.span());
+                            piece.join(Piece::new(
+                                uibeam_html::html_escape(&text.value())
+                            ));
                         }
                         ContentPieceTokens::Interpolation(InterpolationTokens { rust_expression, .. }) => {
                             piece.commit(&mut pieces);
@@ -205,22 +184,19 @@ pub(super) fn transform(
                         ),
                     }
                 }
-                piece.push(
-                    &format!("</{tag}>"),
-                    joined_span!(_end_open.span(), _slash.span(), _tag.span(), _end_close.span())
-                );
+                piece.join(Piece::new(format!("</{tag}>")));
             }
 
             NodeTokens::SelfClosingTag { _open, tag, attributes, _slash, _end } => {
-                piece.push(format!("<{tag}"), joined_span!(_open.span(), tag.span()));
+                piece.join(Piece::new(format!("<{tag}")));
                 for AttributeTokens { name, _eq, value } in attributes {
-                    piece.push(format!(" {name}="), joined_span!(name.span().unwrap(), _eq.span()));
+                    piece.join(Piece::new(format!(" {name}=")));
                     match value {
                         AttributeValueTokens::StringLiteral(lit) => {
-                            piece.push(
-                                &format!("\"{}\"", uibeam_html::html_escape(&lit.value())),
-                                lit.span()
-                            );
+                            piece.join(Piece::new(format!(
+                                "\"{}\"",
+                                uibeam_html::html_escape(&lit.value())
+                            )));
                         }
                         AttributeValueTokens::Interpolation(InterpolationTokens { rust_expression, .. }) => {
                             piece.commit(&mut pieces);
@@ -228,7 +204,7 @@ pub(super) fn transform(
                         }
                     }
                 }
-                piece.push("/>", joined_span!(_slash.span(), _end.span()));
+                piece.join(Piece::new("/>"));
             }
 
             NodeTokens::TextNode(node_pieces) => {
@@ -238,20 +214,16 @@ pub(super) fn transform(
                     match np {
                         ContentPieceTokens::StaticText(text) => {
                             last_was_interplolation = false;
-                            piece.push(
-                                uibeam_html::html_escape(&text.value()),
-                                text.span()
-                            );
+                            piece.join(Piece::new(
+                                uibeam_html::html_escape(&text.value())
+                            ));
                         }
                         ContentPieceTokens::Interpolation(InterpolationTokens { rust_expression, _brace }) => {
                             if last_was_interplolation {
                                 #[cfg(debug_assertions)] {// commited by the last interpolation
                                     assert!(piece.is_none());
                                 }
-                                Piece::commit(
-                                    &mut Piece::new(String::new(), _brace.span.span()),
-                                    &mut pieces
-                                );
+                                Piece::new_empty().commit(&mut pieces);
                             } else {
                                 piece.commit(&mut pieces);
                             }

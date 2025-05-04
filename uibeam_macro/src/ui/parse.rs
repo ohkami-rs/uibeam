@@ -1,4 +1,4 @@
-use quote::ToTokens;
+use quote::{quote, ToTokens};
 use syn::parse::{Parse, ParseStream};
 use syn::spanned::Spanned;
 use syn::{token, Token, Ident, Expr, LitStr};
@@ -44,26 +44,18 @@ impl NodeTokens {
         };
         match self {
             NodeTokens::EnclosingTag { tag, attributes, content, .. } => {
-                if is_beam_ident(tag) {
-                    Some(Beam {
-                        tag,
-                        attributes,
-                        content: Some(content),
-                    })
-                } else {
-                    None
-                }
+                is_beam_ident(tag).then_some(Beam {
+                    tag,
+                    attributes,
+                    content: Some(content),
+                })
             }
             NodeTokens::SelfClosingTag { tag, attributes, .. } => {
-                if is_beam_ident(tag) {
-                    Some(Beam {
-                        tag,
-                        attributes,
-                        content: None,
-                    })
-                } else {
-                    None
-                }
+                is_beam_ident(tag).then_some(Beam {
+                    tag,
+                    attributes,
+                    content: None,
+                })
             }
             NodeTokens::TextNode(_) => None,
         }
@@ -338,14 +330,18 @@ impl Parse for AttributeValueTokens {
 
 //////////////////////////////////////////////////////////////////////////////////////////
 
-fn collect_span(
-    iter: impl Iterator<Item = proc_macro2::Span>,
-) -> Option<proc_macro2::Span> {
-    iter.reduce(|s1, s2| joined_span!(s1, s2))
+impl ContentPieceTokens {
+    pub(super) fn restore(&self) -> proc_macro2::TokenStream {
+        match self {
+            ContentPieceTokens::Interpolation(interpolation) => interpolation.rust_expression.to_token_stream(),
+            ContentPieceTokens::StaticText(lit_str) => lit_str.to_token_stream(),
+            ContentPieceTokens::Node(node) => node.restore(),
+        }
+    }
 }
 
 impl NodeTokens {
-    pub(super) fn span(&self) -> Option<proc_macro2::Span> {
+    pub(super) fn restore(&self) -> proc_macro2::TokenStream {
         match self {
             NodeTokens::EnclosingTag {
                 _start_open,
@@ -358,17 +354,13 @@ impl NodeTokens {
                 _tag,
                 _end_close,
             } => {
-                Some(joined_span!(
-                    _start_open.span(),
-                    tag.span(),
-                    collect_span(attributes.iter().flat_map(AttributeTokens::span)),
-                    _start_close.span(),
-                    collect_span(content.iter().flat_map(ContentPieceTokens::span)),
-                    _end_open.span(),
-                    _slash.span(),
-                    _tag.span(),
-                    _end_close.span(),
-                ))
+                let attributes = attributes.iter().map(|attr| attr.restore());
+                let content = content.iter().map(ContentPieceTokens::restore);
+                quote! {
+                    #_start_open #tag #(#attributes)* #_start_close
+                    #(#content)*
+                    #_end_open #_slash #_tag #_end_close
+                }
             }
             NodeTokens::SelfClosingTag {
                 _open,
@@ -377,70 +369,55 @@ impl NodeTokens {
                 _slash,
                 _end,
             } => {
-                Some(joined_span!(
-                    _open.span(),
-                    tag.span(),
-                    collect_span(attributes.iter().flat_map(AttributeTokens::span)),
-                    _slash.span(),
-                    _end.span(),
-                ))
+                let attributes = attributes.iter().map(|attr| attr.restore());
+                quote! {
+                    #_open #tag #(#attributes)* #_slash #_end
+                }
             }
             NodeTokens::TextNode(pieces) => {
-                collect_span(pieces.iter().flat_map(ContentPieceTokens::span))
+                let pieces = pieces.iter().map(ContentPieceTokens::restore);
+                quote! {
+                    #(#pieces)*
+                }
             }
         }
-    }
-}
-
-impl ContentPieceTokens {
-    pub(super) fn span(&self) -> Option<proc_macro2::Span> {
-        match self {
-            ContentPieceTokens::Interpolation(interpolation) => interpolation.span(),
-            ContentPieceTokens::StaticText(lit_str) => Some(lit_str.span()),
-            ContentPieceTokens::Node(node) => node.span(),
-        }
-    }
-}
-
-impl InterpolationTokens {
-    pub(super) fn span(&self) -> Option<proc_macro2::Span> {
-        Some(self._brace.span.span())
     }
 }
 
 impl AttributeTokens {
-    pub(super) fn span(&self) -> Option<proc_macro2::Span> {
-        Some(joined_span!(
-            self.name.span()?,
-            self._eq.span(),
-            self.value.span(),
-        ))
+    pub(super) fn restore(&self) -> proc_macro2::TokenStream {
+        let name = self.name.restore();
+        let _eq = &self._eq;
+        let value = self.value.restore();
+        quote! {
+            #name #_eq #value
+        }
     }
 }
 impl AttributeNameTokens {
-    pub(super) fn span(&self) -> Option<proc_macro2::Span> {
-        Some(self.0
+    pub(super) fn restore(&self) -> proc_macro2::TokenStream {
+        self.0
             .pairs()
-            .map(|token_punct| {
-                let token_span = match token_punct.value() {
-                    AttributeNameToken::Ident(ident) => ident.span(),
-                    AttributeNameToken::Keyword(keyword) => keyword.span(),
+            .map(|pair| {
+                let section = match pair.value() {
+                    AttributeNameToken::Ident(ident) => ident.to_token_stream(),
+                    AttributeNameToken::Keyword(keyword) => keyword.clone(),
                 };
-                match token_punct.punct() {
-                    None => token_span,
-                    Some(p) => joined_span!(token_span, p.span()),
-                }
+                syn::punctuated::Pair::new(section, pair.punct().cloned())
             })
-            .reduce(|s1, s2| joined_span!(s1, s2))
-            .expect("AttributeNameTokens must have at least one token")
-        )
+            .collect::<Punctuated<proc_macro2::TokenStream, _>>()
+            .into_token_stream()
     }
 }
 impl AttributeValueTokens {
-    pub(super) fn span(&self) -> Option<proc_macro2::Span> {
+    pub(super) fn restore(&self) -> proc_macro2::TokenStream {
         match self {
-            AttributeValueTokens::StringLiteral(lit_str) => Some(lit_str.span()),
-            AttributeValueTokens::Interpolation(interpolation) => interpolation.span(),
+            AttributeValueTokens::StringLiteral(lit_str) => lit_str.to_token_stream(),
+            AttributeValueTokens::Interpolation(InterpolationTokens { _brace, rust_expression }) => {
+                let mut restored = proc_macro2::TokenStream::new();
+                _brace.surround(&mut restored, |t| t.extend(rust_expression.to_token_stream()));
+                restored
+            }
         }
     }
 }
