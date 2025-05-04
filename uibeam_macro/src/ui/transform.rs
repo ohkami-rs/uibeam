@@ -120,11 +120,14 @@ pub(super) fn transform(
                     #name: #value.into(),
                 }
             });
-            let children = content
-                .and_then(|c| c.iter().map(|c| c.restore()).reduce(|mut t1, t2| {t1.extend(t2); t1}))
-                .map(|t| quote! {
-                    children: ::uibeam::UI! { #t },
-                });
+            let children = content.map(|c| {
+                let children_tokens = c.iter()
+                    .map(ToTokens::to_token_stream)
+                    .collect::<TokenStream>();
+                quote! {
+                    children: ::uibeam::UI! { #children_tokens },
+                }
+            });
             syn::parse2(quote! {
                 ::uibeam::Beam::render(#ident {
                     #(#attributes)*

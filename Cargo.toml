@@ -13,3 +13,19 @@ readme     = "README.md"
 license    = "MIT"
 keywords   = []
 categories = ["template-engine", "web-programming"]
+
+[workspace.metadata.tasks]
+test = """
+    cargo metask test_crates
+    cargo metask test_examples
+"""
+
+test_crates = """
+    cargo test
+"""
+test_examples = """
+    cd sandbox
+    for example in examples/*.rs; do
+        cargo run --example $(basename $example .rs)
+    done
+"""
