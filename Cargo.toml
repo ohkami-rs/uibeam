@@ -11,7 +11,7 @@ homepage   = "https://crates.io/uibeam"
 repository = "https://gitub.com/ohkami-rs/uibeam"
 readme     = "README.md"
 license    = "MIT"
-keywords   = []
+keywords   = ["jsx", "html", "template-engine"]
 categories = ["template-engine", "web-programming"]
 
 [workspace.metadata.tasks]
@@ -20,9 +20,10 @@ CI = """
 """
 
 test = """
-    cargo metask test_crates test_examples
+cargo metask \
+    test_crates \
+    test_examples
 """
-
 test_crates = """
     cargo test
 """
