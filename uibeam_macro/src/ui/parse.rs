@@ -330,18 +330,18 @@ impl Parse for AttributeValueTokens {
 
 //////////////////////////////////////////////////////////////////////////////////////////
 
-impl ContentPieceTokens {
-    pub(super) fn restore(&self) -> proc_macro2::TokenStream {
+impl ToTokens for ContentPieceTokens {
+    fn to_tokens(&self, t: &mut proc_macro2::TokenStream) {
         match self {
-            ContentPieceTokens::Interpolation(interpolation) => interpolation.rust_expression.to_token_stream(),
-            ContentPieceTokens::StaticText(lit_str) => lit_str.to_token_stream(),
-            ContentPieceTokens::Node(node) => node.restore(),
+            ContentPieceTokens::Interpolation(interpolation) => interpolation.rust_expression.to_tokens(t),
+            ContentPieceTokens::StaticText(lit_str) => lit_str.to_tokens(t),
+            ContentPieceTokens::Node(node) => node.to_tokens(t),
         }
     }
 }
 
-impl NodeTokens {
-    pub(super) fn restore(&self) -> proc_macro2::TokenStream {
+impl ToTokens for NodeTokens {
+    fn to_tokens(&self, t: &mut proc_macro2::TokenStream) {
         match self {
             NodeTokens::EnclosingTag {
                 _start_open,
@@ -354,13 +354,13 @@ impl NodeTokens {
                 _tag,
                 _end_close,
             } => {
-                let attributes = attributes.iter().map(|attr| attr.restore());
-                let content = content.iter().map(ContentPieceTokens::restore);
-                quote! {
+                let attributes = attributes.iter().map(AttributeTokens::to_token_stream);
+                let content = content.iter().map(ContentPieceTokens::to_token_stream);
+                (quote! {
                     #_start_open #tag #(#attributes)* #_start_close
                     #(#content)*
                     #_end_open #_slash #_tag #_end_close
-                }
+                }).to_tokens(t);
             }
             NodeTokens::SelfClosingTag {
                 _open,
@@ -369,54 +369,47 @@ impl NodeTokens {
                 _slash,
                 _end,
             } => {
-                let attributes = attributes.iter().map(|attr| attr.restore());
-                quote! {
+                let attributes = attributes.iter().map(AttributeTokens::to_token_stream);
+                (quote! {
                     #_open #tag #(#attributes)* #_slash #_end
-                }
+                }).to_tokens(t);
             }
             NodeTokens::TextNode(pieces) => {
-                let pieces = pieces.iter().map(ContentPieceTokens::restore);
-                quote! {
+                let pieces = pieces.iter().map(ContentPieceTokens::to_token_stream);
+                (quote! {
                     #(#pieces)*
-                }
+                }).to_tokens(t);
             }
         }
     }
 }
 
-impl AttributeTokens {
-    pub(super) fn restore(&self) -> proc_macro2::TokenStream {
-        let name = self.name.restore();
-        let _eq = &self._eq;
-        let value = self.value.restore();
-        quote! {
-            #name #_eq #value
+impl ToTokens for AttributeTokens {
+    fn to_tokens(&self, t: &mut proc_macro2::TokenStream) {
+        self.name.to_tokens(t);
+        self._eq.to_tokens(t);
+        self.value.to_tokens(t);
+    }
+}
+impl ToTokens for AttributeNameTokens {
+    fn to_tokens(&self, t: &mut proc_macro2::TokenStream) {
+        for pair in self.0.pairs() {
+            match pair.value() {
+                AttributeNameToken::Ident(ident) => ident.to_tokens(t),
+                AttributeNameToken::Keyword(keyword) => keyword.to_tokens(t),
+            }
+            pair.punct().to_tokens(t);
         }
     }
 }
-impl AttributeNameTokens {
-    pub(super) fn restore(&self) -> proc_macro2::TokenStream {
-        self.0
-            .pairs()
-            .map(|pair| {
-                let section = match pair.value() {
-                    AttributeNameToken::Ident(ident) => ident.to_token_stream(),
-                    AttributeNameToken::Keyword(keyword) => keyword.clone(),
-                };
-                syn::punctuated::Pair::new(section, pair.punct().cloned())
-            })
-            .collect::<Punctuated<proc_macro2::TokenStream, _>>()
-            .into_token_stream()
-    }
-}
-impl AttributeValueTokens {
-    pub(super) fn restore(&self) -> proc_macro2::TokenStream {
+impl ToTokens for AttributeValueTokens {
+    fn to_tokens(&self, t: &mut proc_macro2::TokenStream) {
         match self {
-            AttributeValueTokens::StringLiteral(lit_str) => lit_str.to_token_stream(),
+            AttributeValueTokens::StringLiteral(lit_str) => {
+                lit_str.to_tokens(t);
+            }
             AttributeValueTokens::Interpolation(InterpolationTokens { _brace, rust_expression }) => {
-                let mut restored = proc_macro2::TokenStream::new();
-                _brace.surround(&mut restored, |t| t.extend(rust_expression.to_token_stream()));
-                restored
+                _brace.surround(t, |inner| rust_expression.to_tokens(inner));
             }
         }
     }
