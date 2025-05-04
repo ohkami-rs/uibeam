@@ -1,13 +1,16 @@
 {
+  "private": true,
   "name": "uibeam",
-  "version": "1.0.0",
-  "description": "Official uibeam extension for VSCode.",
+  "displayName": "UIBeam",
+  "version": "0.1.0",
+  "description": "HTML completions and hovers for UIBeam",
   "license": "MIT",
   "publisher": "ohkami-rs",
-  "author": {
-    "name": "kanarus",
-    "email": "kanarus786@gmail.com"
-  },
+  "author": "kanarus",
+  "categories": [
+    "Programming Languages",
+    "Other"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/ohkami-rs/uibeam"
@@ -24,8 +27,8 @@
   "main": "./out/extension.js",
   "scripts": {
     "test": "vitest run --root ./src",
-    "compile": "tsc -p ./",
-    "vscode:prepublish": "rm -rf ./out && npm run compile",
+    "compile": "tsc",
+    "vscode:prepublish": "npm run test && rm -rf ./out && npm run compile",
     "vscode:package": "vsce package --out ./out/uibeam.vsix"
   },
   "devDependencies": {
