@@ -15,7 +15,11 @@ keywords   = []
 categories = ["template-engine", "web-programming"]
 
 [workspace.metadata.tasks]
-CI = """
+CI = """"
+    cargo metask test
+"""
+
+test = """
     cargo metask test_crates
     cargo metask test_examples
 """
