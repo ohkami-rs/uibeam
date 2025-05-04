@@ -75,8 +75,7 @@ pub(super) struct InterpolationTokens {
 
 pub(super) struct AttributeTokens {
     pub(super) name: AttributeNameTokens,
-    pub(super) _eq: Token![=],
-    pub(super) value: AttributeValueTokens,
+    pub(super) value: Option<AttributeValueTokens>,
 }
 
 pub(super) struct AttributeNameTokens(
@@ -110,7 +109,11 @@ impl std::fmt::Display for AttributeNameTokens {
     }
 }
 
-pub(super) enum AttributeValueTokens {
+pub(super) struct AttributeValueTokens {
+    pub(super) _eq: Token![=],
+    pub(super) value: AttributeValueToken,
+}
+pub(super) enum AttributeValueToken {
     StringLiteral(LitStr),
     Interpolation(InterpolationTokens),
 }
@@ -250,12 +253,13 @@ impl Parse for InterpolationTokens {
 impl Parse for AttributeTokens {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let name: AttributeNameTokens = input.parse()?;
-        let _eq: Token![=] = input.parse()?;
-        let value: AttributeValueTokens = input.parse()?;
-        Ok(AttributeTokens { name, _eq, value })
+        let value: Option<AttributeValueTokens> = input
+            .peek(Token![=])
+            .then(|| input.parse())
+            .transpose()?;
+        Ok(AttributeTokens { name, value })
     }
 }
-
 impl Parse for AttributeNameTokens {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut name = Punctuated::new();
@@ -313,18 +317,17 @@ impl Parse for AttributeNameTokens {
         Ok(Self(name))
     }
 }
-
 impl Parse for AttributeValueTokens {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        if input.peek(LitStr) {
-            Ok(AttributeValueTokens::StringLiteral(input.parse()?))
-
+        let _eq: Token![=] = input.parse()?;
+        let value = if input.peek(LitStr) {
+            AttributeValueToken::StringLiteral(input.parse()?)
         } else if input.peek(token::Brace) {
-            Ok(AttributeValueTokens::Interpolation(input.parse()?))
-
+            AttributeValueToken::Interpolation(input.parse()?)
         } else {
-            Err(input.error("Expected string literal or interpolation"))
-        }
+            return Err(input.error("Expected string literal or interpolation"));
+        };
+        Ok(AttributeValueTokens { _eq, value })
     }
 }
 
@@ -387,8 +390,7 @@ impl ToTokens for NodeTokens {
 impl ToTokens for AttributeTokens {
     fn to_tokens(&self, t: &mut proc_macro2::TokenStream) {
         self.name.to_tokens(t);
-        self._eq.to_tokens(t);
-        self.value.to_tokens(t);
+        self.value.as_ref().map(|value| value.to_tokens(t));
     }
 }
 impl ToTokens for AttributeNameTokens {
@@ -404,11 +406,12 @@ impl ToTokens for AttributeNameTokens {
 }
 impl ToTokens for AttributeValueTokens {
     fn to_tokens(&self, t: &mut proc_macro2::TokenStream) {
-        match self {
-            AttributeValueTokens::StringLiteral(lit_str) => {
+        self._eq.to_tokens(t);
+        match &self.value {
+            AttributeValueToken::StringLiteral(lit_str) => {
                 lit_str.to_tokens(t);
             }
-            AttributeValueTokens::Interpolation(InterpolationTokens { _brace, rust_expression }) => {
+            AttributeValueToken::Interpolation(InterpolationTokens { _brace, rust_expression }) => {
                 _brace.surround(t, |inner| rust_expression.to_tokens(inner));
             }
         }

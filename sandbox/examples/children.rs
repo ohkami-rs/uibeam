@@ -44,7 +44,7 @@ impl Beam for AdminPage {
                                     "password"
                                 </label>
                                 <input
-                                    required={true}
+                                    required
                                     type="password"
                                     id="adminPassword"
                                     name="adminPassword"

@@ -1,4 +1,4 @@
-use super::parse::{Beam, NodeTokens, ContentPieceTokens, InterpolationTokens, AttributeTokens, AttributeValueTokens};
+use super::parse::{Beam, NodeTokens, ContentPieceTokens, InterpolationTokens, AttributeTokens, AttributeValueTokens, AttributeValueToken};
 use proc_macro2::{TokenStream, Span};
 use quote::{quote, ToTokens};
 use syn::{LitStr, Expr};
@@ -101,6 +101,32 @@ pub(super) fn transform(
         }
     }
 
+    fn handle_attributes(
+        attributes: Vec<AttributeTokens>,
+        current_piece: &mut Piece,
+        pieces: &mut Vec<Piece>,
+        interpolations: &mut Vec<Interpolation>,
+    ) {
+        for AttributeTokens { name, value } in attributes {
+            current_piece.join(Piece::new(format!(" {name}")));
+            if let Some(value) = value {
+                current_piece.join(Piece::new("="));
+                match value.value {
+                    AttributeValueToken::StringLiteral(lit) => {
+                        current_piece.join(Piece::new(format!(
+                            "\"{}\"",
+                            uibeam_html::html_escape(&lit.value())
+                        )));
+                    }
+                    AttributeValueToken::Interpolation(InterpolationTokens { rust_expression, .. }) => {
+                        current_piece.commit(pieces);
+                        interpolations.push(Interpolation::Attribute(rust_expression));
+                    }
+                }
+            }
+        }
+    }
+
     if let Some(Beam { tag, attributes, content }) = tokens.as_beam() {
         piece.join(Piece::new_empty());
         piece.commit(&mut pieces);
@@ -109,11 +135,16 @@ pub(super) fn transform(
             let attributes = attributes.iter().map(|a| {
                 let name = a.name.as_ident().expect("Beam attribute name must be a valid Rust identifier");
                 let value = match &a.value {
-                    AttributeValueTokens::StringLiteral(lit) => {
-                        lit.into_token_stream()
-                    }
-                    AttributeValueTokens::Interpolation(InterpolationTokens { rust_expression, .. }) => {
-                        rust_expression.into_token_stream()
+                    None => quote! {
+                        true
+                    },
+                    Some(AttributeValueTokens { value, .. }) => match value {
+                        AttributeValueToken::StringLiteral(lit) => {
+                            lit.into_token_stream()
+                        }
+                        AttributeValueToken::Interpolation(InterpolationTokens { rust_expression, .. }) => {
+                            rust_expression.into_token_stream()
+                        }
                     }
                 };
                 quote! {
@@ -152,21 +183,12 @@ pub(super) fn transform(
                 _end_close,
             } => {
                 piece.join(Piece::new(format!("<{tag}")));
-                for AttributeTokens { name, _eq, value } in attributes {
-                    piece.join(Piece::new(format!(" {name}=")));
-                    match value {
-                        AttributeValueTokens::StringLiteral(lit) => {
-                            piece.join(Piece::new(format!(
-                                "\"{}\"",
-                                uibeam_html::html_escape(&lit.value())
-                            )));
-                        }
-                        AttributeValueTokens::Interpolation(InterpolationTokens { rust_expression, .. }) => {
-                            piece.commit(&mut pieces);
-                            interpolations.push(Interpolation::Attribute(rust_expression));
-                        }
-                    }
-                }
+                handle_attributes(
+                    attributes,
+                    &mut piece,
+                    &mut pieces,
+                    &mut interpolations
+                );
                 piece.join(Piece::new(">"));
                 for c in content {
                     match c {
@@ -192,21 +214,12 @@ pub(super) fn transform(
 
             NodeTokens::SelfClosingTag { _open, tag, attributes, _slash, _end } => {
                 piece.join(Piece::new(format!("<{tag}")));
-                for AttributeTokens { name, _eq, value } in attributes {
-                    piece.join(Piece::new(format!(" {name}=")));
-                    match value {
-                        AttributeValueTokens::StringLiteral(lit) => {
-                            piece.join(Piece::new(format!(
-                                "\"{}\"",
-                                uibeam_html::html_escape(&lit.value())
-                            )));
-                        }
-                        AttributeValueTokens::Interpolation(InterpolationTokens { rust_expression, .. }) => {
-                            piece.commit(&mut pieces);
-                            interpolations.push(Interpolation::Attribute(rust_expression));
-                        }
-                    }
-                }
+                handle_attributes(
+                    attributes,
+                    &mut piece,
+                    &mut pieces,
+                    &mut interpolations
+                );
                 piece.join(Piece::new("/>"));
             }
 
