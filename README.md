@@ -6,10 +6,10 @@
 ## Features
 
 - `UI!` : JSX-style template syntax with compile-time checks
-- `Beam` : Component support
+- `Beam` : Component system
 - simple : Simply organized API and codebase, with zero external dependencies
 - efficient : Emitting efficient codes, avoiding redundant memory allocations as smartly as possible
-- providing [VSCode extension](./support/vscode) for better UX : HTML completion and hover in `UI!`
+- better UX : HTML completions and hovers in `UI!` by [VSCode extension](./support/vscode)
 
 ## Examples
 
