@@ -171,3 +171,7 @@ fn main() {
     println!("{}", uibeam::shoot(ui));
 }
 ```
+
+## LICENSE
+
+UIBeam is licensed under [MIT LICENSE](./LICENSE).
