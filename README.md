@@ -1,6 +1,16 @@
 <div align="center">
-    <h1>UIBeam</h1>
-    A lightweight, JSX-style HTML template engine for Rust
+    <h1>
+        UIBeam
+    </h1>
+    <p>
+        A lightweight, JSX-style HTML template engine for Rust
+    </p>
+</div>
+
+<div align="right">
+    <a href="https://github.com/ohkami-rs/uibeam/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/crates/l/uibeam.svg" /></a>
+    <a href="https://github.com/ohkami-rs/uibeam/actions"><img alt="CI status" src="https://github.com/ohkami-rs/uibeam/actions/workflows/CI.yml/badge.svg"/></a>
+    <a href="https://crates.io/crates/uibeam"><img alt="crates.io" src="https://img.shields.io/crates/v/uibeam" /></a>
 </div>
 
 ## Features
@@ -9,7 +19,7 @@
 - `Beam` : Component system
 - simple : Simply organized API and codebase, with zero external dependencies
 - efficient : Emitting efficient codes, avoiding redundant memory allocations as smartly as possible
-- better UX : HTML completions and hovers in `UI!` by [VSCode extension](./support/vscode)
+- better UX : HTML completions and hovers in `UI!` by VSCode extension ( see [support/vscode](./support/vscode) or search "uibeam" from marketplace )
 
 ## Examples
 
