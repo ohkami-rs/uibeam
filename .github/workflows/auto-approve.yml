@@ -1,0 +1,23 @@
+# will be removed when this project has more than one maintainers
+
+name: auto-approve
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+
+jobs:
+  approve:
+    if: |
+      github.event.pull_request.user.login == 'kanarus' &&
+      !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: approve
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr review ${{ github.event.number }} --approve
