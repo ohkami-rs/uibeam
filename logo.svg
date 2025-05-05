@@ -1,6 +1,7 @@
 <svg viewBox="0 0 100 100" style="background: #6a676f">
     <ellipse cx="50" cy="50" rx="40" ry="30" fill="#c04252" />
     <ellipse cx="50" cy="50" rx="30" ry="20" fill="#6a676f" />
+    <polygon points="38.5 90, 51.5 90, 58.75 32, 45.75 32" stroke-width="0" fill="#6a676f" />
     <polygon points="40 90, 50 90, 57.25 32, 47.25 32" stroke-width="0" fill="#f4e2cc" />
     <polygon points="49 18, 59 18, 60 10, 50 10" stroke-width="0" fill="#f4e2cc" />
 </svg>
