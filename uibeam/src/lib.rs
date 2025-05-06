@@ -30,7 +30,7 @@ impl FromIterator<UI> for UI {
 impl UI {
     pub const EMPTY: UI = UI(Cow::Borrowed(""));
 
-    #[inline]
+    #[inline(always)]
     pub fn concat<const N: usize>(uis: [UI; N]) -> Self {
         match uis.len() {
             0 => UI::EMPTY,
@@ -114,7 +114,7 @@ impl UI {
                                 AttributeValue::Text(text) => {
                                     1/* " */ + text.len() + 1/* " */
                                 }
-                                AttributeValue::Uint(_) => {
+                                AttributeValue::Integer(_) => {
                                     1/* " */ + 4/* max-class length of typically used integer attribute values */ + 1/* " */
                                 }
                                 AttributeValue::Boolean(_) => {
@@ -149,10 +149,10 @@ impl UI {
                                     buf.push_str(&html_escape(text));
                                     buf.push('"');
                                 }
-                                AttributeValue::Uint(uint) => {
+                                AttributeValue::Integer(int) => {
                                     // here we don't need to escape
                                     buf.push('"');
-                                    buf.push_str(&uint.to_string());
+                                    buf.push_str(&int.to_string());
                                     buf.push('"');
                                 }
                                 AttributeValue::Boolean(boolean) => {
@@ -203,10 +203,17 @@ pub const fn is_ascii_whitespace(c: char) -> bool {
 
 pub enum AttributeValue {
     Text(Cow<'static, str>),
-    Uint(u64),
+    Integer(i64),
     Boolean(bool),
 }
 const _: () = {
+    impl From<bool> for AttributeValue {
+        #[inline(always)]
+        fn from(value: bool) -> Self {
+            AttributeValue::Boolean(value)
+        }
+    }
+
     impl From<&'static str> for AttributeValue {
         fn from(value: &'static str) -> Self {
             AttributeValue::Text(value.into())
@@ -224,40 +231,62 @@ const _: () = {
         }
     }
 
-    impl From<bool> for AttributeValue {
-        #[inline(always)]
-        fn from(value: bool) -> Self {
-            AttributeValue::Boolean(value)
+    impl From<i8> for AttributeValue {
+        fn from(it: i8) -> Self {
+            AttributeValue::Integer(it.into())
         }
     }
-
-    macro_rules! uint_attribute_values {
-        ($($t:ty),+) => {
-            $(
-                impl From<$t> for AttributeValue {
-                    #[inline]
-                    fn from(it: $t) -> Self {
-                        AttributeValue::Uint(it.into())
-                    }
-                }
-            )+
-        };
+    impl From<i16> for AttributeValue {
+        fn from(it: i16) -> Self {
+            AttributeValue::Integer(it.into())
+        }
     }
-    uint_attribute_values!(u8, u16, u32, u64);
-
+    impl From<i32> for AttributeValue {
+        #[inline(always)]
+        fn from(it: i32) -> Self {
+            AttributeValue::Integer(it.into())
+        }
+    }
+    impl From<i64> for AttributeValue {
+        fn from(it: i64) -> Self {
+            AttributeValue::Integer(it)
+        }
+    }
+    impl From<isize> for AttributeValue {
+        fn from(it: isize) -> Self {
+            AttributeValue::Integer(it.try_into().expect(&too_large_error_message(it)))
+        }
+    }
+    impl From<u8> for AttributeValue {
+        fn from(it: u8) -> Self {
+            AttributeValue::Integer(it.into())
+        }
+    }
+    impl From<u16> for AttributeValue {
+        fn from(it: u16) -> Self {
+            AttributeValue::Integer(it.into())
+        }
+    }
+    impl From<u32> for AttributeValue {
+        #[inline(always)]
+        fn from(it: u32) -> Self {
+            AttributeValue::Integer(it.into())
+        }
+    }
+    impl From<u64> for AttributeValue {
+        fn from(it: u64) -> Self {
+            AttributeValue::Integer(it.try_into().expect(&too_large_error_message(it)))
+        }
+    }
     impl From<usize> for AttributeValue {
-        #[inline(always)]
         fn from(it: usize) -> Self {
-            if cfg!(any(
-                target_pointer_width = "16",
-                target_pointer_width = "32",
-                target_pointer_width = "64",
-            )) {
-                AttributeValue::Uint(it as u64)
-            } else {
-                unreachable!("UIBeam does not support 128-bit CPU architectures");
-            }
+            AttributeValue::Integer(it.try_into().expect(&too_large_error_message(it)))
         }
+    }
+    #[cold]
+    #[inline(never)]
+    fn too_large_error_message(int: impl std::fmt::Display) -> String {
+        format!("can't use `{int}` as attribute value: too largem")
     }
 };
 
