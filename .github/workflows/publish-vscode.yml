@@ -2,6 +2,7 @@ name: Publish VSCode extension
 
 on:
   push:
+    branches: [main]
     paths: ['support/vscode/**']
 
 jobs:
@@ -28,7 +29,7 @@ jobs:
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: |
-          (npm run vscode:publish 2>&1 | tee tmp.log
+          npm run vscode:publish 2>&1 | tee tmp.log
           if grep -qnrF 'ERROR  ohkami-rs.uibeam *+ already exists' tmp.log; then
             echo "already published version, skipping publish..."
             exit 0
@@ -37,5 +38,5 @@ jobs:
             echo tmp.log
             exit 1
           else
-            echo "publishing completed successfully."
+            echo "successfully published"
           fi
