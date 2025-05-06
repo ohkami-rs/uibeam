@@ -19,7 +19,9 @@
 - `Beam` : Component system
 - Simple : Simply organized API and codebase, with zero external dependencies
 - Efficient : Emitting efficient codes, avoiding redundant memory allocations as smartly as possible
-- Better UX : HTML completions and hovers in `UI!` by VSCode extension ( see [support/vscode](./support/vscode) or search "uibeam" from marketplace )
+- Better UX : HTML completions and hovers in `UI!` by VSCode extension ( search by "uibeam" from extension marketplace )
+
+![](./support/vscode/assets/completion.png)
 
 ## Examples
 
