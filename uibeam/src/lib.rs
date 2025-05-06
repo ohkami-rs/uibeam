@@ -1,4 +1,22 @@
+/* execute doc tests for sample codes in README */
 #![cfg_attr(all(doc, not(docsrs)), doc = include_str!("../../README.md"))]
+
+//! <div align="center">
+//!     <h1>
+//!         UIBeam
+//!     </h1>
+//!     <p>
+//!         A lightweight, JSX-style HTML template engine for Rust
+//!     </p>
+//! </div>
+//! 
+//! - `UI!` : JSX-style template syntax with compile-time checks
+//! - `Beam` : Component system
+//! - Simple : Simply organized API and codebase, with zero external dependencies
+//! - Efficient : Emitting efficient codes, avoiding redundant memory allocations as smartly as possible
+//! - Better UX : HTML completions and hovers in `UI!` by VSCode extension ( search by "_uibeam_" from extension marketplace )
+//! 
+//! ![](https://github.com/ohkami-rs/uibeam/raw/HEAD/support/vscode/assets/completion.png)
 
 use std::borrow::Cow;
 use uibeam_html::html_escape;
