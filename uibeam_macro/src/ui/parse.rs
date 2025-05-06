@@ -228,54 +228,12 @@ impl Parse for AttributeTokens {
 }
 impl Parse for HtmlIdent {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        fn parse_ident_including_keyword(input: ParseStream) -> syn::Result<Ident> {
-            macro_rules! parse_ident_or_keyword_as_Ident {
-                ($($keyword:tt)*) => {
-                    if input.peek(Ident) {
-                        input.parse::<Ident>()
-                    }
-                    $(
-                        else if input.peek(Token![$keyword]) {
-                            input.parse::<Token![$keyword]>().map(|keyword| Ident::new(
-                                stringify!($keyword),
-                                keyword.span()
-                            ))
-                        }
-                    )*
-                    else {
-                        Err(input.error("Expected an identifier"))
-                    }
-                };
-            }
-            parse_ident_or_keyword_as_Ident![
-                abstract as async await
-                become box break
-                const continue crate
-                do dyn
-                else enum extern
-                final fn for
-                // gen
-                if impl in
-                let loop
-                macro match mod move
-                override
-                priv pub
-                ref return
-                self Self static struct super
-                trait type typeof try
-                unsafe unsized use
-                virtual
-                where while
-                yield
-            ]
-        }
-
-        let head = parse_ident_including_keyword(input)?;
+        let head = syn::ext::IdentExt::parse_any(input)?;
 
         let mut rest = vec![];
         while input.peek(Token![-]) {
             let hyphen: Token![-] = input.parse()?;
-            let ident = parse_ident_including_keyword(input)?;
+            let ident = syn::ext::IdentExt::parse_any(input)?;
             rest.push((hyphen, ident));
         }
 
