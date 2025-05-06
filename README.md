@@ -21,7 +21,7 @@
 - Efficient : Emitting efficient codes, avoiding redundant memory allocations as smartly as possible
 - Better UX : HTML completions and hovers in `UI!` by VSCode extension ( search by "uibeam" from extension marketplace )
 
-![](./support/vscode/assets/completion.png)
+![](https://github.com/ohkami-rs/uibeam/raw/HEAD/support/vscode/assets/completion.png)
 
 ## Examples
 
