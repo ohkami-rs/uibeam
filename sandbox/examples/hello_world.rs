@@ -13,7 +13,7 @@ impl Beam for Hello {
         "));
 
         UI! {
-            <p class="hello" style={style}>
+            <p class="hello" style={style} data-index={-1}>
                 "Welcome to the world of UIBeam!"
                 <br>
                 "こんにちは"
