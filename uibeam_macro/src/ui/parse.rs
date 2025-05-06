@@ -2,7 +2,6 @@ use quote::{quote, ToTokens};
 use syn::parse::{Parse, ParseStream};
 use syn::spanned::Spanned;
 use syn::{token, Token, Ident, Expr, LitStr};
-use syn::punctuated::Punctuated;
 
 /// Parsed representation of the UI macro input.
 /// 
@@ -14,51 +13,49 @@ pub(super) struct UITokens {
 pub(super) enum NodeTokens {
     EnclosingTag {
         _start_open: Token![<],
-        tag: Ident,
+        tag: HtmlIdent,
         attributes: Vec<AttributeTokens>,
         _start_close: Token![>],
         content: Vec<ContentPieceTokens>,
         _end_open: Token![<],
         _slash: Token![/],
-        _tag: Ident,
+        _tag: HtmlIdent,
         _end_close: Token![>],
     },
     SelfClosingTag {
         _open: Token![<],
-        tag: Ident,
+        tag: HtmlIdent,
         attributes: Vec<AttributeTokens>,
         _slash: Token![/],
         _end: Token![>],
     },
     TextNode(Vec<ContentPieceTokens>),
 }
-pub(super) struct Beam<'n> {
-    pub(super) tag: &'n Ident,
-    pub(super) attributes: &'n [AttributeTokens],
-    pub(super) content: Option<&'n [ContentPieceTokens]>,
+
+pub(super) struct HtmlIdent {
+    head: Ident,
+    rest: Vec<(Token![-], Ident)>,
 }
-impl NodeTokens {
-    pub(super) fn as_beam(&self) -> Option<Beam<'_>> {
-        let is_beam_ident = |ident: &Ident| {
-            ident.to_string().chars().next().unwrap().is_ascii_uppercase()
-        };
-        match self {
-            NodeTokens::EnclosingTag { tag, attributes, content, .. } => {
-                is_beam_ident(tag).then_some(Beam {
-                    tag,
-                    attributes,
-                    content: Some(content),
-                })
-            }
-            NodeTokens::SelfClosingTag { tag, attributes, .. } => {
-                is_beam_ident(tag).then_some(Beam {
-                    tag,
-                    attributes,
-                    content: None,
-                })
-            }
-            NodeTokens::TextNode(_) => None,
+impl HtmlIdent {
+    pub(super) fn as_ident(&self) -> Option<&Ident> {
+        self.rest.is_empty().then_some(&self.head)
+    }
+}
+impl PartialEq for HtmlIdent {
+    fn eq(&self, other: &Self) -> bool {
+        self.head == other.head &&
+        self.rest.len() == other.rest.len() && Iterator::zip(
+            self.rest.iter(), other.rest.iter()
+        ).all(|((_, a), (_, b))| a == b)
+    }
+}
+impl std::fmt::Display for HtmlIdent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.head)?;
+        for (_, ident) in &self.rest {
+            write!(f, "-{ident}")?;
         }
+        Ok(())
     }
 }
 
@@ -74,39 +71,8 @@ pub(super) struct InterpolationTokens {
 }
 
 pub(super) struct AttributeTokens {
-    pub(super) name: AttributeNameTokens,
+    pub(super) name: HtmlIdent,
     pub(super) value: Option<AttributeValueTokens>,
-}
-
-pub(super) struct AttributeNameTokens(
-    /// supporting hyphenated identifiers like `data-foo`
-    Punctuated<AttributeNameToken, Token![-]>,
-);
-enum AttributeNameToken {
-    Ident(Ident),
-    // support Rust keywords as attribute names like `<input type="text" for="foo" />`
-    Keyword(proc_macro2::TokenStream),
-}
-impl AttributeNameTokens {
-    pub(super) fn as_ident(&self) -> Option<Ident> {
-        (self.0.len() == 1).then_some(match self.0.first().unwrap() {
-            AttributeNameToken::Ident(ident) => ident.clone(),
-            AttributeNameToken::Keyword(keyword) => Ident::new_raw(&keyword.to_string(), keyword.span()),
-        })
-    }
-}
-impl std::fmt::Display for AttributeNameTokens {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.0
-            .iter()
-            .map(|token| match token {
-                AttributeNameToken::Ident(ident) => ident.to_string(),
-                AttributeNameToken::Keyword(keyword) => keyword.to_string(),
-            })
-            .collect::<Vec<_>>()
-            .join("-")
-        )
-    }
 }
 
 pub(super) struct AttributeValueTokens {
@@ -139,7 +105,7 @@ impl Parse for NodeTokens {
             }
 
             let _start_open: Token![<] = input.parse()?;
-            let tag: Ident = input.parse()?;
+            let tag: HtmlIdent = input.parse()?;
 
             let mut attributes = Vec::new();
             while let Ok(attribute) = input.parse::<AttributeTokens>() {
@@ -162,10 +128,10 @@ impl Parse for NodeTokens {
                 let _start_close: Token![>] = input.parse()?;
 
                 // tolerantly accept some self-closing tags without a slash
-                if tag == "br"
-                || tag == "meta"
-                || tag == "link"
-                || tag == "hr"
+                if tag.head == "br"
+                || tag.head == "meta"
+                || tag.head == "link"
+                || tag.head == "hr"
                 {
                     return Ok(NodeTokens::SelfClosingTag {
                         _open: _start_open,
@@ -184,7 +150,7 @@ impl Parse for NodeTokens {
                 let _end_open: Token![<] = input.parse()?;
                 let _slash: Token![/] = input.parse()?;
 
-                let _tag: Ident = input.parse()?;
+                let _tag: HtmlIdent = input.parse()?;
                 if _tag != tag {
                     return Err(syn::Error::new(tag.span(), format!("Not closing tag: no corresponded `/>` or `</{tag}>` exists")))
                 }
@@ -252,7 +218,7 @@ impl Parse for InterpolationTokens {
 
 impl Parse for AttributeTokens {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let name: AttributeNameTokens = input.parse()?;
+        let name: HtmlIdent = input.parse()?;
         let value: Option<AttributeValueTokens> = input
             .peek(Token![=])
             .then(|| input.parse())
@@ -260,28 +226,28 @@ impl Parse for AttributeTokens {
         Ok(AttributeTokens { name, value })
     }
 }
-impl Parse for AttributeNameTokens {
+impl Parse for HtmlIdent {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let mut name = Punctuated::new();
-
-        macro_rules! push_ident_or_keyword {
-            ($($keyword:tt)*) => {
-                if input.peek(Ident) {
-                    name.push_value(AttributeNameToken::Ident(input.parse()?));
-                }
-                $(
-                    else if input.peek(Token![$keyword]) {
-                        name.push_value(AttributeNameToken::Keyword(input.parse::<Token![$keyword]>()?.into_token_stream()));
+        fn parse_ident_including_keyword(input: ParseStream) -> syn::Result<Ident> {
+            macro_rules! parse_ident_or_keyword_as_Ident {
+                ($($keyword:tt)*) => {
+                    if input.peek(Ident) {
+                        input.parse::<Ident>()
                     }
-                )*
-                else {
-                    break;
-                }
-            };
-        }
-
-        loop {
-            push_ident_or_keyword![
+                    $(
+                        else if input.peek(Token![$keyword]) {
+                            input.parse::<Token![$keyword]>().map(|keyword| Ident::new(
+                                stringify!($keyword),
+                                keyword.span()
+                            ))
+                        }
+                    )*
+                    else {
+                        Err(input.error("Expected an identifier"))
+                    }
+                };
+            }
+            parse_ident_or_keyword_as_Ident![
                 abstract as async await
                 become box break
                 const continue crate
@@ -301,20 +267,19 @@ impl Parse for AttributeNameTokens {
                 virtual
                 where while
                 yield
-            ];
-
-            if input.peek(Token![-]) {
-                name.push_punct(input.parse()?);
-            } else {
-                break;
-            }
+            ]
         }
 
-        if name.is_empty() {
-            return Err(input.error("Expected an identifier for the attribute name"));
+        let head = parse_ident_including_keyword(input)?;
+
+        let mut rest = vec![];
+        while input.peek(Token![-]) {
+            let hyphen: Token![-] = input.parse()?;
+            let ident = parse_ident_including_keyword(input)?;
+            rest.push((hyphen, ident));
         }
 
-        Ok(Self(name))
+        Ok(Self { head, rest })
     }
 }
 impl Parse for AttributeValueTokens {
@@ -387,23 +352,23 @@ impl ToTokens for NodeTokens {
     }
 }
 
+impl ToTokens for HtmlIdent {
+    fn to_tokens(&self, t: &mut proc_macro2::TokenStream) {
+        self.head.to_tokens(t);
+        for (hyphen, ident) in &self.rest {
+            hyphen.to_tokens(t);
+            ident.to_tokens(t);
+        }
+    }
+}
+
 impl ToTokens for AttributeTokens {
     fn to_tokens(&self, t: &mut proc_macro2::TokenStream) {
         self.name.to_tokens(t);
         self.value.as_ref().map(|value| value.to_tokens(t));
     }
 }
-impl ToTokens for AttributeNameTokens {
-    fn to_tokens(&self, t: &mut proc_macro2::TokenStream) {
-        for pair in self.0.pairs() {
-            match pair.value() {
-                AttributeNameToken::Ident(ident) => ident.to_tokens(t),
-                AttributeNameToken::Keyword(keyword) => keyword.to_tokens(t),
-            }
-            pair.punct().to_tokens(t);
-        }
-    }
-}
+
 impl ToTokens for AttributeValueTokens {
     fn to_tokens(&self, t: &mut proc_macro2::TokenStream) {
         self._eq.to_tokens(t);
