@@ -1,0 +1,41 @@
+name: Publish VSCode extension
+
+on:
+  push:
+    paths: ['support/vscode/**']
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: latest
+          
+      - name: Install dependencies
+        working-directory: support/vscode
+        run: npm install
+
+      - name: Package extension
+        working-directory: support/vscode
+        run: npm run vscode:package
+
+      - name: Publish extension
+        working-directory: support/vscode
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          (npm run vscode:publish 2>&1 | tee tmp.log
+          if grep -qnrF 'ERROR  ohkami-rs.uibeam *+ already exists' tmp.log; then
+            echo "already published version, skipping publish..."
+            exit 0
+          elif grep -qnrF 'ERROR'
+            echo "failed to publish"
+            echo tmp.log
+            exit 1
+          else
+            echo "publishing completed successfully."
+          fi
