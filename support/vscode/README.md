@@ -7,15 +7,15 @@
     </p>
 </div>
 
-### How it works
+## How it works
 
-This extension automatically finds `UI! { ... }` in your `.rs` files, then calls VSCode's builtin HTML language service to provide completions and hovers for HTML tags/attributes in `UI! { ... }`s.\
+This extension automatically finds `UI! { ... }`s in your `.rs` files, and then calls VSCode's builtin HTML language service to provide completions and hovers for HTML tags/attributes in `UI! { ... }`s.\
 File changes are tracked and keep working.
 
-### Hover
+## Hover
 
 ![](./assets/hover.png)
 
-### Completion
+## Completion
 
 ![](./assets/completion.png)
