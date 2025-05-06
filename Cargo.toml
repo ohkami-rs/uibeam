@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members  = ["uibeam", "uibeam_html", "uibeam_macro"]
+members  = ["uibeam", "uibeam_html", "uibeam_macros"]
 
 [workspace.package]
 version    = "0.1.0"
