@@ -30,10 +30,10 @@ jobs:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: |
           npm run vscode:publish 2>&1 | tee tmp.log
-          if grep -qnrF 'ERROR  ohkami-rs.uibeam *+ already exists' tmp.log; then
+          if grep -E 'ERROR  ohkami-rs.uibeam v[0-9]+\.[0-9]+\.[0-9]+ already exists\.' tmp.log; then
             echo "already published version, skipping publish..."
             exit 0
-          elif grep -qnrF 'ERROR'
+          elif grep -E 'ERROR'
             echo "failed to publish"
             echo tmp.log
             exit 1
