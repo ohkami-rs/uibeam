@@ -60,7 +60,7 @@ fn main() {
 
 ### Conditional & Iterating rendering
 
-`{}` at node-position in `UI!` can render, in addition to `Display`-able values, any `impl IntoIterator<Item = UI>`. This includes `Option<UI>` or any other iterators yielding `UI` !
+`{}` at node-position in `UI!` can render, in addition to `Display`-able values, any `impl IntoIterator<Item = UI>`. This includes `Option<UI>` or any other iterators yielding `UI`s !
 
 ```rust
 use uibeam::{UI, Beam};
@@ -184,6 +184,6 @@ fn main() {
 }
 ```
 
-## LICENSE
+## License
 
 UIBeam is licensed under [MIT LICENSE](./LICENSE).
