@@ -1,9 +1,0 @@
-[package]
-name        = "sandbox"
-version     = "0.1.0"
-edition     = "2024"
-authors     = ["kanarus <kanarus786@gmail.com>"]
-description = "sandbox for uibeam"
-
-[dependencies]
-uibeam = { path = "../uibeam" }
