@@ -36,6 +36,10 @@ fn main() {
     println!("{}", uibeam::shoot(UI! {
         <body>
             <h1>"UIBeam example"</h1>
+            <custom-element id="example" />
+            <custom-element2 id="example2">
+                <p>"Hello from a child of custom-element2!"</p>
+            </custom-element2>
             <Hello
                 user_name="uibeam"
                 style={format!("\

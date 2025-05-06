@@ -1,7 +1,39 @@
-use super::parse::{Beam, NodeTokens, ContentPieceTokens, InterpolationTokens, AttributeTokens, AttributeValueTokens, AttributeValueToken};
+use super::parse::{NodeTokens, ContentPieceTokens, HtmlIdent, InterpolationTokens, AttributeTokens, AttributeValueTokens, AttributeValueToken};
 use proc_macro2::{TokenStream, Span};
 use quote::{quote, ToTokens};
 use syn::{LitStr, Expr};
+
+struct Beam<'n> {
+    tag: &'n HtmlIdent,
+    attributes: &'n [AttributeTokens],
+    content: Option<&'n [ContentPieceTokens]>,
+}
+impl NodeTokens {
+    fn as_beam(&self) -> Option<Beam<'_>> {
+        let is_beam_ident = |html_ident: &HtmlIdent| {
+            html_ident.as_ident().is_some_and(|ident| {
+                ident.to_string().chars().next().unwrap().is_ascii_uppercase()
+            })
+        };
+        match self {
+            NodeTokens::EnclosingTag { tag, attributes, content, .. } => {
+                is_beam_ident(tag).then_some(Beam {
+                    tag,
+                    attributes,
+                    content: Some(content),
+                })
+            }
+            NodeTokens::SelfClosingTag { tag, attributes, .. } => {
+                is_beam_ident(tag).then_some(Beam {
+                    tag,
+                    attributes,
+                    content: None,
+                })
+            }
+            NodeTokens::TextNode(_) => None,
+        }
+    }
+}
 
 pub(super) struct Piece(Option<String>);
 impl ToTokens for Piece {
