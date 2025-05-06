@@ -124,8 +124,10 @@ impl UI {
 
                 let mut buf = String::with_capacity({
                     let mut size = 0;
-                    for i in 0..N {
+                    for i in 0..=N {
                         size += template_pieces[i].len();
+                    }
+                    for i in 0..N {
                         size += match &interpolators[i] {
                             Interpolator::Children(children) => children.0.len(),
                             Interpolator::Attribute(value) => match value {
@@ -141,7 +143,7 @@ impl UI {
                             }
                         }
                     }
-                    size + template_pieces[N].len()
+                    size
                 });
 
                 for i in 0..N {
