@@ -3,7 +3,7 @@
 use std::borrow::Cow;
 use uibeam_html::html_escape;
 
-pub use uibeam_macro::UI;
+pub use uibeam_macros::UI;
 
 pub struct UI(Cow<'static, str>);
 

@@ -13,5 +13,5 @@ keywords      = { workspace = true }
 categories    = { workspace = true }
 
 [dependencies]
-uibeam_html  = { path = "../uibeam_html",  version = "=0.1.0" }
-uibeam_macro = { path = "../uibeam_macro", version = "=0.1.0" }
+uibeam_html   = { path = "../uibeam_html",  version = "=0.1.0" }
+uibeam_macros = { path = "../uibeam_macros", version = "=0.1.0" }
