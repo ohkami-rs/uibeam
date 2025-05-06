@@ -97,8 +97,37 @@ impl UI {
             0 => UI::EMPTY,
             1 => UI(Cow::Borrowed(template_pieces[0])),
             _ => {
-                let mut buf = String::from(template_pieces[0]);
+                #[cfg(debug_assertions)] {
+                    assert!(
+                        template_pieces.len() == N + 1,
+                        "template_pieces must have 0 or exactly N + 1 pieces"
+                    );
+                }
+
+                let mut buf = String::with_capacity({
+                    let mut size = 0;
+                    for i in 0..N {
+                        size += template_pieces[i].len();
+                        size += match &interpolators[i] {
+                            Interpolator::Children(children) => children.0.len(),
+                            Interpolator::Attribute(value) => match value {
+                                AttributeValue::Text(text) => {
+                                    1/* " */ + text.len() + 1/* " */
+                                }
+                                AttributeValue::Uint(_) => {
+                                    1/* " */ + 4/* max-class length of typically used integer attribute values */ + 1/* " */
+                                }
+                                AttributeValue::Boolean(_) => {
+                                    0/* not push any tokens */
+                                }
+                            }
+                        }
+                    }
+                    size + template_pieces[N].len()
+                });
+
                 for i in 0..N {
+                    buf.push_str(template_pieces[i]);
                     match &interpolators[i] {
                         Interpolator::Children(children) => {
                             buf.push_str(&children.0);
@@ -159,8 +188,8 @@ impl UI {
                             }
                         }
                     }
-                    buf.push_str(template_pieces[i + 1]);
                 }
+                buf.push_str(template_pieces[N]);
                 UI(Cow::Owned(buf))
             }
         }
