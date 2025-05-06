@@ -1,0 +1,7 @@
+[package]
+name    = "children"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+uibeam = { path = "../../uibeam" }
