@@ -28,8 +28,13 @@ test_crates = """
     cargo test
 """
 test_examples = """
-    cd sandbox
-    for example in examples/*.rs; do
-        cargo run --example $(basename $example .rs)
+    cd examples
+    for directory in ./*/; do
+        if [ "$(basename $directory)" != "target" ]; then
+            cd $directory
+            cargo test
+            cargo run
+            cd ..
+        fi
     done
 """
