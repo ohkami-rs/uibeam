@@ -3,7 +3,7 @@
   "name": "uibeam",
   "displayName": "UIBeam",
   "icon": "assets/logo.png",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "HTML completions and hovers for UIBeam",
   "license": "MIT",
   "publisher": "ohkami-rs",
