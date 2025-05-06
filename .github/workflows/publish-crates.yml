@@ -38,5 +38,5 @@ jobs:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
         run: |
           cargo publish -p uibeam_html
-          cargo publish -p uibeam_macro
+          cargo publish -p uibeam_macros
           cargo publish -p uibeam

@@ -1,4 +1,4 @@
-#![doc = include_str!("../../README.md")]
+#![doc = include_str!("../README.md.ln")]
 
 use std::borrow::Cow;
 use uibeam_html::html_escape;
