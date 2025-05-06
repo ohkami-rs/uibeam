@@ -20,23 +20,16 @@ jobs:
         working-directory: support/vscode
         run: npm install
 
-      - name: Package extension
-        working-directory: support/vscode
-        run: npm run vscode:package
-
       - name: Publish extension
         working-directory: support/vscode
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: |
           npm run vscode:publish 2>&1 | tee tmp.log
-          if grep -E 'ERROR  ohkami-rs.uibeam v[0-9]+\.[0-9]+\.[0-9]+ already exists\.' tmp.log; then
+          if grep -E 'ohkami-rs.uibeam v[0-9]+\.[0-9]+\.[0-9]+ already exists\.' tmp.log; then
             echo "already published version, skipping publish..."
             exit 0
-          elif grep -E 'ERROR' tmp.log; then
-            echo "failed to publish"
-            echo tmp.log
-            exit 1
           else
-            echo "successfully published"
+            echo "retrying publish..."
+            npm run vscode:publish 
           fi
