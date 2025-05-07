@@ -9,7 +9,7 @@
 
 ## How it works
 
-This extension automatically finds `UI! { ... }`s in your `.rs` files, and then calls VSCode's builtin HTML language service to provide completions and hovers for HTML tags/attributes in `UI! { ... }`s.\
+This extension automatically finds `UI!` calls in your `.rs` files, and then calls VSCode's builtin HTML language service to provide completions and hovers for HTML tags/attributes in `UI!`s.\
 File changes are tracked and keep working.
 
 ## Hover
