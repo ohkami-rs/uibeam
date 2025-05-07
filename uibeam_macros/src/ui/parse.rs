@@ -1,7 +1,7 @@
 use quote::{quote, ToTokens};
 use syn::parse::{Parse, ParseStream};
 use syn::spanned::Spanned;
-use syn::{token, Token, Ident, Expr, LitStr};
+use syn::{token, Expr, Ident, LitInt, LitStr, Token};
 
 /// Parsed representation of the UI macro input.
 /// 
@@ -81,6 +81,7 @@ pub(super) struct AttributeValueTokens {
 }
 pub(super) enum AttributeValueToken {
     StringLiteral(LitStr),
+    IntegerLiteral(LitInt),
     Interpolation(InterpolationTokens),
 }
 
@@ -245,6 +246,8 @@ impl Parse for AttributeValueTokens {
         let _eq: Token![=] = input.parse()?;
         let value = if input.peek(LitStr) {
             AttributeValueToken::StringLiteral(input.parse()?)
+        } else if input.peek(LitInt) {
+            AttributeValueToken::IntegerLiteral(input.parse()?) 
         } else if input.peek(token::Brace) {
             AttributeValueToken::Interpolation(input.parse()?)
         } else {
@@ -333,6 +336,12 @@ impl ToTokens for AttributeValueTokens {
         match &self.value {
             AttributeValueToken::StringLiteral(lit_str) => {
                 lit_str.to_tokens(t);
+            }
+            AttributeValueToken::IntegerLiteral(lit_int) => {
+                LitStr::new(
+                    lit_int.base10_digits(),
+                    lit_int.span(),
+                ).to_tokens(t);
             }
             AttributeValueToken::Interpolation(InterpolationTokens { _brace, rust_expression }) => {
                 _brace.surround(t, |inner| rust_expression.to_tokens(inner));

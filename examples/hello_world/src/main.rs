@@ -20,7 +20,7 @@ impl Beam for Hello {
                 <a
                     class="user"
                     style="color: blue;"
-                    data-user-id="123"
+                    data-user-id=123
                     href="https://example-chatapp.com/users/123"
                 >
                     "@"{&self.user_name}"!"
