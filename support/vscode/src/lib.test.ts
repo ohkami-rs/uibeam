@@ -141,6 +141,32 @@ test('findUIInputRangeOffsets with UI!() parentheses delimiters', () => {
     );
 });
 
+test('findUIInputRangeOffsets with UI![] bracket delimiters', () => {
+    const text = `
+        fn main() {
+            let name = "world";
+            let ui = UI![
+                <p>
+                    "Hello, "{name}"!"
+                </p>
+            ];
+        }
+    `;
+
+    const offsets = findUIInputRangeOffsets(text);
+
+    expect(offsets).toEqual([
+        [78, 171],
+    ]);
+    expect(text.substring(offsets[0][0], offsets[0][1])).toEqual(
+        `
+                <p>
+                    "Hello, "{name}"!"
+                </p>
+            `
+    );
+});
+
 test('clearExcludedFromRanges for empty', () => {
     const text = '';
 
