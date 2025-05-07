@@ -150,6 +150,13 @@ pub(super) fn transform(
                             uibeam_html::escape(&lit.value())
                         )));
                     }
+                    AttributeValueToken::IntegerLiteral(lit) => {
+                        // escape is not needed for integer literals
+                        current_piece.join(Piece::new(format!(
+                            "\"{}\"",
+                            lit.base10_digits()
+                        )));
+                    }
                     AttributeValueToken::Interpolation(InterpolationTokens { rust_expression, .. }) => {
                         current_piece.commit(pieces);
                         interpolations.push(Interpolation::Attribute(rust_expression));
@@ -173,6 +180,9 @@ pub(super) fn transform(
                     Some(AttributeValueTokens { value, .. }) => match value {
                         AttributeValueToken::StringLiteral(lit) => {
                             lit.into_token_stream()
+                        }
+                        AttributeValueToken::IntegerLiteral(lit) => {
+                            LitStr::new(&lit.base10_digits(), lit.span()).into_token_stream()
                         }
                         AttributeValueToken::Interpolation(InterpolationTokens { rust_expression, .. }) => {
                             rust_expression.into_token_stream()
