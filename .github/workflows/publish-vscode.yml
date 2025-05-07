@@ -29,9 +29,10 @@ jobs:
           if grep -qE 'ohkami-rs.uibeam v[0-9]+\.[0-9]+\.[0-9]+ already exists\.' tmp.log; then
             echo "already published version, skipping publish..."
             exit 0
-          elif grep -qi 'error' tmp.log; then
+          elif grep -qE 'Published ohkami-rs.uibeam v[0-9]+\.[0-9]+\.[0-9]+\.' tmp.log; then
+            echo "successfully published!"
+            exit 0
+          else
             echo "retrying publish..."
             npm run vscode:publish
-          else
-            echo "successfully published!"
           fi
