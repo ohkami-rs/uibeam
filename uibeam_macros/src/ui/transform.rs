@@ -147,7 +147,7 @@ pub(super) fn transform(
                     AttributeValueToken::StringLiteral(lit) => {
                         current_piece.join(Piece::new(format!(
                             "\"{}\"",
-                            uibeam_html::html_escape(&lit.value())
+                            uibeam_html::escape(&lit.value())
                         )));
                     }
                     AttributeValueToken::Interpolation(InterpolationTokens { rust_expression, .. }) => {
@@ -226,7 +226,7 @@ pub(super) fn transform(
                     match c {
                         ContentPieceTokens::StaticText(text) => {
                             piece.join(Piece::new(
-                                uibeam_html::html_escape(&text.value())
+                                uibeam_html::escape(&text.value())
                             ));
                         }
                         ContentPieceTokens::Interpolation(InterpolationTokens { rust_expression, .. }) => {
@@ -263,7 +263,7 @@ pub(super) fn transform(
                         ContentPieceTokens::StaticText(text) => {
                             last_was_interplolation = false;
                             piece.join(Piece::new(
-                                uibeam_html::html_escape(&text.value())
+                                uibeam_html::escape(&text.value())
                             ));
                         }
                         ContentPieceTokens::Interpolation(InterpolationTokens { rust_expression, _brace }) => {

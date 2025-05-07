@@ -19,8 +19,8 @@
 //! ![](https://github.com/ohkami-rs/uibeam/raw/HEAD/support/vscode/assets/completion.png)
 
 use std::borrow::Cow;
-use uibeam_html::html_escape;
 
+pub use uibeam_html::escape;
 pub use uibeam_macros::UI;
 
 /// # `UI` - UIBeam's template representation
@@ -302,7 +302,7 @@ const _: () = {
     impl<D: std::fmt::Display> IntoChildren<&dyn std::fmt::Display> for D {
         fn into_children(self) -> UI {
             let s = self.to_string();
-            match html_escape(&s) {
+            match escape(&s) {
                 Cow::Owned(escaped) => {
                     UI(Cow::Owned(escaped))
                 }
@@ -387,7 +387,7 @@ impl UI {
                             match value {
                                 AttributeValue::Text(text) => {
                                     buf.push('"');
-                                    buf.push_str(&html_escape(text));
+                                    buf.push_str(&escape(text));
                                     buf.push('"');
                                 }
                                 AttributeValue::Integer(int) => {
@@ -458,40 +458,6 @@ mod test {
         is_children((1..=3).map(|_| dummy_ui()));
     }
     
-    #[test]
-    fn test_html_escape() {
-        let test_cases = [
-            ("", ""),
-            ("abc", "abc"),
-            ("おはよう", "おはよう"),
-            ("&", "&amp;"),
-            ("<", "&lt;"),
-            (">", "&gt;"),
-            ("\"", "&#34;"),
-            ("'", "&#39;"),
-            (
-                "a&b<c>d\"'e",
-                "a&amp;b&lt;c&gt;d&#34;&#39;e"
-            ),
-            (
-                "a&b<c>d\"'e&f<g>h\"'i",
-                "a&amp;b&lt;c&gt;d&#34;&#39;e&amp;f&lt;g&gt;h&#34;&#39;i"
-            ),
-            (
-                "flowers <script>evil_script()</script>",
-                "flowers &lt;script&gt;evil_script()&lt;/script&gt;"
-            ),
-            (
-                "こんにちは <script>console.alert('ぼくはまちちゃん')</script>",
-                "こんにちは &lt;script&gt;console.alert(&#39;ぼくはまちちゃん&#39;)&lt;/script&gt;"
-            ),
-        ];
-        
-        for (input, expected) in test_cases {
-            assert_eq!(html_escape(input), expected);
-        }
-    }
-
     #[test]
     fn test_ui_new_unchecked() {
         assert_eq!(
