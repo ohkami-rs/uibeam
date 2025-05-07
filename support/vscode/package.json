@@ -3,7 +3,7 @@
   "name": "uibeam",
   "displayName": "UIBeam",
   "icon": "assets/logo.png",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "HTML completions and hovers for UIBeam",
   "license": "MIT",
   "publisher": "ohkami-rs",
@@ -37,9 +37,9 @@
   "devDependencies": {
     "@types/node": "^22.15.0",
     "@types/vscode": "^1.99.1",
+    "@vscode/vsce": "^3.3.2",
     "typescript": "^5.8.3",
-    "vitest": "^3.1.2",
-    "vsce": "^2.15.0"
+    "vitest": "^3.1.2"
   },
   "dependencies": {
     "vscode-html-languageservice": "^5.3.3"
