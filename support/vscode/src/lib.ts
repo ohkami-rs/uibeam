@@ -3,7 +3,7 @@
 export function findUIInputRangeOffsets(text: string): [number, number][] {
     let ranges: [number, number][] = [];
     {
-        for (const match of text.matchAll(/UI!\s*({|\()/g)) {
+        for (const match of text.matchAll(/UI!\s*({|\(|\[)/g)) {
             console.debug('[match]', match);
 
             // index of the first charactor in `UI!{}`
@@ -17,7 +17,12 @@ export function findUIInputRangeOffsets(text: string): [number, number][] {
             // index of the last charactor in `UI!{}`
             let end = start;
             {
-                const [OPEN, CLOSE] = match[0].endsWith('{') ? ['{', '}'] : ['(', ')'];
+                let [OPEN, CLOSE] = match[0].endsWith('{') ?
+                    ['{', '}'] : match[0].endsWith('(') ?
+                    ['(', ')'] :
+                    ['[', ']']
+                ;
+
                 let depth = 1;
                 while (end < text.length) {
                     console.debug(`depth: ${depth}, end: ${end}, char: '${text[end]}'`);
