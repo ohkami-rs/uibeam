@@ -5,7 +5,7 @@ mod ui;
 /// # `UI!` - JSX-style template syntax
 /// 
 /// > HTML completions and hovers are available by VSCode extension.\
-/// > ( search "_uibeam_" from extension marketplace, or see https://marketplace.visualstudio.com/items?itemName=ohkami-rs.uibeam )
+/// > ( search "_uibeam_" from extension marketplace, or see <https://marketplace.visualstudio.com/items?itemName=ohkami-rs.uibeam> )
 /// 
 /// ## Usage
 /// 
