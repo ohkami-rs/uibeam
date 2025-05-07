@@ -4,18 +4,15 @@ mod ui;
 #[allow(non_snake_case)]
 /// # `UI!` - JSX-style template syntax
 /// 
-/// <br>
-/// 
-/// ---
-/// 
-/// HTML completions and hovers are available by VSCode extension.\
-/// ( search "_uibeam_" from extension marketplace, or see https://marketplace.visualstudio.com/items?itemName=ohkami-rs.uibeam )
-/// 
-/// ---
-/// 
-/// <br>
+/// > HTML completions and hovers are available by VSCode extension.\
+/// > ( search "_uibeam_" from extension marketplace, or see https://marketplace.visualstudio.com/items?itemName=ohkami-rs.uibeam )
 /// 
 /// ## Usage
+/// 
+/// ### Serialization
+/// 
+/// `UI!` generates a `UI` struct, and `uibeam` provides `shoot(UI) -> Cow<'static, str>`
+/// function to serialize the `UI` into HTML string.
 /// 
 /// ### Tag Names
 /// 
@@ -34,6 +31,45 @@ mod ui;
 /// - _string literals_ : Any string literals are allowed. No `{}` is needed.
 /// - _interpolations_ : Rust expressions surrounded by `{}` :
 ///   - Any type that implements `std::fmt::Display` is allowed.
+/// 
+/// ### Beams
+/// 
+/// `<StructName />` or `<StructName></StructName>` are allowed. The structs
+/// must implement `uibeam::Beam` trait.
+/// 
+/// - `<StructName></StructName>` **requires** the struct to have `children`
+///   field. The 0 or more children nodes are passed to `children` as `UI`.
+/// - Attributes are interpreted as the struct's fields. The values are
+///   passed to each field with `.into()`.
+/// 
+/// ```jsx
+/// <Struct a="1" b="2" />
+/// 
+/// // generates
+/// 
+/// Struct {
+///     a: "1".into(),
+///     b: "2".into(),
+/// }
+/// ```
+/// 
+/// ---
+/// 
+/// ```jsx
+/// <Struct a="1" b="2">
+///     <p>"hello"</p>
+/// </Struct>
+/// 
+/// // generates
+/// 
+/// Struct {
+///     a: "1".into(),
+///     b: "2".into(),
+///     children: /* a `UI` representing `<p>hello</p>` */
+/// }
+/// ```
+/// 
+/// ---
 /// 
 /// <br>
 /// 
