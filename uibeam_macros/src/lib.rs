@@ -4,8 +4,14 @@ mod ui;
 #[allow(non_snake_case)]
 /// # `UI!` - JSX-style template syntax
 /// 
+/// <br>
+/// 
+/// ---
+/// 
 /// HTML completions and hovers are available by VSCode extension.\
 /// ( search "_uibeam_" from extension marketplace, or see https://marketplace.visualstudio.com/items?itemName=ohkami-rs.uibeam )
+/// 
+/// ---
 /// 
 /// <br>
 /// 
@@ -33,7 +39,7 @@ mod ui;
 /// 
 /// ## Example
 /// 
-/// ```
+/// ```ignore
 /// use uibeam::UI;
 /// 
 /// fn main() {
