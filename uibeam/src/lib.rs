@@ -96,6 +96,135 @@ pub enum Interpolator {
 }
 
 #[doc(hidden)]
+pub enum AttributeValue {
+    Text(Cow<'static, str>),
+    Integer(i64),
+    Boolean(bool),
+}
+const _: () = {
+    impl From<bool> for AttributeValue {
+        #[inline(always)]
+        fn from(value: bool) -> Self {
+            AttributeValue::Boolean(value)
+        }
+    }
+
+    impl From<&'static str> for AttributeValue {
+        fn from(value: &'static str) -> Self {
+            AttributeValue::Text(value.into())
+        }
+    }
+    impl From<String> for AttributeValue {
+        #[inline(always)]
+        fn from(value: String) -> Self {
+            AttributeValue::Text(value.into())
+        }
+    }
+    impl From<Cow<'static, str>> for AttributeValue {
+        fn from(value: Cow<'static, str>) -> Self {
+            AttributeValue::Text(value)
+        }
+    }
+
+    impl From<i8> for AttributeValue {
+        fn from(it: i8) -> Self {
+            AttributeValue::Integer(it.into())
+        }
+    }
+    impl From<i16> for AttributeValue {
+        fn from(it: i16) -> Self {
+            AttributeValue::Integer(it.into())
+        }
+    }
+    impl From<i32> for AttributeValue {
+        #[inline(always)]
+        fn from(it: i32) -> Self {
+            AttributeValue::Integer(it.into())
+        }
+    }
+    impl From<i64> for AttributeValue {
+        fn from(it: i64) -> Self {
+            AttributeValue::Integer(it)
+        }
+    }
+    impl From<isize> for AttributeValue {
+        fn from(it: isize) -> Self {
+            AttributeValue::Integer(it.try_into().expect(&too_large_error_message(it)))
+        }
+    }
+    impl From<u8> for AttributeValue {
+        fn from(it: u8) -> Self {
+            AttributeValue::Integer(it.into())
+        }
+    }
+    impl From<u16> for AttributeValue {
+        fn from(it: u16) -> Self {
+            AttributeValue::Integer(it.into())
+        }
+    }
+    impl From<u32> for AttributeValue {
+        #[inline(always)]
+        fn from(it: u32) -> Self {
+            AttributeValue::Integer(it.into())
+        }
+    }
+    impl From<u64> for AttributeValue {
+        fn from(it: u64) -> Self {
+            AttributeValue::Integer(it.try_into().expect(&too_large_error_message(it)))
+        }
+    }
+    impl From<usize> for AttributeValue {
+        fn from(it: usize) -> Self {
+            AttributeValue::Integer(it.try_into().expect(&too_large_error_message(it)))
+        }
+    }
+    #[cold]
+    #[inline(never)]
+    fn too_large_error_message(int: impl std::fmt::Display) -> String {
+        format!("can't use `{int}` as attribute value: too largem")
+    }
+};
+
+#[doc(hidden)]
+pub trait IntoChildren<T> {
+    fn into_children(self) -> UI;
+}
+const _: () = {
+    impl IntoChildren<UI> for UI {
+        fn into_children(self) -> UI {
+            self
+        }
+    }
+
+    // note that `Option<UI>` implements `IntoChildren` because `Option` is `IntoIterator`
+    impl<I> IntoChildren<(I,)> for I
+    where
+        I: IntoIterator<Item = UI>,
+    {
+        #[inline(always)]
+        fn into_children(self) -> UI {
+            UI::from_iter(self)
+        }
+    }
+
+    impl<D: std::fmt::Display> IntoChildren<&dyn std::fmt::Display> for D {
+        fn into_children(self) -> UI {
+            let s = self.to_string();
+            match html_escape(&s) {
+                Cow::Owned(escaped) => {
+                    UI(Cow::Owned(escaped))
+                }
+                Cow::Borrowed(_) => {
+                    // this means `s` is already escaped, so we can avoid allocation,
+                    // just using `s` directly
+                    UI(Cow::Owned(s))
+                }
+            }
+        }
+    }
+};
+
+#[doc(hidden)]
 impl UI {
     /// tends to be used by the `UI!` macro internally.
     /// 
@@ -217,136 +346,9 @@ impl UI {
 }
 
 #[inline(always)]
-pub const fn is_ascii_whitespace(c: char) -> bool {
+const fn is_ascii_whitespace(c: char) -> bool {
     matches!(c, ' ' | '\t' | '\n' | '\x0C' | '\r')
 }
-
-pub enum AttributeValue {
-    Text(Cow<'static, str>),
-    Integer(i64),
-    Boolean(bool),
-}
-const _: () = {
-    impl From<bool> for AttributeValue {
-        #[inline(always)]
-        fn from(value: bool) -> Self {
-            AttributeValue::Boolean(value)
-        }
-    }
-
-    impl From<&'static str> for AttributeValue {
-        fn from(value: &'static str) -> Self {
-            AttributeValue::Text(value.into())
-        }
-    }
-    impl From<String> for AttributeValue {
-        #[inline(always)]
-        fn from(value: String) -> Self {
-            AttributeValue::Text(value.into())
-        }
-    }
-    impl From<Cow<'static, str>> for AttributeValue {
-        fn from(value: Cow<'static, str>) -> Self {
-            AttributeValue::Text(value)
-        }
-    }
-
-    impl From<i8> for AttributeValue {
-        fn from(it: i8) -> Self {
-            AttributeValue::Integer(it.into())
-        }
-    }
-    impl From<i16> for AttributeValue {
-        fn from(it: i16) -> Self {
-            AttributeValue::Integer(it.into())
-        }
-    }
-    impl From<i32> for AttributeValue {
-        #[inline(always)]
-        fn from(it: i32) -> Self {
-            AttributeValue::Integer(it.into())
-        }
-    }
-    impl From<i64> for AttributeValue {
-        fn from(it: i64) -> Self {
-            AttributeValue::Integer(it)
-        }
-    }
-    impl From<isize> for AttributeValue {
-        fn from(it: isize) -> Self {
-            AttributeValue::Integer(it.try_into().expect(&too_large_error_message(it)))
-        }
-    }
-    impl From<u8> for AttributeValue {
-        fn from(it: u8) -> Self {
-            AttributeValue::Integer(it.into())
-        }
-    }
-    impl From<u16> for AttributeValue {
-        fn from(it: u16) -> Self {
-            AttributeValue::Integer(it.into())
-        }
-    }
-    impl From<u32> for AttributeValue {
-        #[inline(always)]
-        fn from(it: u32) -> Self {
-            AttributeValue::Integer(it.into())
-        }
-    }
-    impl From<u64> for AttributeValue {
-        fn from(it: u64) -> Self {
-            AttributeValue::Integer(it.try_into().expect(&too_large_error_message(it)))
-        }
-    }
-    impl From<usize> for AttributeValue {
-        fn from(it: usize) -> Self {
-            AttributeValue::Integer(it.try_into().expect(&too_large_error_message(it)))
-        }
-    }
-    #[cold]
-    #[inline(never)]
-    fn too_large_error_message(int: impl std::fmt::Display) -> String {
-        format!("can't use `{int}` as attribute value: too largem")
-    }
-};
-
-pub trait IntoChildren<T> {
-    fn into_children(self) -> UI;
-}
-const _: () = {
-    impl IntoChildren<UI> for UI {
-        fn into_children(self) -> UI {
-            self
-        }
-    }
-
-    // note that `Option<UI>` implements `IntoChildren` because `Option` is `IntoIterator`
-    impl<I> IntoChildren<(I,)> for I
-    where
-        I: IntoIterator<Item = UI>,
-    {
-        #[inline(always)]
-        fn into_children(self) -> UI {
-            UI::from_iter(self)
-        }
-    }
-
-    impl<D: std::fmt::Display> IntoChildren<&dyn std::fmt::Display> for D {
-        fn into_children(self) -> UI {
-            let s = self.to_string();
-            match html_escape(&s) {
-                Cow::Owned(escaped) => {
-                    UI(Cow::Owned(escaped))
-                }
-                Cow::Borrowed(_) => {
-                    // this means `s` is already escaped, so we can avoid allocation,
-                    // just using `s` directly
-                    UI(Cow::Owned(s))
-                }
-            }
-        }
-    }
-};
 
 #[cfg(test)]
 mod test {
