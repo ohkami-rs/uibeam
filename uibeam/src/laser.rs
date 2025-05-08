@@ -4,22 +4,21 @@
 pub use ::wasm_bindgen;
 
 use crate::{UI, Beam};
-use serde::Serialize;
 
-pub trait Laser: Serialize {
-    const ID: &'static str;
-
+pub trait Laser: ::serde::Serialize {
     fn boot(self) -> UI;
 }
 
 impl<L: Laser> Beam for L {
     fn render(self) -> UI {
-        let props_json = serde_json::to_string(&self).unwrap();
+        let id = std::any::type_name::<L>();
+
+        let props_json = ::serde_json::to_string(&self).unwrap();
 
         UI! {
-            <div data-laser-id={L::ID}></div>
+            <div data-laser-id={id}></div>
             <script type="module">
-                "const ID = '"{L::ID}"';"
+                "const ID = '"{id}"';"
                 "const props = JSON.parse('"{props_json}"');"
                 "const laser = (await import('lasers.js')).ID;"
                 "const marker = document.getElementById(ID);"
