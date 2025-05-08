@@ -23,6 +23,8 @@ extern crate self as uibeam;
 
 #[cfg(feature = "laser")]
 mod laser;
+#[cfg(feature = "laser")]
+pub use laser::*;
 
 use std::borrow::Cow;
 

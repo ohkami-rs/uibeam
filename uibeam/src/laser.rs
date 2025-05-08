@@ -1,10 +1,14 @@
 #![cfg(feature = "laser")]
 
+#[doc(hidden)]
+pub use ::wasm_bindgen;
+
 use crate::{UI, Beam};
 use serde::Serialize;
 
 pub trait Laser: Serialize {
     const ID: &'static str;
+
     fn boot(self) -> UI;
 }
 
@@ -17,23 +21,9 @@ impl<L: Laser> Beam for L {
             <script type="module">
                 "const ID = '"{L::ID}"';"
                 "const props = JSON.parse('"{props_json}"');"
-                r#"
-const lasers = await import('lasers.js');
-
-const laser = lasers.ID;
-if (!laser) {
-    console.error(`[UIBeam] Laser with ID '${ID}' not found.`);
-    return;
-}
-
-const marker = document.getElementById(ID);
-if (!marker) {
-    console.error(`[UIBeam] Laser marker with ID '${ID}' not found.`);
-    return;
-}
-
-marker.parentNode.replaceChild(laser(props), marker);
-                "#
+                "const laser = (await import('lasers.js')).ID;"
+                "const marker = document.getElementById(ID);"
+                "marker.parentNode.replaceChild(laser(props), marker);"
             </script>
         }
     }
