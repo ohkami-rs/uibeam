@@ -16,12 +16,12 @@ impl<L: Laser> Beam for L {
         let props_json = ::serde_json::to_string(&self).unwrap();
 
         UI! {
-            <div data-laser-id={id}></div>
+            <div id={id}></div>
             <script type="module">
-                "const ID = '"{id}"';"
+                "const id = '"{id}"';"
                 "const props = JSON.parse('"{props_json}"');"
-                "const laser = (await import('lasers.js')).ID;"
-                "const marker = document.getElementById(ID);"
+                "const laser = (await import('lasers.js')).id;"
+                "const marker = document.getElementById(id);"
                 "marker.parentNode.replaceChild(laser(props), marker);"
             </script>
         }
