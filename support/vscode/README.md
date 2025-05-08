@@ -3,7 +3,7 @@
         UIBeam
     </h1>
     <p>
-        HTML completions and hovers for <a href="https://github.com/ohkami-rs/uibeam">UIBeam</a> - A lightweight, JSX-style HTML template engine for Rust
+        HTML completions and hovers for <a href="https://github.com/ohkami-rs/uibeam">UIBeam</a> - A lightweight, JSX-style Web UI framework for Rust
     </p>
 </div>
 

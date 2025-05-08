@@ -3,7 +3,7 @@
         UIBeam
     </h1>
     <p>
-        A lightweight, JSX-style HTML template engine for Rust
+        A lightweight, JSX-style Web UI framework for Rust
     </p>
 </div>
 

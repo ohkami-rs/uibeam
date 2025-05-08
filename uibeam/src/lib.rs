@@ -18,6 +18,12 @@
 //! 
 //! ![](https://github.com/ohkami-rs/uibeam/raw/HEAD/support/vscode/assets/completion.png)
 
+// for `UI!` use in this crate itself
+extern crate self as uibeam;
+
+#[cfg(feature = "laser")]
+mod laser;
+
 use std::borrow::Cow;
 
 pub use uibeam_html::escape;
