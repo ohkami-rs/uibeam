@@ -15,12 +15,17 @@ categories    = { workspace = true }
 [dependencies]
 uibeam_html   = { path = "../uibeam_html",   version = "=0.2.0" }
 uibeam_macros = { path = "../uibeam_macros", version = "=0.2.0" }
-wasm-bindgen  = { optional = true, version = "0.2" }
 serde         = { optional = true, version = "1.0" }
 serde_json    = { optional = true, version = "1.0" }
+wasm-bindgen  = { optional = true, version = "0.2" }
+js-sys        = { optional = true, version = "0.3" }
+web-sys       = { optional = true, version = "0.3" }
 
 [features]
-laser = ["dep:wasm-bindgen", "dep:serde", "dep:serde_json"]
+laser = [
+    "dep:serde", "dep:serde_json",
+    "dep:wasm-bindgen", "dep:js-sys", "dep:web-sys",
+]
 
 ###### DEBUG ######
 default = ["laser"]
