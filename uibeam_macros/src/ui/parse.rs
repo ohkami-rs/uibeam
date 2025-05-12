@@ -30,6 +30,7 @@ pub(super) enum NodeTokens {
         _end: Token![>],
     },
     TextNode(Vec<ContentPieceTokens>),
+    // Expression(InterpolationTokens),
 }
 
 pub(super) struct HtmlIdent {
@@ -173,7 +174,6 @@ impl Parse for NodeTokens {
             } else {
                 Err(input.error("Expected '>' or '/>' at the end of a tag"))
             }
-
         } else {
             let mut pieces = Vec::new();
             while let Ok(content_piece_tokens) = input.parse::<ContentPieceTokens>() {
@@ -262,10 +262,16 @@ impl Parse for AttributeValueTokens {
 impl ToTokens for ContentPieceTokens {
     fn to_tokens(&self, t: &mut proc_macro2::TokenStream) {
         match self {
-            ContentPieceTokens::Interpolation(interpolation) => interpolation.rust_expression.to_tokens(t),
-            ContentPieceTokens::StaticText(lit_str) => lit_str.to_tokens(t),
             ContentPieceTokens::Node(node) => node.to_tokens(t),
+            ContentPieceTokens::StaticText(lit_str) => lit_str.to_tokens(t),
+            ContentPieceTokens::Interpolation(interpolation) => interpolation.to_tokens(t),
         }
+    }
+}
+
+impl ToTokens for InterpolationTokens {
+    fn to_tokens(&self, t: &mut proc_macro2::TokenStream) {
+        self._brace.surround(t, |inner| self.rust_expression.to_tokens(inner));
     }
 }
 
