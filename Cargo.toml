@@ -28,6 +28,7 @@ test_crates = """
     cargo test
 """
 test_examples = """
+    set -Cue
     cd examples
     for directory in ./*/; do
         if [ "$(basename $directory)" != "target" ]; then
