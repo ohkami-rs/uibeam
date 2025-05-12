@@ -23,30 +23,29 @@ impl Beam for Layout {
     }
 }
 
-fn _test() {
-    let _ = UI! {
-        {"Hello world!"}
-    };
-}
-
 fn main() -> std::io::Result<()> {
     let pages_dir = std::path::Path::new("pages");
 
     for (path, page) in pages::pages() {
-        let path = path
-            .trim_matches('/')
-            .with_extension("html");
-
-        let page = UI! {
+        let page = uibeam::shoot(UI! {
             <Layout>
                 {page()}
             </Layout>
-        };
+        });
 
-        std::fs::write(
-            pages_dir.join(path),
-            uibeam::shoot(page).as_bytes()
-        )?;
+        let path = pages_dir.join(format!(
+            ".{}.html",
+            if *path == "/" {"/index"} else {path}
+        ));
+
+        // Create the directory if it doesn't exist
+        let parent = path.parent().unwrap();
+        if !parent.exists() {
+            std::fs::create_dir_all(parent)?;
+        }
+
+        // Write the HTML to the file
+        std::fs::write(path, page.as_bytes())?;
     }
 
     Ok(())
