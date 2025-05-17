@@ -29,23 +29,23 @@ test_crates = """
     cargo test --lib
     cargo info uibeam
     echo '---'
-    echo "cargo info uibeam | awk '/\\[.*__integration__.*\\]/ {print \\$1}'"
+    echo "> cargo info uibeam | awk '/\\[.*__integration__.*\\]/ {print \\$1}'"
     cargo info uibeam | awk '/\\[.*__integration__.*\\]/ {print $1}'
     echo '---'
-    echo "cargo info uibeam | awk '/^ *[a-z]+ *= *\\[.*__integration__.*\\]$/ {print \\$1}'"
+    echo "> cargo info uibeam | awk '/^ *[a-z]+ *= *\\[.*__integration__.*\\]$/ {print \\$1}'"
     cargo info uibeam | awk '/^ *[a-z]+ *= *\\[.*__integration__.*\\]$/ {print $1}'
     echo '---'
-    echo "cargo info uibeam | awk '/\\[__integration__,/ {print \\$1}'"
+    echo "> cargo info uibeam | awk '/\\[__integration__,/ {print \\$1}'"
     cargo info uibeam | awk '/\\[__integration__,/ {print $1}'
     echo '---'
-    echo "cargo info uibeam | awk '/[a-z]+ *=/ {print \\$1}'"
+    echo "> cargo info uibeam | awk '/[a-z]+ *=/ {print \\$1}'"
     cargo info uibeam | awk '/[a-z]+ *=/ {print $1}'
     echo '---'
-    echo "cargo info uibeam | awk '/__integration__/ {print \\$1}'"
+    echo "> cargo info uibeam | awk '/__integration__/ {print \\$1}'"
     cargo info uibeam | awk '/__integration__/ {print $1}'
     echo '---'
-    echo "cargo info uibeam | awk '/__integration__/ {print \\$1}' | grep -E '[a-z]+'"
-    cargo info uibeam | awk '/__integration__/ {print $1} ' | grep -E '[a-z]+'
+    echo "> cargo info uibeam | awk '/__integration__/ {print \\$1}' | grep -E '^[a-z]+$'"
+    cargo info uibeam | awk '/__integration__/ {print $1} ' | grep -E '^[a-z]+$'
     echo '---'
     for integration in $(cargo info uibeam | awk '/^ *[a-z]+ *= *\\[.*__integration__.*\\]$/ {print $1}'); do
         cargo test --lib --features "$integration"
