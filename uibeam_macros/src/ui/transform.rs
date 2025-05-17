@@ -266,25 +266,14 @@ pub(super) fn transform(
             }
 
             NodeTokens::TextNode(node_pieces) => {
-                // let mut last_was_not_interplolation = pieces.is_empty();
-
                 for np in node_pieces {
                     match np {
                         ContentPieceTokens::StaticText(text) => {
-                            // last_was_not_interplolation = true;
                             piece.join(Piece::new(
                                 uibeam_html::escape(&text.value())
                             ));
                         }
                         ContentPieceTokens::Interpolation(InterpolationTokens { rust_expression, _brace }) => {
-                            // if last_was_not_interplolation {
-                            //     #[cfg(debug_assertions)] {// commited by the last interpolation
-                            //         assert!(piece.is_none());
-                            //     }
-                            //     Piece::new_empty().commit(&mut pieces);
-                            // } else {
-                            //     piece.commit(&mut pieces);
-                            // }
                             let last_piece_is_none = piece.is_none();
                             if last_piece_is_none {
                                 Piece::new_empty().commit(&mut pieces);
@@ -293,10 +282,8 @@ pub(super) fn transform(
                             }
                             interpolations.push(Interpolation::Children(rust_expression));
                             piece = Piece::new_empty();
-                            // last_was_not_interplolation = false;
                         }
                         ContentPieceTokens::Node(node) => {
-                            // last_was_not_interplolation = true;
                             handle_node_tokens(
                                 node,
                                 &mut piece,
