@@ -224,6 +224,28 @@ fn main() {
 }
 ```
 
+## Integrations with web frameworks
+
+Enables `UI` to be returned as a HTML response.
+
+### [Axum](https://github.com/tokio-rs/axum) - by "axum" feature
+
+```rust
+use axum::{routing::get, Router};
+use uibeam::UI;
+
+async fn handler() -> UI {
+    UI! {
+        <h1>"Hello, world!"</h1>
+    }
+}
+
+fn app() -> Router {
+    Router::new()
+        .route("/", get(handler))
+}
+```
+
 ## License
 
 UIBeam is licensed under [MIT LICENSE](./LICENSE).

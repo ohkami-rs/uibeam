@@ -25,7 +25,11 @@ cargo metask \
     test_examples
 """
 test_crates = """
-    cargo test
+    cargo test --doc --all-features
+    cargo test --lib
+    for integration in $(cargo info uibeam | awk '/\\[.*__integration__.*\\]/ {print $1}'); do
+        cargo test --lib --features "$integration"
+    done
 """
 test_examples = """
     cd examples
