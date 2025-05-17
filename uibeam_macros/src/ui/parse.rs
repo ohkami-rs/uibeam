@@ -66,6 +66,7 @@ pub(super) enum ContentPieceTokens {
 }
 
 pub(super) struct InterpolationTokens {
+    pub(super) _unsafe: Option<Token![unsafe]>,
     pub(super) _brace: token::Brace,
     pub(super) rust_expression: Expr,
 }
@@ -185,7 +186,7 @@ impl Parse for NodeTokens {
 
 impl Parse for ContentPieceTokens {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        if input.peek(token::Brace) {
+        if input.peek(Token![unsafe]) || input.peek(token::Brace) {
             Ok(Self::Interpolation(input.parse()?))
 
         } else if input.peek(LitStr) {
@@ -202,6 +203,10 @@ impl Parse for ContentPieceTokens {
 
 impl Parse for InterpolationTokens {
     fn parse(input: ParseStream) -> syn::Result<Self> {
+        let _unsafe = input.peek(Token![unsafe])
+            .then(|| input.parse())
+            .transpose()?;
+
         let mut content;
         {
             syn::braced!(content in input.fork());
@@ -209,7 +214,9 @@ impl Parse for InterpolationTokens {
                 return Err(input.error("Expected a Rust expression inside the braces"));
             }
         }
+
         Ok(InterpolationTokens {
+            _unsafe,
             _brace: syn::braced!(content in input),
             rust_expression: content.parse()?,
         })
@@ -247,7 +254,7 @@ impl Parse for AttributeValueTokens {
             AttributeValueToken::StringLiteral(input.parse()?)
         } else if input.peek(LitInt) {
             AttributeValueToken::IntegerLiteral(input.parse()?) 
-        } else if input.peek(token::Brace) {
+        } else if input.peek(token::Brace) {// NOT expect `unsafe` here
             AttributeValueToken::Interpolation(input.parse()?)
         } else {
             return Err(input.error("Expected string literal or interpolation"));
@@ -270,6 +277,7 @@ impl ToTokens for ContentPieceTokens {
 
 impl ToTokens for InterpolationTokens {
     fn to_tokens(&self, t: &mut proc_macro2::TokenStream) {
+        self._unsafe.map(|unsafe_token| unsafe_token.to_tokens(t));
         self._brace.surround(t, |inner| self.rust_expression.to_tokens(inner));
     }
 }
@@ -348,7 +356,8 @@ impl ToTokens for AttributeValueTokens {
                     lit_int.span(),
                 ).to_tokens(t);
             }
-            AttributeValueToken::Interpolation(InterpolationTokens { _brace, rust_expression }) => {
+            AttributeValueToken::Interpolation(InterpolationTokens { _unsafe, _brace, rust_expression }) => {
+                assert!(_unsafe.is_none());
                 _brace.surround(t, |inner| rust_expression.to_tokens(inner));
             }
         }
