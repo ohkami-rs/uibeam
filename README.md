@@ -180,7 +180,7 @@ fn main() {
 
 ### Unsafely insert HTML string
 
-**raw string literal** ( `r#"..."#` ) or **unsafe block** are rednered *without HTML-escape*.
+**raw string literal** ( `r#"..."#` ) or **unsafe block** are rendered *without HTML-escape*.
 
 <!-- ignore for `include_str!` -->
 ```rust,ignore
