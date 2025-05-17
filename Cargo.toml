@@ -28,16 +28,15 @@ test_crates = """
     cargo test --doc --all-features
     cargo test --lib
     for integration in $(cargo info uibeam | grep '__integration__' | grep 'dep:' | awk '{print $1}'); do
-        cd uibeam
+        echo "$integration" | od
         cargo test --lib --features "$integration"
-        cd ..
     done
 """
 test_examples = """
     cd examples
     for directory in ./*/; do
         if [ "$(basename $directory)" != "target" ]; then
-            cd $directory
+            cd "$directory"
             cargo test
             cargo run
             cd ..
