@@ -12,6 +12,7 @@ mod ui;
 /// Enables `UI` to be returned as a HTML response.
 /// 
 /// * [Axum](https://github.com/tokio-rs/axum): by `"axum"` feature
+/// * [Actix-web](https://actix.rs): by `"actix-web"` feature
 /// 
 /// ## Usage
 /// 

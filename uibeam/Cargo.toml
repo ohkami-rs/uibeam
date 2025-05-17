@@ -15,15 +15,21 @@ categories    = { workspace = true }
 [package.metadata.docs.rs]
 all-features = true
 
+[features]
+__integration__ = []
+axum      = ["__integration__", "dep:axum"]
+actix-web = ["__integration__", "dep:actix-web"]
+
 [dependencies]
 uibeam_html   = { path = "../uibeam_html",   version = "=0.2.0" }
 uibeam_macros = { path = "../uibeam_macros", version = "=0.2.0" }
 
 [dependencies.axum]
 optional         = true
-version          = "0.8.4"
 default-features = false
+version          = "0.8.4"
 
-[features]
-__integration__ = []
-axum = ["__integration__", "dep:axum"]
+[dependencies.actix-web]
+optional         = true
+default-features = false
+version          = "4.11.0"
