@@ -21,10 +21,10 @@
 /* for `UI!` use in this crate itself */
 extern crate self as uibeam;
 
-use std::borrow::Cow;
+#[cfg(feature = "__integration__")]
+mod integration;
 
-#[cfg(feature = "integrations")]
-pub mod integrations;
+use std::borrow::Cow;
 
 pub use uibeam_html::escape;
 pub use uibeam_macros::UI;

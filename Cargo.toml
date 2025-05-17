@@ -25,13 +25,17 @@ cargo metask \
     test_examples
 """
 test_crates = """
-    cargo test
+    cargo test --doc --all-features
+    cargo test --lib
+    for integration in $(cargo info --color never uibeam | grep '__integration__' | grep 'dep:' | awk '{print $1}'); do
+        cargo test --lib --features "$integration"
+    done
 """
 test_examples = """
     cd examples
     for directory in ./*/; do
         if [ "$(basename $directory)" != "target" ]; then
-            cd $directory
+            cd "$directory"
             cargo test
             cargo run
             cd ..
