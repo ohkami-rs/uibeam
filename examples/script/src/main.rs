@@ -7,6 +7,7 @@ struct Page {
 impl Beam for Page {
     fn render(self) -> UI {
         UI! {
+            <!DOCTYPE html>
             <html lang="en">
             <head>
                 <meta charset="UTF-8">

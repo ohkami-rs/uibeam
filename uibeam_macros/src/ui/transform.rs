@@ -267,6 +267,15 @@ pub(super) fn transform(
 
     } else {
         match tokens {
+            NodeTokens::Doctype {
+                _open,
+                _bang,
+                _doctype,
+                _html,
+                _end,
+            } => {
+                piece.join(Piece::new("<!DOCTYPE html>"));
+            }
             NodeTokens::EnclosingTag {
                 _start_open,
                 tag,
