@@ -23,7 +23,12 @@
 
 ![](https://github.com/ohkami-rs/uibeam/raw/HEAD/support/vscode/assets/completion.png)
 
-## Examples
+## Usage
+
+```toml
+[dependencies]
+uibeam = "0.2.0"
+```
 
 ### `UI!` syntax
 
