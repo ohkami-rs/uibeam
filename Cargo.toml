@@ -29,13 +29,15 @@ test_crates = """
     cargo test --lib
     for integration in $(cargo info uibeam | grep '__integration__' | grep 'dep:' | awk '{print $1}'); do
         set -x
-        echo 'axum' | od
-        echo "$integration" | od
-        set +x
+        echo axum | od
         cargo test --lib --features axum
+        echo 'axum' | od
         cargo test --lib --features 'axum'
+        echo "axum" | od
         cargo test --lib --features "axum"
+        echo "$integration" | od
         cargo test --lib --features "$integration"
+        set +x
     done
 """
 test_examples = """
