@@ -32,6 +32,9 @@ test_crates = """
         echo 'axum' | od
         echo "$integration" | od
         set +x
+        cargo test --lib --features axum
+        cargo test --lib --features 'axum'
+        cargo test --lib --features "axum"
         cargo test --lib --features "$integration"
     done
 """
