@@ -182,36 +182,40 @@ fn main() {
 
 **raw string literal** ( `r#"..."#` ) or **unsafe block** are rednered *without HTML-escape*.
 
-```rust
+<!-- ignore for `include_str!` -->
+```rust,ignore
+use uibeam::UI;
+
 fn main() {
-    UI! {
-        <body>
-            /* ↓ wrong here: `'` in script are html-escaped... */
+    println!("{}", uibeam::shoot(UI! {
+        <html>
+            <body>
+                /* ↓ wrong here: `'` in script are html-escaped... */
 
-            <script>
-                "console.log('1 << 3 =', 1 << 3);"
-            </script>
+                <script>
+                    "console.log('1 << 3 =', 1 << 3);"
+                </script>
 
-            <script>
-                {include_str!("index.js")}
-            </script>
+                <script>
+                    {include_str!("index.js")}
+                </script>
 
-            /* ↓ `'` in script are NOT html-escaped */
+                /* ↓ `'` in script are NOT html-escaped */
 
-            <script>
-                r#"console.log('1 << 3 =', 1 << 3);"#
-            </script>
+                <script>
+                    r#"console.log('1 << 3 =', 1 << 3);"#
+                </script>
 
-            <script>
-                unsafe {include_str!("index.js")}
-            </script>
+                <script>
+                    unsafe {include_str!("index.js")}
+                </script>
 
-            <script>
-                unsafe {"console.log('1 << 3 =', 1 << 3);"}
-            </script>
-        </body>
+                <script>
+                    unsafe {"console.log('1 << 3 =', 1 << 3);"}
+                </script>
+            </body>
         </html>
-    }
+    }));
 }
 ```
 
