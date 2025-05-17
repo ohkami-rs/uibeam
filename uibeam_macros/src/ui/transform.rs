@@ -277,9 +277,13 @@ pub(super) fn transform(
                 _doctype,
                 _html,
                 _end,
-            } => {
-                piece.join(Piece::new("<!DOCTYPE html>"));
-            }
+            } => (/*
+                Skip transforming here and later insert it to the output
+                (in `expand` in mod.rs).
+                This enables an optimization at performance by directly
+                concatinating `<!DOCTYPE html>` at the begenning of `<html...`
+                literal piece.
+            */),
             NodeTokens::EnclosingTag {
                 _start_open,
                 tag,
