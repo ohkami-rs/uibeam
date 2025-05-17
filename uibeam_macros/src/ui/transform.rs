@@ -74,6 +74,10 @@ impl Piece {
             pieces.push(Piece::new(text));
         }
     }
+
+    pub(super) fn edit(&mut self, f: impl FnOnce(&mut String)) {
+        self.0.as_mut().map(f);
+    }
 }
 
 pub(super) enum Interpolation {
