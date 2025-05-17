@@ -27,17 +27,8 @@ cargo metask \
 test_crates = """
     cargo test --doc --all-features
     cargo test --lib
-    for integration in $(cargo info uibeam | grep '__integration__' | grep 'dep:' | awk '{print $1}'); do
-        set -x
-        echo axum | od
-        cargo test --lib --features axum
-        echo 'axum' | od
-        cargo test --lib --features 'axum'
-        echo "axum" | od
-        cargo test --lib --features "axum"
-        echo "$integration" | od
+    for integration in $(cargo info --color never uibeam | grep '__integration__' | grep 'dep:' | awk '{print $1}'); do
         cargo test --lib --features "$integration"
-        set +x
     done
 """
 test_examples = """
