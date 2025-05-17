@@ -58,7 +58,7 @@ fn main() {
 }
 ```
 
-### Conditional & Iterating rendering
+### Conditional & Iterative rendering
 
 `{}` at node-position in `UI!` can render, in addition to `Display`-able values, any `impl IntoIterator<Item = UI>`. This includes `Option<UI>` or any other iterators yielding `UI`s !
 
@@ -137,16 +137,10 @@ impl Beam for AdminPage {
                     <h1 class="text-2xl font-bold text-gray-800 mb-6">
                         "Password"
                     </h1>
-                    <h2 class="text-xl font-semibold text-gray-700 mb-4">
-                        "Enter password."
-                    </h2>
                     <form method="post" action="" class="w-full">
                         <div class="flex flex-col gap-4">
                             <div class="flex flex-col">
-                                <label
-                                    for="adminPassword"
-                                    class="text-gray-700 text-sm font-bold mb-1"
-                                >
+                                <label for="adminPassword" class="text-gray-700 text-sm font-bold mb-1">
                                     "password"
                                 </label>
                                 <input
@@ -181,6 +175,47 @@ fn main() {
     };
 
     println!("{}", uibeam::shoot(ui));
+}
+```
+
+### Unsafely insert HTML string
+
+**raw string literal** ( `r#"..."#` ) or **unsafe block** are rendered *without HTML-escape*.
+
+<!-- ignore for `include_str!` -->
+```rust,ignore
+use uibeam::UI;
+
+fn main() {
+    println!("{}", uibeam::shoot(UI! {
+        <html>
+            <body>
+                /* ↓ wrong here: `'` in script are html-escaped... */
+
+                <script>
+                    "console.log('1 << 3 =', 1 << 3);"
+                </script>
+
+                <script>
+                    {include_str!("index.js")}
+                </script>
+
+                /* ↓ `'` in script are NOT html-escaped */
+
+                <script>
+                    r#"console.log('1 << 3 =', 1 << 3);"#
+                </script>
+
+                <script>
+                    unsafe {include_str!("index.js")}
+                </script>
+
+                <script>
+                    unsafe {"console.log('1 << 3 =', 1 << 3);"}
+                </script>
+            </body>
+        </html>
+    }));
 }
 ```
 

@@ -281,18 +281,18 @@ const _: () = {
 };
 
 #[doc(hidden)]
-pub trait IntoChildren<T> {
+pub trait IntoChildren<T, const ESCAPE: bool = true> {
     fn into_children(self) -> UI;
 }
 const _: () = {
-    impl IntoChildren<UI> for UI {
+    impl<const ESCAPE: bool> IntoChildren<UI, ESCAPE> for UI {
         fn into_children(self) -> UI {
             self
         }
     }
 
     // note that `Option<UI>` implements `IntoChildren` because `Option` is `IntoIterator`
-    impl<I> IntoChildren<(I,)> for I
+    impl<const ESCAPE: bool, I> IntoChildren<(I,), ESCAPE> for I
     where
         I: IntoIterator<Item = UI>,
     {
@@ -302,18 +302,22 @@ const _: () = {
         }
     }
 
-    impl<D: std::fmt::Display> IntoChildren<&dyn std::fmt::Display> for D {
+    impl<const ESCAPE: bool, D: std::fmt::Display> IntoChildren<&dyn std::fmt::Display, ESCAPE> for D {
         fn into_children(self) -> UI {
             let s = self.to_string();
-            match escape(&s) {
-                Cow::Owned(escaped) => {
-                    UI(Cow::Owned(escaped))
+            if ESCAPE {
+                match escape(&s) {
+                    Cow::Owned(escaped) => {
+                        UI(Cow::Owned(escaped))
+                    }
+                    Cow::Borrowed(_) => {
+                        // this means `s` is already escaped, so we can avoid allocation,
+                        // just using `s` directly
+                        UI(Cow::Owned(s))
+                    }
                 }
-                Cow::Borrowed(_) => {
-                    // this means `s` is already escaped, so we can avoid allocation,
-                    // just using `s` directly
-                    UI(Cow::Owned(s))
-                }
+            } else {
+                UI(Cow::Owned(s))
             }
         }
     }
@@ -504,14 +508,14 @@ mod test {
                 ],
                 [
                     Interpolator::Attribute(AttributeValue::from("main-article")),
-                    Interpolator::Children(IntoChildren::into_children(
+                    Interpolator::Children(IntoChildren::<_, true>::into_children(
                         (1..=3_usize).map(|i| UI::new_unchecked(
                             &[
                                 r##"<p>i="##,
                                 r##"</p>"##,
                             ],
                             [
-                                Interpolator::Children(IntoChildren::into_children(
+                                Interpolator::Children(IntoChildren::<_, true>::into_children(
                                     i.to_string()
                                 )),
                             ]

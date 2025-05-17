@@ -1,7 +1,7 @@
 use super::parse::{NodeTokens, ContentPieceTokens, HtmlIdent, InterpolationTokens, AttributeTokens, AttributeValueTokens, AttributeValueToken};
 use proc_macro2::{TokenStream, Span};
 use quote::{quote, ToTokens};
-use syn::{LitStr, Expr};
+use syn::{Expr, Lit, LitStr, ExprLit};
 
 struct Beam<'n> {
     tag: &'n HtmlIdent,
@@ -79,6 +79,7 @@ impl Piece {
 pub(super) enum Interpolation {
     Attribute(Expr),
     Children(Expr),
+    UnsafeRawChildren(Expr),
 }
 impl ToTokens for Interpolation {
     fn to_tokens(&self, tokens: &mut TokenStream) {
@@ -89,7 +90,12 @@ impl ToTokens for Interpolation {
                 ))
             }),
             Interpolation::Children(expression) => tokens.extend(quote! {
-                ::uibeam::Interpolator::Children(::uibeam::IntoChildren::into_children(
+                ::uibeam::Interpolator::Children(::uibeam::IntoChildren::<_, true>::into_children(
+                    #expression
+                ))
+            }),
+            Interpolation::UnsafeRawChildren(expression) => tokens.extend(quote! {
+                ::uibeam::Interpolator::Children(::uibeam::IntoChildren::<_, false>::into_children(
                     #expression
                 ))
             }),
@@ -166,6 +172,54 @@ pub(super) fn transform(
         }
     }
 
+    fn handle_content_pieces(
+        content: Vec<ContentPieceTokens>,
+        current_piece: &mut Piece,
+        pieces: &mut Vec<Piece>,
+        interpolations: &mut Vec<Interpolation>,
+    ) {
+        for c in content {
+            match c {
+                ContentPieceTokens::StaticText(text) => {
+                    current_piece.join(if text.token().to_string().starts_with("r#") {
+                        Piece::new(text.value())
+                    } else {
+                        Piece::new(uibeam_html::escape(&text.value()))
+                    });
+                }
+                ContentPieceTokens::Interpolation(InterpolationTokens { _unsafe, rust_expression, .. }) => {
+                    let (is_unsafe, is_lit_str) = (
+                        _unsafe.is_some(),
+                        matches!(rust_expression, Expr::Lit(ExprLit { lit: Lit::Str(_), .. })),
+                    );
+                    if is_lit_str {// specialize for string literal
+                        let Expr::Lit(ExprLit { lit: Lit::Str(lit_str), .. }) = rust_expression else {unreachable!()};
+                        current_piece.join(if is_unsafe {
+                            Piece::new(lit_str.value())
+                        } else {
+                            Piece::new(uibeam_html::escape(&lit_str.value()))
+                        });
+                    } else {
+                        current_piece.is_none().then(|| *current_piece = Piece::new_empty());
+                        current_piece.commit(pieces);
+                        interpolations.push(if is_unsafe {
+                            Interpolation::UnsafeRawChildren(rust_expression)
+                        } else {
+                            Interpolation::Children(rust_expression)
+                        });
+                        *current_piece = Piece::new_empty();
+                    }
+                }
+                ContentPieceTokens::Node(node) => handle_node_tokens(
+                    node,
+                    current_piece,
+                    pieces,
+                    interpolations,
+                )
+            }
+        }
+    }
+
     if let Some(Beam { tag, attributes, content }) = tokens.as_beam() {
         piece.join(Piece::new_empty());
         piece.commit(&mut pieces);
@@ -232,25 +286,12 @@ pub(super) fn transform(
                     &mut interpolations
                 );
                 piece.join(Piece::new(">"));
-                for c in content {
-                    match c {
-                        ContentPieceTokens::StaticText(text) => {
-                            piece.join(Piece::new(
-                                uibeam_html::escape(&text.value())
-                            ));
-                        }
-                        ContentPieceTokens::Interpolation(InterpolationTokens { rust_expression, .. }) => {
-                            piece.commit(&mut pieces);
-                            interpolations.push(Interpolation::Children(rust_expression));
-                        }
-                        ContentPieceTokens::Node(node) => handle_node_tokens(
-                            node,
-                            &mut piece,
-                            &mut pieces,
-                            &mut interpolations,
-                        ),
-                    }
-                }
+                handle_content_pieces(
+                    content,
+                    &mut piece,
+                    &mut pieces,
+                    &mut interpolations
+                );
                 piece.join(Piece::new(format!("</{tag}>")));
             }
 
@@ -266,33 +307,12 @@ pub(super) fn transform(
             }
 
             NodeTokens::TextNode(node_pieces) => {
-                for np in node_pieces {
-                    match np {
-                        ContentPieceTokens::StaticText(text) => {
-                            piece.join(Piece::new(
-                                uibeam_html::escape(&text.value())
-                            ));
-                        }
-                        ContentPieceTokens::Interpolation(InterpolationTokens { rust_expression, _brace }) => {
-                            let last_piece_is_none = piece.is_none();
-                            if last_piece_is_none {
-                                Piece::new_empty().commit(&mut pieces);
-                            } else {
-                                piece.commit(&mut pieces);
-                            }
-                            interpolations.push(Interpolation::Children(rust_expression));
-                            piece = Piece::new_empty();
-                        }
-                        ContentPieceTokens::Node(node) => {
-                            handle_node_tokens(
-                                node,
-                                &mut piece,
-                                &mut pieces,
-                                &mut interpolations,
-                            );
-                        }
-                    }
-                }
+                handle_content_pieces(
+                    node_pieces,
+                    &mut piece,
+                    &mut pieces,
+                    &mut interpolations
+                );
             }
         }
 
