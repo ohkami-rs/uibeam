@@ -1,0 +1,13 @@
+[package]
+name    = "tailwind"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+uibeam = { path = "../../uibeam" }
+
+[package.metadata.tasks]
+pages = """
+    tailwindcss -c .tailwind.config.js -o ./pages/tailwind.css
+    cargo run
+"""

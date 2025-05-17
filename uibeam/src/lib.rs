@@ -18,6 +18,9 @@
 //! 
 //! ![](https://github.com/ohkami-rs/uibeam/raw/HEAD/support/vscode/assets/completion.png)
 
+/* for `UI!` use in this crate itself */
+extern crate self as uibeam;
+
 use std::borrow::Cow;
 
 pub use uibeam_html::escape;
@@ -322,7 +325,7 @@ impl UI {
     /// 
     /// ## SAFETY
     /// 
-    /// 1. `template_pieces` must have 0 or exactly `N + 1` pieces.
+    /// 1. `template_pieces` must have 0 = N or exactly `N + 1` pieces.
     /// 2. `template_pieces` must be concatenated into
     ///    a valid HTML string with any `interpolators` in place.
     /// 3. Each piece in `template_pieces` must be already HTML-escaped.
@@ -332,17 +335,18 @@ impl UI {
         template_pieces: &'static [&'static str],
         interpolators: [Interpolator; N],
     ) -> Self {
+        #[cfg(debug_assertions)] {
+            let len = template_pieces.len();
+            assert!(
+                (len == 0 && N == 0) || len == N + 1,
+                "invalid template_pieces.len(): {len} where N = {N}: template_pieces must have 0 = N or exactly N + 1 pieces"
+            );
+        }
+
         match template_pieces.len() {
             0 => UI::EMPTY,
             1 => UI(Cow::Borrowed(template_pieces[0])),
             _ => {
-                #[cfg(debug_assertions)] {
-                    assert!(
-                        template_pieces.len() == N + 1,
-                        "template_pieces must have 0 or exactly N + 1 pieces"
-                    );
-                }
-
                 let mut buf = String::with_capacity({
                     let mut size = 0;
                     for piece in template_pieces {
@@ -516,6 +520,84 @@ mod test {
                 ],
             )}).0,
             r##"<article class="main-article"><p>i=1</p><p>i=2</p><p>i=3</p></article>"##
+        );
+    }
+
+    #[test]
+    fn test_ui_interploate_expression() {
+        let ui = UI! {
+            {"an expression"}
+        };
+        assert_eq!(
+            shoot(ui),
+            r##"an expression"##
+        );
+
+        let ui = UI! {
+            <p>"a text node"</p>
+        };
+        assert_eq!(
+            shoot(ui),
+            r##"<p>a text node</p>"##
+        );
+
+        let ui = UI! {
+            <p>{"an expression"}</p>
+        };
+        assert_eq!(
+            shoot(ui),
+            r##"<p>an expression</p>"##
+        );
+
+        let ui = UI! {
+            <div class="foo">
+                <p>"hello"</p>
+            </div>
+        };
+        let ui = UI! {
+            <div class="bar">
+                {ui}
+            </div>
+        };
+        assert_eq!(
+            shoot(ui),
+            r##"<div class="bar"><div class="foo"><p>hello</p></div></div>"##
+        );
+
+        struct Layout {
+            children: UI,
+        }
+        impl Beam for Layout {
+            fn render(self) -> UI {
+                UI! {
+                    <html>
+                        <head>
+                            <meta charset="UTF-8">
+                        </head>
+                        <body>
+                            {self.children}
+                        </body>
+                    </html>
+                }
+            }
+        }
+
+        assert_eq!(
+            shoot(UI! { <Layout></Layout> }),
+            r##"<html><head><meta charset="UTF-8"/></head><body></body></html>"##
+        );
+
+        assert_eq!(
+            shoot(UI! { <Layout><h1>"Hello, Beam!"</h1></Layout> }),
+            r##"<html><head><meta charset="UTF-8"/></head><body><h1>Hello, Beam!</h1></body></html>"##
+        );
+
+        let content = UI! {
+            <h1>"Hello, Beam!"</h1>
+        };
+        assert_eq!(
+            shoot(UI! { <Layout>{content}"[test]"</Layout> }),
+            r##"<html><head><meta charset="UTF-8"/></head><body><h1>Hello, Beam!</h1>[test]</body></html>"##
         );
     }
 }
