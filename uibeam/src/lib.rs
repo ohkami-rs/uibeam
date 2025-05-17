@@ -23,6 +23,9 @@ extern crate self as uibeam;
 
 use std::borrow::Cow;
 
+#[cfg(feature = "integrations")]
+pub mod integrations;
+
 pub use uibeam_html::escape;
 pub use uibeam_macros::UI;
 
