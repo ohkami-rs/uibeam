@@ -180,7 +180,7 @@ fn main() {
 
 ### Unsafely insert HTML string
 
-**raw string literal** ( `r#"..."#` ) or **unsafe block** are rendered *without HTML-escape*.
+**raw string literal** ( `r#"..."#` ) or **unsafe block** contents are rendered *without HTML-escape*.
 
 <!-- ignore for `include_str!` -->
 ```rust,ignore
@@ -190,7 +190,7 @@ fn main() {
     println!("{}", uibeam::shoot(UI! {
         <html>
             <body>
-                /* ↓ wrong here: `'` in script are html-escaped... */
+                /* ↓ wrong here: scripts are html-escaped... */
 
                 <script>
                     "console.log('1 << 3 =', 1 << 3);"
@@ -200,7 +200,7 @@ fn main() {
                     {include_str!("index.js")}
                 </script>
 
-                /* ↓ `'` in script are NOT html-escaped */
+                /* ↓ scripts are NOT html-escaped, rendered as they are */
 
                 <script>
                     r#"console.log('1 << 3 =', 1 << 3);"#
