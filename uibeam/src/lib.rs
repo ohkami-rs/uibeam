@@ -586,12 +586,12 @@ mod test {
             }
         }
 
-        assert_eq!(/* automatically doctype insertion */
+        assert_eq!(/* automatic doctype insertion */
             shoot(UI! { <Layout></Layout> }),
             r##"<!DOCTYPE html><html><head><meta charset="UTF-8"/></head><body></body></html>"##
         );
 
-        assert_eq!(/* automatically doctype insertion */
+        assert_eq!(/* automatic doctype insertion */
             shoot(UI! { <Layout><h1>"Hello, Beam!"</h1></Layout> }),
             r##"<!DOCTYPE html><html><head><meta charset="UTF-8"/></head><body><h1>Hello, Beam!</h1></body></html>"##
         );
@@ -599,7 +599,7 @@ mod test {
         let content = UI! {
             <h1>"Hello, Beam!"</h1>
         };
-        assert_eq!(/* automatically doctype insertion */
+        assert_eq!(/* automatic doctype insertion */
             shoot(UI! { <Layout>{content}"[test]"</Layout> }),
             r##"<!DOCTYPE html><html><head><meta charset="UTF-8"/></head><body><h1>Hello, Beam!</h1>[test]</body></html>"##
         );
