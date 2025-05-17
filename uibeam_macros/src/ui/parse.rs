@@ -30,7 +30,6 @@ pub(super) enum NodeTokens {
         _end: Token![>],
     },
     TextNode(Vec<ContentPieceTokens>),
-    // Expression(InterpolationTokens),
 }
 
 pub(super) struct HtmlIdent {
