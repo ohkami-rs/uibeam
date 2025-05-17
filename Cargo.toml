@@ -26,8 +26,10 @@ cargo metask \
 """
 test_crates = """
     cargo test --doc --all-features
+    echo "================[vanilla]================\n"
     cargo test --lib
     for integration in $(cargo info --color never uibeam | grep '__integration__' | grep 'dep:' | awk '{print $1}'); do
+        echo "================[$integration]================\n"
         cargo test --lib --features "$integration"
     done
 """

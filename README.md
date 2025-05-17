@@ -236,13 +236,36 @@ use uibeam::UI;
 
 async fn handler() -> UI {
     UI! {
-        <h1>"Hello, world!"</h1>
+        <h1>"Hello, Axum!"</h1>
     }
 }
 
 fn app() -> Router {
     Router::new()
         .route("/", get(handler))
+}
+```
+
+### [Actix Web](https://actix.rs) - by "actix-web" feature
+
+```rust,no_run
+use actix_web::{HttpServer, App, web};
+use uibeam::UI;
+
+async fn handler() -> UI {
+    UI! {
+        <h1>"Hello, Actix Web!"</h1>
+    }
+}
+
+async fn run() -> std::io::Result<()> {
+    HttpServer::new(||
+        App::new()
+            .route("/", web::get().to(handler))
+    )
+    .bind(("127.0.0.1", 8080))?
+    .run()
+    .await
 }
 ```
 
