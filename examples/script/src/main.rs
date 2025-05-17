@@ -42,10 +42,26 @@ impl Beam for Page {
 }
 
 fn main() {
-    println!("{}", uibeam::shoot(UI! {
+    let html = uibeam::shoot(UI! {
         <Page title="UIBeam with some script">
             <h1>"Hello, script!"</h1>
             <p>"This is a simple example of using script with UIBeam."</p>
         </Page>
-    }));
+    });
+
+    println!("{html}");
 }
+
+#[cfg(test)]
+#[test]
+fn test_html() {
+    let mut output = String::from_utf8(
+        std::process::Command::new("cargo").arg("run").output().unwrap().stdout
+    ).unwrap();
+
+    // Remove the last newline character of `println!` output
+    output.pop();
+
+    assert_eq!(output, include_str!("../expected.html.txt"));
+}
+

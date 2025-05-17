@@ -33,7 +33,7 @@ impl Beam for Hello {
 }
 
 fn main() {
-    println!("{}", uibeam::shoot(UI! {
+    let html = uibeam::shoot(UI! {
         <body>
             <h1>"UIBeam example"</h1>
             <custom-element id="example" />
@@ -51,5 +51,20 @@ fn main() {
                 <p>"[message] this is a test message"</p>
             </Hello>
         </body>
-    }));
+    });
+
+    println!("{html}");
+}
+
+#[cfg(test)]
+#[test]
+fn test_html() {
+    let mut output = String::from_utf8(
+        std::process::Command::new("cargo").arg("run").output().unwrap().stdout
+    ).unwrap();
+
+    // Remove the last newline character of `println!` output
+    output.pop();
+
+    assert_eq!(output, include_str!("../expected.html"));
 }
