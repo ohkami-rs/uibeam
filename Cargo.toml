@@ -53,6 +53,9 @@ test_crates = """
     echo "> cargo info uibeam | awk '/__integration__/ {print \\$1}' | grep -E '^[:alpha:]+$'"
     cargo info uibeam | awk '/__integration__/ {print $1} ' | grep -E '^[:alpha:]+$'
     echo '---'
+    echo "> cargo info uibeam | awk '/__integration__/ {print \\$1}' | grep -E '^[:alpha:]+$'"
+    cargo info uibeam | awk '/__integration__/ {print $1} ' | grep -E '^[[:alpha:]]+$'
+    echo '---'
     echo "> cargo info uibeam | awk '/__integration__/ {print \\$1}' | grep -E '^[^_]'"
     cargo info uibeam | awk '/__integration__/ {print $1} ' | grep -E '^[^_]'
     echo '---'
