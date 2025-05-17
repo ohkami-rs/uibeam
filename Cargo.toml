@@ -28,7 +28,9 @@ test_crates = """
     cargo test --doc --all-features
     cargo test --lib
     for integration in $(cargo info uibeam | grep '__integration__' | grep 'dep:' | awk '{print $1}'); do
-        cargo test -p uibeam --lib --features "$integration"
+        cd uibeam
+        cargo test --lib --features "$integration"
+        cd ..
     done
 """
 test_examples = """
