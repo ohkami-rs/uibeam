@@ -7,6 +7,12 @@ mod ui;
 /// > HTML completions and hovers are available by VSCode extension.\
 /// > ( search "_uibeam_" from extension marketplace, or see <https://marketplace.visualstudio.com/items?itemName=ohkami-rs.uibeam> )
 /// 
+/// ## Integrations with web frameworks
+/// 
+/// Enables `UI` to be returned as a HTML response.
+/// 
+/// * [Axum](https://github.com/tokio-rs/axum): by `"axum"` feature
+/// 
 /// ## Usage
 /// 
 /// ### Serialization
@@ -73,7 +79,6 @@ mod ui;
 /// 
 /// ---
 /// 
-/// <br>
 /// 
 /// ## Example
 /// 
