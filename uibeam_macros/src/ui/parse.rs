@@ -11,6 +11,13 @@ pub(super) struct UITokens {
 }
 
 pub(super) enum NodeTokens {
+    Doctype {
+        _open: Token![<],
+        _bang: Token![!],
+        _doctype: keyword::DOCTYPE,
+        _html: keyword::html,
+        _end: Token![>],
+    },
     EnclosingTag {
         _start_open: Token![<],
         tag: HtmlIdent,
@@ -30,6 +37,11 @@ pub(super) enum NodeTokens {
         _end: Token![>],
     },
     TextNode(Vec<ContentPieceTokens>),
+}
+
+mod keyword {
+    syn::custom_keyword!(DOCTYPE);
+    syn::custom_keyword!(html);
 }
 
 pub(super) struct HtmlIdent {
@@ -101,6 +113,22 @@ impl Parse for UITokens {
 impl Parse for NodeTokens {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         if input.peek(Token![<]) {
+            if input.peek2(Token![!]) {
+                let _open: Token![<] = input.parse()?;
+                let _bang: Token![!] = input.parse()?;
+                let _doctype: keyword::DOCTYPE = input.parse()?;
+                let _html: keyword::html = input.parse()?;
+                let _end: Token![>] = input.parse()?;
+
+                return Ok(NodeTokens::Doctype {
+                    _open,
+                    _bang,
+                    _doctype,
+                    _html,
+                    _end,
+                });
+            }
+
             // reject empty tags (`<>`) or end tags (`</name>`)
             if !input.peek2(Ident) {
                 return Err(input.error("Expected a tag name after '<' for a start tag"));
@@ -285,6 +313,17 @@ impl ToTokens for InterpolationTokens {
 impl ToTokens for NodeTokens {
     fn to_tokens(&self, t: &mut proc_macro2::TokenStream) {
         match self {
+            NodeTokens::Doctype {
+                _open,
+                _bang,
+                _doctype,
+                _html,
+                _end,
+            } => {
+                (quote! {
+                    #_open #_bang #_doctype #_html #_end
+                }).to_tokens(t);
+            }
             NodeTokens::EnclosingTag {
                 _start_open,
                 tag,
