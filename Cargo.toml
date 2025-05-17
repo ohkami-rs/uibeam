@@ -41,6 +41,8 @@ test_crates = """
     cargo info uibeam | awk '/__integration__/ {print $1}' | grep -E '^[^_]'
     cargo info uibeam | awk '/__integration__/ {if ($1 != "__integration__") {print $1}}'
     cargo info uibeam | grep '__integration__' | grep 'dep:'
+    cargo info uibeam | grep '__integration__' | grep 'dep:' | awk '{print $1}'
+    cargo info uibeam | awk '/__integration__.*dep:/ {print $1}'
     set +x
     for integration in $(cargo info uibeam | awk '/^ *[a-z]+ *= *\\[.*__integration__.*\\]$/ {print $1}'); do
         cargo test --lib --features "$integration"
