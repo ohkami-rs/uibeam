@@ -230,7 +230,7 @@ Enables `UI` to be returned as a HTML response.
 
 ### [Axum](https://github.com/tokio-rs/axum) - by "axum" feature
 
-```rust
+```rust,no_run
 use axum::{routing::get, Router};
 use uibeam::UI;
 
@@ -240,28 +240,34 @@ async fn handler() -> UI {
     }
 }
 
-fn app() -> Router {
-    Router::new()
-        .route("/", get(handler))
+#[tokio::main]
+async fn main() {
+    let app = Router::new()
+        .route("/", get(handler));
+
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    axum::serve(listener, app).await.unwrap();
 }
 ```
 
 ### [Actix Web](https://actix.rs) - by "actix-web" feature
 
 ```rust,no_run
-use actix_web::{HttpServer, App, web};
+use actix_web::{HttpServer, App, get};
 use uibeam::UI;
 
+#[get("/")]
 async fn handler() -> UI {
     UI! {
         <h1>"Hello, Actix Web!"</h1>
     }
 }
 
-async fn run() -> std::io::Result<()> {
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
     HttpServer::new(||
         App::new()
-            .route("/", web::get().to(handler))
+            .service(handler)
     )
     .bind(("127.0.0.1", 8080))?
     .run()
