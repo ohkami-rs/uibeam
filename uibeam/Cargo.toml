@@ -21,8 +21,8 @@ axum      = ["__integration__", "dep:axum"]
 actix-web = ["__integration__", "dep:actix-web"]
 
 [dependencies]
-uibeam_html   = { path = "../uibeam_html",   version = "=0.2.0" }
-uibeam_macros = { path = "../uibeam_macros", version = "=0.2.0" }
+uibeam_html   = { path = "../uibeam_html",   version = "=0.2.1" }
+uibeam_macros = { path = "../uibeam_macros", version = "=0.2.1" }
 
 [dependencies.axum]
 optional         = true

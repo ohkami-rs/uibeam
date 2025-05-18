@@ -3,7 +3,7 @@ resolver = "3"
 members  = ["uibeam", "uibeam_html", "uibeam_macros"]
 
 [workspace.package]
-version    = "0.2.0"
+version    = "0.2.1"
 edition    = "2024"
 authors    = ["kanarus <kanarus786@gmail.com>"]
 homepage   = "https://crates.io/uibeam"

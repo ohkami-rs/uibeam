@@ -27,7 +27,7 @@
 
 ```toml
 [dependencies]
-uibeam = "0.2.0"
+uibeam = "0.2.1"
 ```
 
 ### `UI!` syntax
