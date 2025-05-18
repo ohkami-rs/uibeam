@@ -2,10 +2,14 @@ use crate::{UI, shoot};
 
 #[cfg(feature = "axum")]
 #[cfg_attr(docsrs, doc(cfg(feature = "axum")))]
-impl axum::response::IntoResponse for UI {
+impl axum_core::response::IntoResponse for UI {
     #[inline]
-    fn into_response(self) -> axum::response::Response {
-        axum::response::Html(shoot(self)).into_response()
+    fn into_response(self) -> axum_core::response::Response {
+        // ref: https://github.com/tokio-rs/axum/blob/6ad76dd9a4c07012044845b026ad17ad8de2a9bd/axum/src/response/mod.rs#L38-L52
+        axum_core::response::IntoResponse::into_response((
+            [(http::header::CONTENT_TYPE, http::HeaderValue::from_static(mime::TEXT_HTML_UTF_8.as_ref()))],
+            shoot(self),
+        ))
     }
 }
 
