@@ -1,6 +1,7 @@
 use crate::{UI, shoot};
 
 #[cfg(feature = "axum")]
+#[cfg_attr(docsrs, doc(cfg(feature = "axum")))]
 impl axum::response::IntoResponse for UI {
     #[inline]
     fn into_response(self) -> axum::response::Response {
@@ -9,6 +10,7 @@ impl axum::response::IntoResponse for UI {
 }
 
 #[cfg(feature = "actix-web")]
+#[cfg_attr(docsrs, doc(cfg(feature = "actix-web")))]
 impl actix_web::Responder for UI {
     type Body = <actix_web::web::Html as actix_web::Responder>::Body;
 

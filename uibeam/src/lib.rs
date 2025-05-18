@@ -1,3 +1,5 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
+
 /* execute doc tests for sample codes in README */
 #![cfg_attr(all(doc, not(docsrs)), doc = include_str!("../../README.md"))]
 
