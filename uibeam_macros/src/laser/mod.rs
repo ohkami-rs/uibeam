@@ -14,7 +14,10 @@ pub(super) fn expand(
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
     Ok(quote! {
-        #[wasm_bindgen::prelude::wasm_bindgen]
+        #[cfg_attr(
+            target_arch = "wasm32",
+            wasm_bindgen::prelude::wasm_bindgen
+        )]
         #input
 
         impl #impl_generics ::uibeam::Beam for #name #ty_generics
