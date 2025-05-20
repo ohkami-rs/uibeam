@@ -24,25 +24,52 @@ pub(super) fn expand(
                 let name = ::std::any::type_name::<Self>();
 
                 #[cfg(not(target_arch = "wasm32"))] {
-                    let props = ::uibeam::serialize_json(self);
+                    if false {
+                        fn is_laser<T: ::uibeam::Laser>()
+                        is_laser::<#name #ty_generics>();
+                    }
+
+                    let props: String =
+                        ::uibeam::serialize_json(&self);
+
+                    let template: ::std::borrow::Cow<'static, str> =
+                        ::uibeam::shoot(<Self as ::uibeam::Laser>::render(self));
 
                     ::uibeam::UI! {
                         <div
                             data-uibeam-laser={name}
-                            data-uibeam-props={props}
-                            /* `data-uibeam-hydrated` must be attached after hydrated on client side */
                         >
-                            <script type="module">
-                                r#"const name = '"#{}r#"';"#
+                            unsafe {template}
 
-                                todo!()
+                            <script type="module">
+unsafe {format!("
+const name = '{name}';
+const props = JSON.parse('{props}');
+")}
+r#"
+if (!window.__uibeam_lock__) {
+    // based on single-threaded nature of JS
+    window.__uibeam_lock__ = true;
+    const { default: init, ..lasers } = await import('./pkg/lasers.js');
+    await init();
+    window.__uibeam_lasers__ = lasers;
+} else {
+    while (!window.__uibeam_lasers__) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+    }
+}
+(window.__uibeam_lasers__[name])(
+    props,
+    document.querySelector(`[data-uibeam-laser=${name}]`)
+);
+"#
                             </script>
                         </div>
                     }
                 }
-                
-                #[cfg(target_arch = "wasm32")] {
 
+                #[cfg(target_arch = "wasm32")] {
+                    unreachable!();
                 }
             }
         }
