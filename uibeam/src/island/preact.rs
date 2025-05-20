@@ -1,3 +1,4 @@
+use crate::Beam;
 use ::wasm_bindgen::convert::{FromWasmAbi, IntoWasmAbi};
 use ::wasm_bindgen::prelude::*;
 use ::js_sys::{Function, Array, Object, Reflect};
@@ -51,7 +52,41 @@ mod preact {
     }
 }
 
+pub struct VDom(JsValue);
 
+pub struct ElementType(JsValue);
+
+impl ElementType {
+    pub fn tag(tag: &'static str) -> ElementType {
+        ElementType(tag.into())
+    }
+
+    // MEMO: (impl in future) require `Serialize` for components
+    // **on client/server boundary**. It'll work as the marker for the boundary.
+
+    // `Into<JsValue>` is implemented by `#[wasm_bindgen]`
+    pub fn component(component: impl Beam + Into<JsValue>) -> ElementType {
+        ElementType(component.into())
+    }
+}
+
+impl VDom {
+    pub fn new(
+        r#type: ElementType,
+        props: Object,
+        children: Vec<VDom>,
+    ) -> VDom {
+        VDom(preact::create_element(
+            r#type.0,
+            props,
+            children.into_iter().map(|vdom| vdom.0).collect::<Array>(),
+        ))
+    }
+
+    pub fn fragment() -> VDom {
+        VDom(preact::fragment())
+    }
+}
 
 pub fn signal<T: JsCast>(value: T) -> (
     impl (Fn() -> T) + Copy + 'static,
