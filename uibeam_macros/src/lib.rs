@@ -1,5 +1,5 @@
 mod ui;
-mod island;
+mod laser;
 
 #[proc_macro]
 #[allow(non_snake_case)]
@@ -121,11 +121,12 @@ pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 }
 
 #[proc_macro_attribute]
-pub fn island(
-    _: proc_macro::TokenStream,
+#[allow(non_snake_case)]
+pub fn laser(
+    args: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
-    island::expand(input.into())
+    laser::expand(args.into(), input.into())
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
 }
