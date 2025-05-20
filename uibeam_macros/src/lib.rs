@@ -1,4 +1,5 @@
 mod ui;
+mod island;
 
 #[proc_macro]
 #[allow(non_snake_case)]
@@ -115,6 +116,16 @@ mod ui;
 /// ```
 pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     ui::expand(input.into())
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
+}
+
+#[proc_macro_attribute]
+pub fn island(
+    _: proc_macro::TokenStream,
+    input: proc_macro::TokenStream,
+) -> proc_macro::TokenStream {
+    island::expand(input.into())
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
 }
