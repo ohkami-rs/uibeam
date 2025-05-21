@@ -30,7 +30,9 @@ mod preact {
         pub(super) fn create_ref() -> JsValue;
 
         #[wasm_bindgen(js_name = "Fragment")]
-        pub(super) fn fragment() -> JsValue;
+        pub(super) fn fragment(
+            props: Object,
+        ) -> JsValue;
     }
 
     #[wasm_bindgen(module = "@preact/signals")]
@@ -83,8 +85,23 @@ impl VDom {
         ))
     }
 
-    pub fn fragment() -> VDom {
-        VDom(preact::fragment())
+    pub fn fragment(
+        children: Vec<VDom>,
+    ) -> VDom {
+        let props = Object::new();
+        Reflect::set(
+            &props,
+            &"children".into(),
+            &children.into_iter().map(|vdom| vdom.0).collect::<Array>(),
+        ).ok();
+        VDom(preact::fragment(props))
+    }
+
+    pub fn text(text: impl Into<std::borrow::Cow<'static, str>>) -> VDom {
+        match text.into() {
+            std::borrow::Cow::Owned(s) => VDom(s.into()),
+            std::borrow::Cow::Borrowed(s) => VDom(s.into()),
+        }
     }
 }
 
