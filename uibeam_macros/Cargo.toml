@@ -16,7 +16,7 @@ categories    = { workspace = true }
 proc-macro = true
 
 [features]
-island = []
+laser = []
 
 [dependencies]
 uibeam_html = { path = "../uibeam_html", version = "=0.2.2" }

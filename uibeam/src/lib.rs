@@ -26,8 +26,8 @@ extern crate self as uibeam;
 #[cfg(feature = "__integration__")]
 mod integration;
 
-#[cfg(feature = "island")]
-pub mod island;
+#[cfg(feature = "laser")]
+pub mod laser;
 
 use std::borrow::Cow;
 

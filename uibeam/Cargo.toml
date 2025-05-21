@@ -17,9 +17,9 @@ all-features = true
 
 [features]
 ### !!! DEBUG !!! ###
-default=["island"]
+  default=["laser", "uibeam_macros/laser"]
 #####################
-island = ["uibeam_macros/island", "dep:serde", "dep:serde_json", "dep:wasm-bindgen", "dep:js-sys", "dep:web-sys"]
+laser = ["uibeam_macros/laser", "dep:serde", "dep:serde_json", "dep:wasm-bindgen", "dep:js-sys", "dep:web-sys"]
 __integration__ = ["dep:http", "dep:mime"]
 axum      = ["__integration__", "dep:axum-core"]
 actix-web = ["__integration__", "dep:actix-web"]

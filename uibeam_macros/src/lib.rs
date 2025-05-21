@@ -1,4 +1,6 @@
 mod ui;
+
+#[cfg(feature = "laser")]
 mod laser;
 
 #[proc_macro]

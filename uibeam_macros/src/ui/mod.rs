@@ -11,27 +11,40 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
         nodes.remove(0);
     }
 
-    let mut should_insert_doctype = nodes.first().is_some_and(|node| match node {
-        /* starting with <html>..., without <!DOCTYPE html> */        
-        parse::NodeTokens::EnclosingTag { tag, .. } if tag.to_string() == "html" => true,
-        _ => false,
-    });
+    let native_ui = {
+        let mut should_insert_doctype = nodes.first().is_some_and(|node| match node {
+            /* starting with <html>..., without <!DOCTYPE html> */        
+            parse::NodeTokens::EnclosingTag { tag, .. } if tag.to_string() == "html" => true,
+            _ => false,
+        });
 
-    let nodes = nodes.into_iter().map(|node| {
-        let (mut literals, expressions) = transform::transform(node);
-        if should_insert_doctype {
-            literals.first_mut().unwrap().edit(|lit| *lit = format!("<!DOCTYPE html>{lit}"));
-            should_insert_doctype = false;
-        }
+        let native_nodes = nodes.into_iter().map(|node| {
+            let (mut literals, expressions) = transform::native::transform(node);
+            if should_insert_doctype {
+                literals.first_mut().unwrap().edit(|lit| *lit = format!("<!DOCTYPE html>{lit}"));
+                should_insert_doctype = false;
+            }
+            quote! {
+                unsafe {::uibeam::UI::new_unchecked(
+                    &[#(#literals),*],
+                    [#(#expressions),*]
+                )}
+            }
+        });
+
         quote! {
-            unsafe {::uibeam::UI::new_unchecked(
-                &[#(#literals),*],
-                [#(#expressions),*]
-            )}
+            <::uibeam::UI>::concat([#(#native_nodes),*])
         }
-    });
+    };
 
-    Ok(quote! {
-        <::uibeam::UI>::concat([#(#nodes),*])
+    #[cfg(not(feature = "laser"))]
+    return Ok(native_ui);
+
+    #[cfg(feature = "laser")]
+    return Ok(quote! {
+        {
+            #[cfg(not(target_arch = "wasm32"))] {#native_ui}
+            #[cfg(target_arch = "wasm32")] {}
+        }
     })
 }

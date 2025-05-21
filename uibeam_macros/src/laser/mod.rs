@@ -1,3 +1,5 @@
+#![cfg(feature = "laser")]
+
 mod parse;
 
 use proc_macro2::TokenStream;
