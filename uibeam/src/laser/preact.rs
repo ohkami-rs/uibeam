@@ -1,4 +1,4 @@
-use crate::Beam;
+use crate::UI;
 use ::wasm_bindgen::convert::{FromWasmAbi, IntoWasmAbi};
 use ::wasm_bindgen::prelude::*;
 use ::js_sys::{Function, Array, Object, Reflect};
@@ -7,7 +7,7 @@ use ::web_sys::Node;
 mod preact {
     use super::*;
     
-    #[wasm_bindgen(module = "preact")]
+    #[wasm_bindgen(module = "https://esm.sh/preact")]
     unsafe extern "C" {
         #[wasm_bindgen(js_name = "hydrate")]
         pub(super) fn hydrate(vdom: JsValue, container: Node);
@@ -35,7 +35,7 @@ mod preact {
         ) -> JsValue;
     }
 
-    #[wasm_bindgen(module = "@preact/signals")]
+    #[wasm_bindgen(module = "https://esm.sh/@preact/signals?external=preact")]
     unsafe extern "C" {
         #[wasm_bindgen(js_name = "useSignal")]
         pub(super) fn signal(value: JsValue) -> Object;
@@ -63,9 +63,36 @@ impl ElementType {
         ElementType(tag.into())
     }
 
-    // `Into<JsValue>` is implemented by `#[wasm_bindgen]`
-    pub fn component(component: impl Beam + Into<JsValue>) -> ElementType {
-        ElementType(component.into())
+    /// `Into<JsValue>` is implemented by `#[wasm_bindgen]`
+    pub fn component<L: super::Laser + Into<JsValue>>() -> ElementType {
+        let ident: &'static str = {
+            let type_name = std::any::type_name::<L>();
+            let type_path = if type_name.ends_with('>') {
+                /* `type_name` has generics like `playground::handler<alloc::string::String>` */
+                /* ref: <https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=e02e32853dddf5385769d1718c481814> */
+                let (type_path, _/*generics*/) = type_name
+                    .rsplit_once('<')
+                    .expect("unexpectedly independent `>` in std::any::type_name");
+                type_path
+            } else {
+                type_name
+            };
+            let (_/*path from crate root*/, type_ident) = type_path
+                .rsplit_once("::")
+                .expect("unexpected format of std::any::type_name");
+            type_ident
+        };
+
+        let ident = format!("__uibeam_laser_{ident}__");
+        let component_function = Function::new_with_args(
+            "props",
+            &format!("return {ident}(props);")
+        );
+        let ident = JsValue::from(ident);
+        Reflect::set(&component_function, &"name".into(), &ident).ok();
+        Reflect::set(&component_function, &"displayName".into(), &ident).ok();
+
+        ElementType(component_function.unchecked_into())
     }
 }
 

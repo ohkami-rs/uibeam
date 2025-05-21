@@ -1,7 +1,7 @@
 use super::super::parse::{NodeTokens, ContentPieceTokens, InterpolationTokens, AttributeTokens, AttributeValueTokens, AttributeValueToken};
 use super::{Piece, Interpolation, Component};
 use proc_macro2::{Span, TokenStream};
-use quote::{quote, ToTokens};
+use quote::{format_ident, quote, ToTokens};
 use syn::{Expr, Lit, LitStr, ExprLit};
 
 /// Derives Rust codes that builds an `uibeam::laser::VDom` expression
@@ -90,6 +90,17 @@ pub(crate) fn transform(
         }
 
         if let Some(Component { name, attributes, content }) = tokens.as_beam() {
+            let props = into_props(attributes.to_vec());
+
+            let children = into_children(content.map(<[_]>::to_vec).unwrap_or_else(Vec::new));
+
+            (quote! {
+                ::uibeam::laser::VDom::new(
+                    ::uibeam::laser::ElementType::component::<#name>(),
+                    #props,
+                    #children   
+                )
+            }).to_tokens(t);
             
         } else {
             match tokens {

@@ -4,31 +4,32 @@ pub(super) mod wasm32;
 use super::parse::{NodeTokens, ContentPieceTokens, HtmlIdent, AttributeTokens};
 use proc_macro2::{TokenStream, Span};
 use quote::{quote, ToTokens};
-use syn::{Expr, LitStr};
+use syn::{Expr, Ident, LitStr};
 
 struct Component<'n> {
-    name: &'n HtmlIdent,
+    name: &'n Ident,
     attributes: &'n [AttributeTokens],
     content: Option<&'n [ContentPieceTokens]>,
 }
 impl NodeTokens {
     fn as_beam(&self) -> Option<Component<'_>> {
-        let is_beam_ident = |html_ident: &HtmlIdent| {
-            html_ident.as_ident().is_some_and(|ident| {
-                ident.to_string().chars().next().unwrap().is_ascii_uppercase()
-            })
-        };
+        fn as_component_name(html_ident: &HtmlIdent) -> Option<&Ident> {
+            html_ident
+                .as_ident()
+                .map(|ident| ident.to_string().chars().next().unwrap().is_ascii_uppercase().then_some(ident))
+                .flatten()
+        }
         match self {
             NodeTokens::EnclosingTag { tag, attributes, content, .. } => {
-                is_beam_ident(tag).then_some(Component {
-                    name: tag,
+                as_component_name(tag).map(|name| Component {
+                    name,
                     attributes,
                     content: Some(content),
                 })
             }
             NodeTokens::SelfClosingTag { tag, attributes, .. } => {
-                is_beam_ident(tag).then_some(Component {
-                    name: tag,
+                as_component_name(tag).map(|name| Component {
+                    name,
                     attributes,
                     content: None,
                 })
