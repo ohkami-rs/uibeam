@@ -3,7 +3,8 @@
 mod parse;
 
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{format_ident, quote};
+use syn::LitStr;
 
 pub(super) fn expand(
     args: TokenStream,
@@ -13,20 +14,28 @@ pub(super) fn expand(
     let input: syn::ItemStruct = syn::parse2(input)?;
 
     let name = &input.ident;
+    let laser_name = format_ident!("__uibeam_laser_{name}__");
+    let laser_name_str = LitStr::new(&laser_name.to_string(), name.span());
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
     Ok(quote! {
-        #[cfg_attr(
-            target_arch = "wasm32",
-            wasm_bindgen::prelude::wasm_bindgen
-        )]
+        #[wasm_bindgen::prelude::wasm_bindgen]
         #input
+
+        #[cfg(target_arch = "wasm32")]
+        #[wasm_bindgen::prelude::wasm_bindgen]
+        pub fn #laser_name(props: #name, container: ::uibeam::laser::web_sys::Node) {
+            ::uibeam::laser::hydrate(
+                <#name as ::uibeam::Laser>::render(props).into_vdom(),
+                container,
+            )
+        }
 
         impl #impl_generics ::uibeam::Beam for #name #ty_generics
             #where_clause
         {
             fn render(self) -> ::uibeam::UI {
-                let name = ::std::any::type_name::<Self>();
+                let name = #laser_name_str;
 
                 #[cfg(not(target_arch = "wasm32"))] {
                     if false {
@@ -48,7 +57,7 @@ pub(super) fn expand(
 
                             <script type="module">
 unsafe {format!("
-const name = '{name}';
+const name = '__uibeam_laser_{name}__';
 const props = JSON.parse('{props}');
 ")}
 r#"

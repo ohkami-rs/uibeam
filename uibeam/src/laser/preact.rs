@@ -1,4 +1,3 @@
-use crate::UI;
 use ::wasm_bindgen::convert::{FromWasmAbi, IntoWasmAbi};
 use ::wasm_bindgen::prelude::*;
 use ::js_sys::{Function, Array, Object, Reflect};
@@ -52,6 +51,13 @@ mod preact {
         #[wasm_bindgen(js_name = "untracked")]
         pub(super) fn untracked(f: Function);
     }
+}
+
+pub fn hydrate(
+    vdom: VDom,
+    container: Node,
+) {
+    preact::hydrate(vdom.0, container);
 }
 
 pub struct VDom(JsValue);
