@@ -222,6 +222,16 @@ pub enum AttributeValue {
     Integer(i64),
     Boolean(bool),
 }
+#[cfg(all(feature = "laser", target_arch = "wasm32"))]
+impl Into<wasm_bindgen::JsValue> for AttributeValue {
+    fn into(self) -> wasm_bindgen::JsValue {
+        match self {
+            Self::Text(text) => uibeam_html::escape(&text).into(),
+            Self::Integer(int) => int.into(),
+            Self::Boolean(bool) => bool.into(),
+        }
+    }
+}
 const _: () = {
     impl From<bool> for AttributeValue {
         #[inline(always)]
@@ -357,6 +367,10 @@ impl UI {
     #[cfg(all(feature = "laser", target_arch = "wasm32"))]
     pub fn new_unchecked(vdom: laser::VDom) -> Self {
         Self(vdom)
+    }
+    #[cfg(all(feature = "laser", target_arch = "wasm32"))]
+    pub fn into_vdom(self) -> laser::VDom {
+        self.0
     }
 
     #[cfg(not(all(feature = "laser", target_arch = "wasm32")))]

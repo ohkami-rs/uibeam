@@ -1,6 +1,6 @@
 use super::super::parse::{NodeTokens, ContentPieceTokens, InterpolationTokens, AttributeTokens, AttributeValueTokens, AttributeValueToken};
 use super::{Piece, Interpolation, Component};
-use proc_macro2::TokenStream;
+use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens};
 use syn::{Expr, Lit, LitStr, ExprLit};
 
@@ -23,16 +23,26 @@ pub(crate) fn transform(
                             ::uibeam::laser::wasm_bindgen::JsValue::from("")
                         }
                     }
-                    Some(AttributeValueTokens { _eq, value }) => {
-                        let value = match value {
-                            AttributeValueToken::IntegerLiteral(i) => i.into_token_stream(),
-                            AttributeValueToken::StringLiteral(s) => s.into_token_stream(),
-                            AttributeValueToken::Interpolation(InterpolationTokens {
-                                _unsafe, _brace, rust_expression
-                            }) => rust_expression.into_token_stream()
-                        };
-                        quote! {
-                            ::uibeam::laser::wasm_bindgen::JsValue::from(#value)
+                    Some(AttributeValueTokens { _eq, value }) => match value {
+                        AttributeValueToken::IntegerLiteral(i) => {
+                            quote! {
+                                ::uibeam::laser::wasm_bindgen::JsValue::from(#i)
+                            }
+                        },
+                        AttributeValueToken::StringLiteral(s) => {
+                            let s = LitStr::new(&uibeam_html::escape(&s.value()), s.span());
+                            quote! {
+                                ::uibeam::laser::wasm_bindgen::JsValue::from(#s)
+                            }
+                        },
+                        AttributeValueToken::Interpolation(InterpolationTokens {
+                            _unsafe, _brace, rust_expression
+                        }) => {
+                            quote! {
+                                ::uibeam::laser::wasm_bindgen::JsValue::from(
+                                    ::uibeam::AttributeValue::from(#rust_expression)
+                                )
+                            }
                         }
                     }
                 };
@@ -42,6 +52,40 @@ pub(crate) fn transform(
             });
             quote! {
                 vec![#(#kvs),*]
+            }
+        }
+
+        fn into_children(content: Vec<ContentPieceTokens>) -> TokenStream {
+            let children = content.into_iter().map(|piece| {
+                match piece {
+                    ContentPieceTokens::StaticText(text) => {
+                        let text = if text.token().to_string().starts_with("r#") {
+                            text
+                        } else {
+                            LitStr::new(&uibeam_html::escape(&text.value()), text.span())
+                        };
+                        quote! {
+                            ::uibeam::laser::VDom::text(#text)
+                        }
+                    }
+                    ContentPieceTokens::Interpolation(InterpolationTokens {
+                        _unsafe, _brace, rust_expression
+                    }) => {
+                        let is_escape = syn::LitBool::new(_unsafe.is_none(), Span::call_site());
+                        quote! {
+                            ::uibeam::IntoChildren::<_, #is_escape>::into_children(
+                                #rust_expression
+                            ).into_vdom()
+                        }
+                    }
+                    ContentPieceTokens::Node(n) => {
+                        transform(n)
+                    }
+                }
+            });
+
+            quote! {
+                vec![#(#children),*]
             }
         }
 
@@ -62,7 +106,19 @@ pub(crate) fn transform(
                     _tag,
                     _end_close,
                 } => {
-                    
+                    let tag = tag.to_string();
+
+                    let props = into_props(attributes);
+
+                    let children = into_children(content);
+
+                    (quote! {
+                        ::uibeam::laser::VDom::new(
+                            ::uibeam::laser::ElementType::tag(#tag),
+                            #props,
+                            #children   
+                        )
+                    }).to_tokens(t);
                 }
                 
                 NodeTokens::SelfClosingTag {
@@ -80,13 +136,14 @@ pub(crate) fn transform(
                         ::uibeam::laser::VDom::new(
                             ::uibeam::laser::ElementType::tag(#tag),
                             #props,
-                            Vec::new()   
+                            const {Vec::new()}
                         )
                     }).to_tokens(t);
                 }
                 
                 NodeTokens::TextNode(node_pieces) => {
-                    
+                    into_children(node_pieces)
+                        .to_tokens(t);
                 }
             }
         }
