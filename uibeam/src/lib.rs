@@ -144,8 +144,8 @@ pub fn shoot(ui: UI) -> Cow<'static, str> {
     ui.0
 }
 
-#[cfg(not(all(feature = "laser", target_arch = "wasm32")))]
 impl FromIterator<UI> for UI {
+    #[cfg(not(all(feature = "laser", target_arch = "wasm32")))]
     #[inline]
     fn from_iter<T: IntoIterator<Item = UI>>(iter: T) -> Self {
         let mut result = String::new();
@@ -153,6 +153,15 @@ impl FromIterator<UI> for UI {
             result.push_str(&item.0);
         }
         UI(Cow::Owned(result))
+    }
+
+    #[cfg(all(feature = "laser", target_arch = "wasm32"))]
+    fn from_iter<T: IntoIterator<Item = UI>>(iter: T) -> Self {
+        UI(laser::VDom::fragment(iter
+            .into_iter()
+            .map(|UI(vdom)| vdom)
+            .collect::<Vec<_>>()
+        ))
     }
 }
 
@@ -345,6 +354,12 @@ const _: () = {
 
 #[doc(hidden)]
 impl UI {
+    #[cfg(all(feature = "laser", target_arch = "wasm32"))]
+    pub fn new_unchecked(vdom: laser::VDom) -> Self {
+        Self(vdom)
+    }
+
+    #[cfg(not(all(feature = "laser", target_arch = "wasm32")))]
     /// tends to be used by the `UI!` macro internally.
     /// 
     /// ## SAFETY

@@ -11,6 +11,20 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
         nodes.remove(0);
     }
 
+    #[cfg(feature = "laser")]
+    let wasm32_ui = {
+        let wasm32_nodes = nodes.clone().into_iter().map(|node| {
+            let vdom_tokens = transform::wasm32::transform(node);
+            quote! {
+                ::uibeam::UI::new_unchecked(#vdom_tokens)
+            }
+        });
+
+        quote! {
+            <::uibeam::UI>::from_iter([#(#wasm32_nodes),*])
+        }
+    };
+
     let native_ui = {
         let mut should_insert_doctype = nodes.first().is_some_and(|node| match node {
             /* starting with <html>..., without <!DOCTYPE html> */        
@@ -43,8 +57,8 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
     #[cfg(feature = "laser")]
     return Ok(quote! {
         {
+            #[cfg(target_arch = "wasm32")] {#wasm32_ui}
             #[cfg(not(target_arch = "wasm32"))] {#native_ui}
-            #[cfg(target_arch = "wasm32")] {}
         }
     })
 }
