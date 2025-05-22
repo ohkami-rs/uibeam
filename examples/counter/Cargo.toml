@@ -4,6 +4,6 @@ version = "0.0.0"
 edition = "2024"
 
 [dependencies]
-uibeam = { path = "../../uibeam" }
+uibeam = { path = "../../uibeam", features = ["laser"] }
 ohkami = { git = "https://github.com/ohkami-rs/ohkami", branch = "v0.24", features = ["rt_smol"] }
 smol   = { version = "2" }
