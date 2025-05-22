@@ -13,12 +13,12 @@ pub(super) fn expand(
 
     let name = &input.ident;
     let hydrater_name = format_ident!("__uibeam_laser_{name}__");
-    let hydrater_name_str = LitStr::new(&synhydrater_name.to_string(), hydrater_name.span());
+    let hydrater_name_str = LitStr::new(&hydrater_name.to_string(), hydrater_name.span());
 
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
     let attribute_marker_impl = {
-        let mut where_clause = where_clause.clone();
+        let mut where_clause = where_clause.cloned();
         if !local {
             if where_clause.is_none() {
                 where_clause = Some(WhereClause {

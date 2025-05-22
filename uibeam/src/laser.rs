@@ -5,24 +5,6 @@ use ::wasm_bindgen::prelude::*;
 #[doc(hidden)]
 pub use {::wasm_bindgen, ::web_sys, ::serde};
 
-fn type_ident<T>() -> &'static str {
-    let type_name = std::any::type_name::<T>();
-    let type_path = if type_name.ends_with('>') {
-        /* `type_name` has generics like `playground::handler<alloc::string::String>` */
-        /* ref: <https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=e02e32853dddf5385769d1718c481814> */
-        let (type_path, _/*generics*/) = type_name
-            .rsplit_once('<')
-            .expect("unexpectedly independent `>` in std::any::type_name");
-        type_path
-    } else {
-        type_name
-    };
-    let (_/*path from crate root*/, type_ident) = type_path
-        .rsplit_once("::")
-        .expect("unexpected format of std::any::type_name");
-    type_ident
-}
-
 #[doc(hidden)]
 pub fn serialize_props<P: ::serde::Serialize>(props: &P) -> String {
     ::serde_json::to_string(props).unwrap()
@@ -92,6 +74,25 @@ use {
     ::js_sys::{Function, Array, Object, Reflect},
     ::wasm_bindgen::convert::{FromWasmAbi, IntoWasmAbi, TryFromJsValue},
 };
+
+#[cfg(target_arch = "wasm32")]
+fn type_ident<T>() -> &'static str {
+    let type_name = std::any::type_name::<T>();
+    let type_path = if type_name.ends_with('>') {
+        /* `type_name` has generics like `playground::handler<alloc::string::String>` */
+        /* ref: <https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=e02e32853dddf5385769d1718c481814> */
+        let (type_path, _/*generics*/) = type_name
+            .rsplit_once('<')
+            .expect("unexpectedly independent `>` in std::any::type_name");
+        type_path
+    } else {
+        type_name
+    };
+    let (_/*path from crate root*/, type_ident) = type_path
+        .rsplit_once("::")
+        .expect("unexpected format of std::any::type_name");
+    type_ident
+}
 
 #[cfg(target_arch = "wasm32")]
 pub fn hydrate(
