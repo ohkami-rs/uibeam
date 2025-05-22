@@ -45,7 +45,7 @@ pub struct UI(
     Cow<'static, str>,
 
     #[cfg(all(feature = "laser", target_arch = "wasm32"))]
-    laser::VDom,
+    laser::VNode,
 );
 
 /// # `Beam` - UIBeam's component system
@@ -159,7 +159,7 @@ impl FromIterator<UI> for UI {
 
     #[cfg(all(feature = "laser", target_arch = "wasm32"))]
     fn from_iter<T: IntoIterator<Item = UI>>(iter: T) -> Self {
-        UI(laser::VDom::fragment(iter
+        UI(laser::VNode::fragment(iter
             .into_iter()
             .map(|UI(vdom)| vdom)
             .collect::<Vec<_>>()
@@ -365,7 +365,7 @@ const _: () = {
             return UI(Cow::Owned(text));
 
             #[cfg(all(feature = "laser", target_arch = "wasm32"))]
-            return UI(laser::VDom::text(text));
+            return UI(laser::VNode::text(text));
         }
     }
 };
@@ -373,11 +373,11 @@ const _: () = {
 #[doc(hidden)]
 impl UI {
     #[cfg(all(feature = "laser", target_arch = "wasm32"))]
-    pub fn new_unchecked(vdom: laser::VDom) -> Self {
+    pub fn new_unchecked(vdom: laser::VNode) -> Self {
         Self(vdom)
     }
     #[cfg(all(feature = "laser", target_arch = "wasm32"))]
-    pub fn into_vdom(self) -> laser::VDom {
+    pub fn into_vdom(self) -> laser::VNode {
         self.0
     }
 

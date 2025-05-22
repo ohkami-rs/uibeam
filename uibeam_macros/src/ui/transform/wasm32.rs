@@ -6,7 +6,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens};
 use syn::LitStr;
 
-/// Derives Rust codes that builds an `uibeam::laser::VDom` expression
+/// Derives Rust codes that builds an `uibeam::laser::VNode` expression
 /// corresponded to the `UI!` input
 pub(crate) fn transform(
     tokens: NodeTokens,
@@ -67,7 +67,7 @@ pub(crate) fn transform(
                             LitStr::new(&uibeam_html::escape(&text.value()), text.span())
                         };
                         quote! {
-                            ::uibeam::laser::VDom::text(#text)
+                            ::uibeam::laser::VNode::text(#text)
                         }
                     }
                     ContentPieceTokens::Interpolation(InterpolationTokens {
@@ -97,8 +97,8 @@ pub(crate) fn transform(
             let children = into_children(content.map(<[_]>::to_vec).unwrap_or_else(Vec::new));
 
             (quote! {
-                ::uibeam::laser::VDom::new(
-                    ::uibeam::laser::ElementType::component::<#name>(),
+                ::uibeam::laser::VNode::new(
+                    ::uibeam::laser::NodeType::component::<#name>(),
                     #props,
                     #children   
                 )
@@ -126,8 +126,8 @@ pub(crate) fn transform(
                     let children = into_children(content);
 
                     (quote! {
-                        ::uibeam::laser::VDom::new(
-                            ::uibeam::laser::ElementType::tag(#tag),
+                        ::uibeam::laser::VNode::new(
+                            ::uibeam::laser::NodeType::tag(#tag),
                             #props,
                             #children   
                         )
@@ -146,8 +146,8 @@ pub(crate) fn transform(
                     let props = into_props(attributes);
 
                     (quote! {
-                        ::uibeam::laser::VDom::new(
-                            ::uibeam::laser::ElementType::tag(#tag),
+                        ::uibeam::laser::VNode::new(
+                            ::uibeam::laser::NodeType::tag(#tag),
                             #props,
                             const {Vec::new()}
                         )

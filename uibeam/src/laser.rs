@@ -135,22 +135,22 @@ mod preact {
 }
 
 pub fn hydrate(
-    vdom: VDom,
+    vdom: VNode,
     container: Node,
 ) {
     preact::hydrate(vdom.0, container);
 }
 
-pub struct VDom(JsValue);
+pub struct VNode(JsValue);
 
-pub struct ElementType(JsValue);
+pub struct NodeType(JsValue);
 
-impl ElementType {
-    pub fn tag(tag: &'static str) -> ElementType {
-        ElementType(tag.into())
+impl NodeType {
+    pub fn tag(tag: &'static str) -> NodeType {
+        NodeType(tag.into())
     }
 
-    pub fn component<L>() -> ElementType
+    pub fn component<L>() -> NodeType
     where
         L: Laser + TryFromJsValue<Error = JsValue>,
     {
@@ -163,16 +163,16 @@ impl ElementType {
         Reflect::set(&component_function, &"name".into(), &ident).ok();
         Reflect::set(&component_function, &"displayName".into(), &ident).ok();
 
-        ElementType(component_function.unchecked_into())
+        NodeType(component_function.unchecked_into())
     }
 }
 
-impl VDom {
+impl VNode {
     pub fn new(
-        r#type: ElementType,
+        r#type: NodeType,
         props: Vec<(&'static str, JsValue)>,
-        children: Vec<VDom>,
-    ) -> VDom {
+        children: Vec<VNode>,
+    ) -> VNode {
         let props_entries = {
             let entries = props.into_iter().map(|(k, v)| {
                 let entry = [k.into(), v].into_iter().collect::<Array>();
@@ -183,7 +183,7 @@ impl VDom {
             entries
         };
 
-        VDom(preact::create_element(
+        VNode(preact::create_element(
             r#type.0,
             Object::from_entries(&props_entries).unwrap_throw(),
             children.into_iter().map(|vdom| vdom.0).collect::<Array>(),
@@ -191,21 +191,21 @@ impl VDom {
     }
 
     pub fn fragment(
-        children: Vec<VDom>,
-    ) -> VDom {
+        children: Vec<VNode>,
+    ) -> VNode {
         let props = Object::new();
         Reflect::set(
             &props,
             &"children".into(),
             &children.into_iter().map(|vdom| vdom.0).collect::<Array>(),
         ).ok();
-        VDom(preact::fragment(props))
+        VNode(preact::fragment(props))
     }
 
-    pub fn text(text: impl Into<std::borrow::Cow<'static, str>>) -> VDom {
+    pub fn text(text: impl Into<std::borrow::Cow<'static, str>>) -> VNode {
         match text.into() {
-            std::borrow::Cow::Owned(s) => VDom(s.into()),
-            std::borrow::Cow::Borrowed(s) => VDom(s.into()),
+            std::borrow::Cow::Owned(s) => VNode(s.into()),
+            std::borrow::Cow::Borrowed(s) => VNode(s.into()),
         }
     }
 }
