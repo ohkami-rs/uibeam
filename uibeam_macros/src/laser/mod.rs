@@ -17,6 +17,10 @@ pub(super) fn expand(
         #[::uibeam::laser::wasm_bindgen::prelude::wasm_bindgen]
         #input
 
+        impl #impl_generics ::uibeam::laser::Laser_attribute for #name #ty_generics
+            #where_clause
+        {}
+
         #[cfg(target_arch = "wasm32")]
         #[doc(hidden)]
         #[allow(non_snake_case)]

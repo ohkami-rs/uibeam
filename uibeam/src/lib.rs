@@ -25,16 +25,14 @@ extern crate self as uibeam;
 
 #[cfg(feature = "__integration__")]
 mod integration;
-
-#[cfg(all(feature = "laser", target_arch = "wasm32"))]
+#[cfg(feature = "laser")]
 #[doc(hidden)]
 pub mod laser;
 
 pub use uibeam_html::escape;
 pub use uibeam_macros::UI;
-
-#[cfg(all(feature = "laser", target_arch = "wasm32"))]
-pub use uibeam_macros::island;
+#[cfg(feature = "laser")]
+pub use uibeam_macros::Laser;
 
 use std::borrow::Cow;
 
@@ -230,9 +228,15 @@ pub enum AttributeValue {
 impl Into<wasm_bindgen::JsValue> for AttributeValue {
     fn into(self) -> wasm_bindgen::JsValue {
         match self {
-            Self::Text(text) => uibeam_html::escape(&text).into(),
             Self::Integer(int) => int.into(),
-            Self::Boolean(bool) => bool.into(),
+            Self::Boolean(boo) => boo.into(),
+            Self::Text(text) => match uibeam_html::escape(&text) {
+                Cow::Owned(escaped) => escaped.into(),
+                Cow::Borrowed(_) => match text {
+                    Cow::Owned(s) => s.into(),
+                    Cow::Borrowed(s) => s.into(),
+                },
+            }
         }
     }
 }
@@ -483,7 +487,7 @@ impl UI {
                                     // and then at least one whitespace exists before an attribute name)
                                     let Some('=') = buf.pop() else {unreachable!()};
                                     if !*boolean {
-                                        let Some(sp) = buf.rfind(is_ascii_whitespace) else {unreachable!()};
+                                        let Some(sp) = buf.rfind(|c| matches!(c, ' ' | '\t' | '\n' | '\x0C' | '\r')) else {unreachable!()};
                                         buf.truncate(sp);
                                     }
                                 }
@@ -496,11 +500,6 @@ impl UI {
             }
         }
     }
-}
-
-#[inline(always)]
-const fn is_ascii_whitespace(c: char) -> bool {
-    matches!(c, ' ' | '\t' | '\n' | '\x0C' | '\r')
 }
 
 #[cfg(test)]

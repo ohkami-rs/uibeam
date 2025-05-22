@@ -120,16 +120,16 @@ pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 }
 
 #[cfg(feature = "laser")]
-mod island;
+mod laser;
 
 #[cfg(feature = "laser")]
 #[proc_macro_attribute]
 #[allow(non_snake_case)]
-pub fn island(
+pub fn Laser(
     args: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
-    island::expand(args.into(), input.into())
+    laser::expand(args.into(), input.into())
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
 }

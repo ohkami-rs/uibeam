@@ -1,4 +1,4 @@
-#![cfg(all(feature = "laser", target_arch = "wasm32"))]
+#![cfg(feature = "laser")]
 
 use ::wasm_bindgen::convert::{FromWasmAbi, IntoWasmAbi, TryFromJsValue};
 use ::wasm_bindgen::prelude::*;
@@ -26,11 +26,20 @@ fn type_ident<T>() -> &'static str {
     type_ident
 }
 
-pub trait Laser {
+#[doc(hidden)]
+pub fn serialize_props<P: ::serde::Serialize>(props: &P) -> String {
+    ::serde_json::to_string(props).unwrap()
+}
+
+#[doc(hidden)]
+#[allow(non_camel_case_types)]
+pub trait Laser_attribute {}
+
+pub trait Laser: Laser_attribute {
     fn render(self) -> crate::UI;
 }
 
-impl<L: Laser> ::uibeam::Beam for L {
+impl<L: Laser + ::serde::Serialize> ::uibeam::Beam for L {
     fn render(self) -> ::uibeam::UI {
         #[cfg(target_arch = "wasm32")] {
             unreachable!();
@@ -39,7 +48,7 @@ impl<L: Laser> ::uibeam::Beam for L {
         #[cfg(not(target_arch = "wasm32"))] {
             let name = format!("__uibeam_laser_{}__", type_ident::<L>());
 
-            let props: String = ::uibeam::serialize_json(&self);
+            let props: String = ::uibeam::laser::serialize_props(&self);
 
             let template: ::std::borrow::Cow<'static, str> = ::uibeam::shoot(<Self as Laser>::render(self));
 
@@ -141,10 +150,9 @@ impl ElementType {
         ElementType(tag.into())
     }
 
-    /// `Into<JsValue>` is implemented by `#[wasm_bindgen]`
     pub fn component<L>() -> ElementType
     where
-        L: Laser + TryFromJsValue
+        L: Laser + TryFromJsValue<Error = JsValue>,
     {
         let component_function: Function = Closure::<dyn Fn(JsValue)->JsValue>::new(|props| {
             let props = <L as TryFromJsValue>::try_from_js_value(props).unwrap_throw();
@@ -165,11 +173,19 @@ impl VDom {
         props: Vec<(&'static str, JsValue)>,
         children: Vec<VDom>,
     ) -> VDom {
+        let props_entries = {
+            let entries = props.into_iter().map(|(k, v)| {
+                let entry = [k.into(), v].into_iter().collect::<Array>();
+                let entry: JsValue = entry.unchecked_into();
+                entry
+            }).collect::<Array>();
+            let entries: JsValue = entries.unchecked_into();
+            entries
+        };
+
         VDom(preact::create_element(
             r#type.0,
-            Object::from_entries(props.into_iter().map(|(k, v)| {
-                [k.into(), v].into_iter().collect::<Array>().unchecked_into()
-            }).collect::<Array>().unchecked_into()).unwrap_throw(),
+            Object::from_entries(&props_entries).unwrap_throw(),
             children.into_iter().map(|vdom| vdom.0).collect::<Array>(),
         ))
     }
