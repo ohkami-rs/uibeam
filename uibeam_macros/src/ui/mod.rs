@@ -7,10 +7,6 @@ use quote::quote;
 pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
     let parse::UITokens { mut nodes } = syn::parse2(input)?;
 
-    if nodes.first().is_some_and(|node| matches!(node, parse::NodeTokens::Doctype { .. })) {
-        nodes.remove(0);
-    }
-
     #[cfg(feature = "laser")]
     let wasm32_ui = {
         let wasm32_nodes = nodes.clone().into_iter().map(|node| {
@@ -26,6 +22,10 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
     };
 
     let native_ui = {
+        if nodes.first().is_some_and(|node| matches!(node, parse::NodeTokens::Doctype { .. })) {
+            nodes.remove(0);
+        }
+
         let mut should_insert_doctype = nodes.first().is_some_and(|node| match node {
             /* starting with <html>..., without <!DOCTYPE html> */        
             parse::NodeTokens::EnclosingTag { tag, .. } if tag.to_string() == "html" => true,

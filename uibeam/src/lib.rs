@@ -26,13 +26,17 @@ extern crate self as uibeam;
 #[cfg(feature = "__integration__")]
 mod integration;
 
-#[cfg(feature = "laser")]
+#[cfg(all(feature = "laser", target_arch = "wasm32"))]
+#[doc(hidden)]
 pub mod laser;
-
-use std::borrow::Cow;
 
 pub use uibeam_html::escape;
 pub use uibeam_macros::UI;
+
+#[cfg(all(feature = "laser", target_arch = "wasm32"))]
+pub use uibeam_macros::island;
+
+use std::borrow::Cow;
 
 /// # `UI` - UIBeam's template representation
 /// 

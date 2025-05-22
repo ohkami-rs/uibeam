@@ -1,8 +1,5 @@
 mod ui;
 
-#[cfg(feature = "laser")]
-mod laser;
-
 #[proc_macro]
 #[allow(non_snake_case)]
 /// # `UI!` - JSX-style template syntax
@@ -122,13 +119,17 @@ pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         .into()
 }
 
+#[cfg(feature = "laser")]
+mod island;
+
+#[cfg(feature = "laser")]
 #[proc_macro_attribute]
 #[allow(non_snake_case)]
-pub fn laser(
+pub fn island(
     args: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
-    laser::expand(args.into(), input.into())
+    island::expand(args.into(), input.into())
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
 }
