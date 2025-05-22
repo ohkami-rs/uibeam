@@ -29,6 +29,8 @@ mod integration;
 #[doc(hidden)]
 pub mod laser;
 
+#[cfg(feature = "laser")]
+pub use laser::{signal, computed, effect, batch, untracked};
 pub use uibeam_html::escape;
 pub use uibeam_macros::UI;
 #[cfg(feature = "laser")]

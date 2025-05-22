@@ -1,9 +1,6 @@
 #![cfg(feature = "laser")]
 
-use ::wasm_bindgen::convert::{FromWasmAbi, IntoWasmAbi, TryFromJsValue};
 use ::wasm_bindgen::prelude::*;
-use ::js_sys::{Function, Array, Object, Reflect};
-use ::web_sys::Node;
 
 #[doc(hidden)]
 pub use {::wasm_bindgen, ::web_sys};
@@ -54,7 +51,7 @@ impl<L: Laser + ::serde::Serialize> ::uibeam::Beam for L {
 
             ::uibeam::UI! {
                 <div
-                    data-uibeam-laser={name}
+                    data-uibeam-laser={name.clone()}
                 >
                     unsafe {template}
 
@@ -84,13 +81,14 @@ if (window.__uibeam_initlock__) {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
 mod preact {
     use super::*;
     
     #[wasm_bindgen(module = "https://esm.sh/preact")]
     unsafe extern "C" {
         #[wasm_bindgen(js_name = "hydrate")]
-        pub(super) fn hydrate(vdom: JsValue, container: Node);
+        pub(super) fn hydrate(vdom: JsValue, container: ::web_sys::Node);
 
         #[wasm_bindgen(js_name = "createElement")]
         pub(super) fn create_element(
@@ -134,17 +132,27 @@ mod preact {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
+use {
+    ::js_sys::{Function, Array, Object, Reflect},
+    ::wasm_bindgen::convert::{FromWasmAbi, IntoWasmAbi, TryFromJsValue},
+};
+
+#[cfg(target_arch = "wasm32")]
 pub fn hydrate(
     vdom: VNode,
-    container: Node,
+    container: ::web_sys::Node,
 ) {
     preact::hydrate(vdom.0, container);
 }
 
+#[cfg(target_arch = "wasm32")]
 pub struct VNode(JsValue);
 
+#[cfg(target_arch = "wasm32")]
 pub struct NodeType(JsValue);
 
+#[cfg(target_arch = "wasm32")]
 impl NodeType {
     pub fn tag(tag: &'static str) -> NodeType {
         NodeType(tag.into())
@@ -167,6 +175,7 @@ impl NodeType {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
 impl VNode {
     pub fn new(
         r#type: NodeType,
@@ -210,73 +219,114 @@ impl VNode {
     }
 }
 
-pub fn signal<T: JsCast>(value: T) -> (
-    impl (Fn() -> T) + Copy + 'static,
-    impl (Fn(T)) + Copy + 'static
+pub fn signal<T: JsCast + Clone + 'static>(value: T) -> (
+    impl (Fn() -> T) + Clone + 'static,
+    impl (Fn(T)) + Clone + 'static
 ) {
-    let signal = preact::signal(value.unchecked_into());
-    let signal = Object::into_abi(signal);
+    #[cfg(not(target_arch = "wasm32"))] {// for template rendering
+        (
+            move || value.clone(),
+            |_value: T| {}
+        )
+    }
+    #[cfg(target_arch = "wasm32")] {
+        let signal = preact::signal(value.unchecked_into());
+        let signal = Object::into_abi(signal);
 
-    let get = move || {
-        let signal = unsafe {Object::from_abi(signal)};
-        Reflect::get(&signal, &"value".into())
-            .unwrap_throw()
-            .unchecked_into()
-    };
+        let get = move || {
+            let signal = unsafe {Object::from_abi(signal)};
+            Reflect::get(&signal, &"value".into())
+                .unwrap_throw()
+                .unchecked_into()
+        };
 
-    let set = move |value: T| {
-        let signal = unsafe {Object::from_abi(signal)};
-        Reflect::set(&signal, &"value".into(), &value.unchecked_into())
-            .unwrap_throw();
-    };
+        let set = move |value: T| {
+            let signal = unsafe {Object::from_abi(signal)};
+            Reflect::set(&signal, &"value".into(), &value.unchecked_into())
+                .unwrap_throw();
+        };
 
-    (get, set)
-}
-
-pub fn computed<T: JsCast>(
-    getter: impl (Fn() -> T) + 'static
-) -> impl (Fn() -> T) + Copy + 'static {
-    let getter = Closure::<dyn Fn()->JsValue>::new(move || getter().unchecked_into())
-        .into_js_value()
-        .unchecked_into();
-
-    let computed = preact::computed(getter);
-    let computed = Object::into_abi(computed);
-
-    move || {
-        let computed = unsafe {Object::from_abi(computed)};
-        Reflect::get(&computed, &"value".into())
-            .unwrap_throw()
-            .unchecked_into()
+        (get, set)
     }
 }
 
+pub fn computed<T: JsCast + Clone + 'static>(
+    getter: impl (Fn() -> T) + Clone + 'static
+) -> impl (Fn() -> T) + Clone + 'static {
+    #[cfg(not(target_arch = "wasm32"))] {// for template rendering
+        getter
+    }
+    #[cfg(target_arch = "wasm32")] {
+        let getter = Closure::<dyn Fn()->JsValue>::new(move || getter().unchecked_into())
+            .into_js_value()
+            .unchecked_into();
+
+        let computed = preact::computed(getter);
+        let computed = Object::into_abi(computed);
+
+        move || {
+            let computed = unsafe {Object::from_abi(computed)};
+            Reflect::get(&computed, &"value".into())
+                .unwrap_throw()
+                .unchecked_into()
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! computed {
+    (|| $result:expr) => {
+        $crate::laser::computed(|| $result)
+    };
+    (move || $result:expr) => {
+        $crate::laser::computed(move || $result)
+    };
+    ($dep_signal:ident => $result:expr) => {
+        $crate::laser::computed({
+            let $dep_signal = $dep_signal.clone();
+            move || $result
+        })
+    };
+    (($($dep_signal:ident),*) => $result:expr) => {
+        $crate::laser::computed({
+            $(let $dep_signal = $dep_signal.clone();)+
+            move || $result
+        })
+    };
+}
+
 pub fn effect(
+    #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
     f: impl Fn() + 'static
 ) {
-    let f = Closure::<dyn Fn()>::new(f)
-        .into_js_value()
-        .unchecked_into();
-
-    preact::effect(f);
+    #[cfg(target_arch = "wasm32")] {
+        let f = Closure::<dyn Fn()>::new(f)
+            .into_js_value()
+            .unchecked_into();
+        preact::effect(f);
+    }
 }
 
 pub fn batch(
+    #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
     f: impl Fn() + 'static
 ) {
-    let f = Closure::<dyn Fn()>::new(f)
-        .into_js_value()
-        .unchecked_into();
-
-    preact::batch(f);
+    #[cfg(target_arch = "wasm32")] {
+        let f = Closure::<dyn Fn()>::new(f)
+            .into_js_value()
+            .unchecked_into();
+        preact::batch(f);
+    }
 }
 
 pub fn untracked(
+    #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
     f: impl Fn() + 'static
 ) {
-    let f = Closure::<dyn Fn()>::new(f)
-        .into_js_value()
-        .unchecked_into();
-
-    preact::untracked(f);
+    #[cfg(target_arch = "wasm32")] {
+        let f = Closure::<dyn Fn()>::new(f)
+            .into_js_value()
+            .unchecked_into();
+        preact::untracked(f);
+    }
 }
