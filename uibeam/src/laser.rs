@@ -3,7 +3,7 @@
 use ::wasm_bindgen::prelude::*;
 
 #[doc(hidden)]
-pub use {::wasm_bindgen, ::web_sys};
+pub use {::wasm_bindgen, ::web_sys, ::serde};
 
 fn type_ident<T>() -> &'static str {
     let type_name = std::any::type_name::<T>();
@@ -34,51 +34,6 @@ pub trait Laser_attribute {}
 
 pub trait Laser: Laser_attribute {
     fn render(self) -> crate::UI;
-}
-
-impl<L: Laser + ::serde::Serialize> ::uibeam::Beam for L {
-    fn render(self) -> ::uibeam::UI {
-        #[cfg(target_arch = "wasm32")] {
-            unreachable!();
-        }
-
-        #[cfg(not(target_arch = "wasm32"))] {
-            let name = format!("__uibeam_laser_{}__", type_ident::<L>());
-
-            let props: String = ::uibeam::laser::serialize_props(&self);
-
-            let template: ::std::borrow::Cow<'static, str> = ::uibeam::shoot(<Self as Laser>::render(self));
-
-            ::uibeam::UI! {
-                <div
-                    data-uibeam-laser={name.clone()}
-                >
-                    unsafe {template}
-
-                    <script type="module">
-unsafe {format!("
-const name = '{name}';
-const props = JSON.parse('{props}');
-")}
-r#"
-if (window.__uibeam_initlock__) {
-    while (!window.__uibeam_lasers__) await new Promise(resolve => setTimeout(resolve, 100));
-} else {
-    window.__uibeam_initlock__ = true;
-    const { default: init, ..lasers } = await import('./pkg/lasers.js');
-    await init();
-    window.__uibeam_lasers__ = lasers;
-}
-(window.__uibeam_lasers__[name])(
-    props,
-    document.querySelector(`[data-uibeam-laser=${name}]`)
-);
-"#
-                    </script>
-                </div>
-            }
-        }
-    }
 }
 
 #[cfg(target_arch = "wasm32")]
