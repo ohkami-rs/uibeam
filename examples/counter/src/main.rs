@@ -4,7 +4,7 @@ use ohkami::format::{Query, HTML};
 use uibeam::{UI, Beam, Laser, signal};
 
 struct Layout {
-    title: std::sync::Arc<String>,
+    title: String,
     children: UI,
 }
 impl Beam for Layout {
@@ -90,13 +90,11 @@ async fn index(Query(q): Query<CounterMeta>) -> HTML<std::borrow::Cow<'static, s
     }))
 }
 
-async fn _main() {
-    Ohkami::new((
-        Layout::fang_with_title("Counter Example"),
-        "/".GET(index),
-    )).howl("localhost:5000").await;
-}
-
 fn main() {
-    smol::block_on(_main());
+    smol::block_on(async {
+        Ohkami::new((
+            Layout::fang_with_title("Counter Example"),
+            "/".GET(index),
+        )).howl("localhost:5000").await
+    });
 }
