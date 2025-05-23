@@ -175,7 +175,7 @@ impl VNode {
     }
 }
 
-pub fn signal<T: JsCast + Clone + 'static>(value: T) -> (
+pub fn signal<T: serde::Serialize + for<'de>serde::Deserialize<'de> + Clone + 'static>(value: T) -> (
     impl (Fn() -> T) + Clone + 'static,
     impl (Fn(T)) + Clone + 'static
 ) {
@@ -186,27 +186,26 @@ pub fn signal<T: JsCast + Clone + 'static>(value: T) -> (
         )
     }
     #[cfg(target_arch = "wasm32")] {
-        let signal = preact::signal(value.unchecked_into());
+        let signal = preact::signal(value.into());
         let signal = Object::into_abi(signal);
 
         let get = move || {
             let signal = unsafe {Object::from_abi(signal)};
-            Reflect::get(&signal, &"value".into())
-                .unwrap_throw()
-                .unchecked_into()
+            let value = Reflect::get(&signal, &"value".into()).unwrap_throw();
+            serde_wasm_bindgen::from_value(value).unwrap_throw()
         };
 
         let set = move |value: T| {
             let signal = unsafe {Object::from_abi(signal)};
-            Reflect::set(&signal, &"value".into(), &value.unchecked_into())
-                .unwrap_throw();
+            let value = serde_wasm_bindgen::to_value(&value).unwrap_throw();
+            Reflect::set(&signal, &"value".into(), &value).unwrap_throw();
         };
 
         (get, set)
     }
 }
 
-pub fn computed<T: JsCast + Clone + 'static>(
+pub fn computed<T: for<'de>serde::Deserialize<'de> + Clone + 'static>(
     getter: impl (Fn() -> T) + Clone + 'static
 ) -> impl (Fn() -> T) + Clone + 'static {
     #[cfg(not(target_arch = "wasm32"))] {// for template rendering
@@ -222,9 +221,8 @@ pub fn computed<T: JsCast + Clone + 'static>(
 
         move || {
             let computed = unsafe {Object::from_abi(computed)};
-            Reflect::get(&computed, &"value".into())
-                .unwrap_throw()
-                .unchecked_into()
+            let value = Reflect::get(&computed, &"value".into()).unwrap_throw();
+            serde_wasm_bindgen::from_value(value).unwrap_throw()
         }
     }
 }

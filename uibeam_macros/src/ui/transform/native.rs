@@ -228,7 +228,7 @@ pub(crate) fn transform(
                 }
             });
             syn::parse2(quote! {
-                ::uibeam::Component::render(#name {
+                <#name as ::uibeam::Beam>::render(#name {
                     #(#attributes)*
                     #children
                 })

@@ -18,20 +18,20 @@ pub(super) fn expand(
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
     let attribute_marker_impl = {
-        let mut where_clause = where_clause.cloned();
-        if !local {
-            if where_clause.is_none() {
-                where_clause = Some(WhereClause {
-                    where_token: Default::default(),
-                    predicates: Default::default(),
-                });
-            }
-            where_clause.as_mut().unwrap().predicates.push(
-                syn::parse2(quote! {
-                    Self: ::uibeam::laser::serde::Serialize,
-                }).unwrap(),
-            );
-        }
+        //let mut where_clause = where_clause.cloned();
+        //if !local {
+        //    if where_clause.is_none() {
+        //        where_clause = Some(WhereClause {
+        //            where_token: Default::default(),
+        //            predicates: Default::default(),
+        //        });
+        //    }
+        //    where_clause.as_mut().unwrap().predicates.push(
+        //        syn::parse2(quote! {
+        //            Self: ::uibeam::laser::serde::Serialize,
+        //        }).unwrap(),
+        //    );
+        //}
 
         quote! {
             impl #impl_generics ::uibeam::laser::Laser_attribute for #name #ty_generics

@@ -4,7 +4,101 @@ use super::super::parse::{NodeTokens, ContentPieceTokens, InterpolationTokens, A
 use super::Component;
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens};
-use syn::LitStr;
+use syn::{LitStr, Expr};
+
+fn as_event_handler(name: &str, expression: &Expr) -> Option<(&'static str, TokenStream)> {
+    macro_rules! preact_event_handler {
+        ($($event:literal: $prop:ident($Event:ty);)*) => {
+            match &*name.strip_prefix("on")?.to_ascii_lowercase() {
+                $(
+                    $event => Some((
+                        stringify!($prop),
+                        quote! {
+                            ::uibeam::laser::wasm_bindgen::Closure::<dyn Fn(::uibeam::laser::web_sys::$Event)>::new(
+                                #expression
+                            ).into_js_value()
+                        }
+                    )),
+                )*
+                _ => None,
+            }
+        }
+    }
+    preact_event_handler! {
+        "animationcancel":    onAnimationCancel(AnimationEvent);
+        "animationend":       onAnimationEnd(AnimationEvent);
+        "animationiteration": onAnimationIteration(AnimationEvent);
+        "animationstart":     onAnimationStart(AnimationEvent);
+
+        "auxclick":    onAuxClick(MouseEvent);
+        "contextmenu": onContextMenu(MouseEvent);
+        "dblclick":    onDblClick(MouseEvent);
+        "mousedown":   onMouseDown(MouseEvent);
+        "mouseenter":  onMouseEnter(MouseEvent);
+        "mouseleave":  onMouseLeave(MouseEvent);
+        "mousemove":   onMouseMove(MouseEvent);
+        "mouseout":    onMouseOut(MouseEvent);
+        "mouseover":   onMouseOver(MouseEvent);
+        "mouseup":     onMouseUp(MouseEvent);
+
+        "click":              onClick(PointerEvent);
+        "gotpointercapture":  onGotPointerCapture(PointerEvent);
+        "lostpointercapture": onLostPointerCapture(PointerEvent);
+        "pointercancel":      onPointerCancel(PointerEvent);
+        "pointerdown":        onPointerDown(PointerEvent);
+        "pointerenter":       onPointerEnter(PointerEvent);
+        "pointerleave":       onPointerLeave(PointerEvent);
+        "pointermove":        onPointerMove(PointerEvent);
+        "pointerout":         onPointerOut(PointerEvent);
+        "pointerover":        onPointerOver(PointerEvent);
+        "pointerrawupdate":   onPointerRawUpdate(PointerEvent);
+        "pointerup":          onPointerUp(PointerEvent);
+
+        "beforeinput": onBeforeInput(InputEvent);
+
+        "blur":     onBlur(FocusEvent);
+        "focus":    onFocus(FocusEvent);
+        "focusin":  onFocusIn(FocusEvent);
+        "focusout": onFocusOut(FocusEvent);
+
+        "compositionend":    onCompositionEnd(CompositionEvent);
+        "compositionstart":  onCompositionStart(CompositionEvent);
+        "compositionupdate": onCompositionUpdate(CompositionEvent);
+
+        "keydown":  onKeyDown(KeyboardEvent);
+        "keypress": onKeyPress(KeyboardEvent);
+        "keyup":    onKeyUp(KeyboardEvent);
+
+        "touchcancel": onTouchCancel(TouchEvent);
+        "touchend":    onTouchEnd(TouchEvent);
+        "touchmove":   onTouchMove(TouchEvent);
+        "touchstart":  onTouchStart(TouchEvent);
+
+        "transitioncancel": onTransitionCancel(TransitionEvent);
+        "transitionend":    onTransitionEnd(TransitionEvent);
+        "transitionrun":    onTransitionRun(TransitionEvent);
+        "transitionstart":  onTransitionStart(TransitionEvent);
+
+        "wheel": onWheel(WheelEvent);
+
+        "beforematch":      onBeforeMatch(Event);
+        "change":           onChange(Event);
+        "fullscreenchange": onFullScreenChange(Event);
+        "fullscreenerror":  onFullScreenError(Event);
+        "input":            onInput(Event);
+        "load":             onLoad(Event);
+        "scroll":           onScroll(Event);
+        "scrollend":        onScrollEnd(Event);
+
+        "afterprint":   onAfterPrint(Event);
+        "beforeprint":  onBeforePrint(Event);
+        "beforeunload": onBeforeUnload(Event);
+        "offline":      onOffline(Event);
+        "online":       onOnline(Event);
+
+        "resize": onResize(UiEvent);
+    }
+}
 
 /// Derives Rust codes that builds an `uibeam::laser::VNode` expression
 /// corresponded to the `UI!` input
@@ -19,37 +113,43 @@ pub(crate) fn transform(
         fn into_props(attributes: Vec<AttributeTokens>) -> TokenStream {
             let kvs = attributes.into_iter().map(|AttributeTokens { name, value }| {
                 let name = name.to_string();
-                let value = match value {
+                match value {
                     None => {
                         quote! {
-                            ::uibeam::laser::wasm_bindgen::JsValue::from("")
+                            (#name, ::uibeam::laser::wasm_bindgen::JsValue::TRUE)
                         }
                     }
                     Some(AttributeValueTokens { _eq, value }) => match value {
                         AttributeValueToken::IntegerLiteral(i) => {
                             quote! {
-                                ::uibeam::laser::wasm_bindgen::JsValue::from(#i)
+                                (#name, ::uibeam::laser::wasm_bindgen::JsValue::from(#i))
                             }
                         },
                         AttributeValueToken::StringLiteral(s) => {
                             let s = LitStr::new(&uibeam_html::escape(&s.value()), s.span());
                             quote! {
-                                ::uibeam::laser::wasm_bindgen::JsValue::from(#s)
+                                (#name, ::uibeam::laser::wasm_bindgen::JsValue::from(#s))
                             }
                         },
                         AttributeValueToken::Interpolation(InterpolationTokens {
                             _unsafe, _brace, rust_expression
                         }) => {
-                            quote! {
-                                ::uibeam::laser::wasm_bindgen::JsValue::from(
-                                    ::uibeam::AttributeValue::from(#rust_expression)
-                                )
+                            match as_event_handler(&name, &rust_expression) {
+                                Some((prop, handler_tokens)) => {
+                                    quote! {
+                                        (#prop, #handler_tokens)
+                                    }
+                                }
+                                None => {
+                                    quote! {
+                                        (#name, ::uibeam::laser::wasm_bindgen::JsValue::from(
+                                            ::uibeam::AttributeValue::from(#rust_expression)
+                                        ))
+                                    }
+                                }
                             }
                         }
                     }
-                };
-                quote! {
-                    (#name, #value)
                 }
             });
             quote! {
