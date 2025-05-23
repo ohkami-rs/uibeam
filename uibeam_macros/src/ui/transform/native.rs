@@ -1,8 +1,8 @@
 use super::super::parse::{NodeTokens, ContentPieceTokens, InterpolationTokens, AttributeTokens, AttributeValueTokens, AttributeValueToken};
-use super::Component;
+use super::{Component, prop_for_event};
 use proc_macro2::{TokenStream, Span};
 use quote::{quote, ToTokens};
-use syn::{Expr, Lit, LitStr, ExprLit};
+use syn::{Expr, ExprLit, Lit, LitStr, Type};
 
 pub(crate) struct Piece(Option<String>);
 impl ToTokens for Piece {
@@ -76,6 +76,22 @@ impl ToTokens for Interpolation {
     }
 }
 
+pub(crate) struct EventHandlerAnnotation {
+    handler_expression: Expr,
+    event_type: Type,
+}
+impl ToTokens for EventHandlerAnnotation {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let Self { handler_expression, event_type } = self;
+        tokens.extend(quote! {
+            {
+                fn __<Handler: Fn(#event_type)>(handler: Handler) {}
+                __(#handler_expression);
+            }
+        });
+    }
+}
+
 /// Derives `({HTML-escaped literal pieces}, {interpolating expressions})`
 /// from the `NodeTokens`
 pub(crate) fn transform(
@@ -83,8 +99,9 @@ pub(crate) fn transform(
 ) -> (
     Vec<Piece>,
     Vec<Interpolation>,
+    Vec<EventHandlerAnnotation>,
 ) {
-    let (mut pieces, mut interpolations) = (Vec::new(), Vec::new());
+    let (mut pieces, mut interpolations, mut ehannotations) = (Vec::new(), Vec::new(), Vec::new());
 
     let mut piece = Piece::none();
 
@@ -93,9 +110,10 @@ pub(crate) fn transform(
         current_piece: &mut Piece,
         pieces: &mut Vec<Piece>,
         interpolations: &mut Vec<Interpolation>,
+        ehannotations: &mut Vec<EventHandlerAnnotation>,
     ) {
-        let (child_pieces, child_interpolations) = transform(node);
-        
+        let (child_pieces, child_interpolations, child_ehannotation) = transform(node);
+
         let mut child_pieces = child_pieces.into_iter();
         
         if let Some(first_child_piece) = child_pieces.next() {
@@ -110,6 +128,8 @@ pub(crate) fn transform(
         #[cfg(debug_assertions)] {
             assert!(child_pieces.next().is_none());
         }
+
+        ehannotations.extend(child_ehannotation);
     }
 
     fn handle_attributes(
@@ -117,10 +137,18 @@ pub(crate) fn transform(
         current_piece: &mut Piece,
         pieces: &mut Vec<Piece>,
         interpolations: &mut Vec<Interpolation>,
+        ehannotations: &mut Vec<EventHandlerAnnotation>,
     ) {
         for AttributeTokens { name, value } in attributes {
-            if name.to_string().starts_with("on") {
-                // ignore event handlers in template rendering
+            if let Some(event) = name.to_string().strip_prefix("on") {
+                if let Some((_prop, event_type)) = prop_for_event(&event.to_ascii_lowercase()) {
+                    if let Some(value) = value.map(|t| t.value) {
+                        ehannotations.push(EventHandlerAnnotation {
+                            handler_expression: syn::parse2(value.into_token_stream()).unwrap(),
+                            event_type,
+                        });
+                    }
+                }
                 continue;
             }
 
@@ -155,6 +183,7 @@ pub(crate) fn transform(
         current_piece: &mut Piece,
         pieces: &mut Vec<Piece>,
         interpolations: &mut Vec<Interpolation>,
+        ehannotations: &mut Vec<EventHandlerAnnotation>,
     ) {
         for c in content {
             match c {
@@ -193,6 +222,7 @@ pub(crate) fn transform(
                     current_piece,
                     pieces,
                     interpolations,
+                    ehannotations,
                 )
             }
         }
@@ -273,14 +303,16 @@ pub(crate) fn transform(
                     attributes,
                     &mut piece,
                     &mut pieces,
-                    &mut interpolations
+                    &mut interpolations,
+                    &mut ehannotations,
                 );
                 piece.join(Piece::new(">"));
                 handle_content_pieces(
                     content,
                     &mut piece,
                     &mut pieces,
-                    &mut interpolations
+                    &mut interpolations,
+                    &mut ehannotations,
                 );
                 piece.join(Piece::new(format!("</{tag}>")));
             }
@@ -291,7 +323,8 @@ pub(crate) fn transform(
                     attributes,
                     &mut piece,
                     &mut pieces,
-                    &mut interpolations
+                    &mut interpolations,
+                    &mut ehannotations,
                 );
                 piece.join(Piece::new("/>"));
             }
@@ -301,7 +334,8 @@ pub(crate) fn transform(
                     node_pieces,
                     &mut piece,
                     &mut pieces,
-                    &mut interpolations
+                    &mut interpolations,
+                    &mut ehannotations,
                 );
             }
         }
@@ -309,5 +343,5 @@ pub(crate) fn transform(
         piece.commit(&mut pieces);
     }
 
-    (pieces, interpolations)
+    (pieces, interpolations, ehannotations)
 }

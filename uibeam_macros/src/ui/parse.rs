@@ -392,7 +392,12 @@ impl ToTokens for AttributeTokens {
 impl ToTokens for AttributeValueTokens {
     fn to_tokens(&self, t: &mut proc_macro2::TokenStream) {
         self._eq.to_tokens(t);
-        match &self.value {
+        self.value.to_tokens(t);
+    }
+}
+impl ToTokens for AttributeValueToken {
+    fn to_tokens(&self, t: &mut proc_macro2::TokenStream) {
+        match self {
             AttributeValueToken::StringLiteral(lit_str) => {
                 lit_str.to_tokens(t);
             }

@@ -58,12 +58,12 @@ impl Laser for Counter {
         let (count, set_count) = signal(self.initial_count);
 
         let increment = {
-            let count = count.clone();
+            let (count, set_count) = (count.clone(), set_count.clone());
             move |_| set_count(count() + 1)
         };
 
         let decrement = {
-            let count = count.clone();
+            let (count, set_count) = (count.clone(), set_count.clone());
             move |_| set_count(count() - 1)
         };
 

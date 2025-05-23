@@ -33,16 +33,27 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
         });
 
         let native_nodes = nodes.into_iter().map(|node| {
-            let (mut literals, expressions) = transform::native::transform(node);
+            let (mut literals, expressions, ehannotations) = transform::native::transform(node);
             if should_insert_doctype {
                 literals.first_mut().unwrap().edit(|lit| *lit = format!("<!DOCTYPE html>{lit}"));
                 should_insert_doctype = false;
             }
+
+            let ehannotations = (ehannotations.len() > 0).then(|| {
+                quote! {
+                    #[cfg(debug_assertions)]
+                    #(#ehannotations)*
+                }
+            });
+
             quote! {
-                unsafe {::uibeam::UI::new_unchecked(
-                    &[#(#literals),*],
-                    [#(#expressions),*]
-                )}
+                unsafe {
+                    #ehannotations
+                    ::uibeam::UI::new_unchecked(
+                        &[#(#literals),*],
+                        [#(#expressions),*]
+                    )
+                }
             }
         });
 
