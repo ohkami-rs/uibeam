@@ -33,9 +33,10 @@ impl Layout {
             async fn back(&self, res: &mut Response) {
                 if res.headers.ContentType().is_some_and(|x| x.starts_with("text/html")) {
                     let content = res.drop_content().into_bytes().unwrap();
+                    let content = std::str::from_utf8(&*content).unwrap();
                     res.set_html(uibeam::shoot(UI! {
-                        <Layout title={self.title.to_string()}>
-                            unsafe {std::str::from_utf8(&*content).unwrap()}
+                        <Layout title={self.title.clone()}>
+                            unsafe {content}
                         </Layout>
                     }));
                 }
@@ -69,9 +70,9 @@ impl Laser for Counter {
 
         UI! {
             <div>
-                <h1 class="text-2xl font-bold">"Counter: "{count()}</h1>
-                <button class="bg-blue-500 text-white px-4 py-2 rounded" onClick={increment}>"+"</button>
-                <button class="bg-red-500 text-white px-4 py-2 rounded" onClick={decrement}>"-"</button>
+                <h1 class="text-2xl font-bold">"Count: "{count()}</h1>
+                <button class="bg-blue-500 text-white px-4 py-2 rounded" onclick={increment}>"+"</button>
+                <button class="bg-red-500 text-white px-4 py-2 rounded" onclick={decrement}>"-"</button>
             </div>
         }
     }
