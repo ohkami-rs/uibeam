@@ -61,23 +61,23 @@ pub(super) fn expand(
                     }
 
                     #[cfg(not(target_arch = "wasm32"))] {
-                        let name = #hydrater_name_str;
-
                         let props: String = ::uibeam::laser::serialize_props(&self);
 
                         let template: ::std::borrow::Cow<'static, str> = ::uibeam::shoot(<Self as Laser>::render(self));
 
                         ::uibeam::UI! {
                             <div
-                                data-uibeam-laser={name}
+                                data-uibeam-laser=#hydrater_name_str
                             >
                                 unsafe {template}
 
                                 <script type="module">
-unsafe {format!("
-const name = '{name}';
-const props = JSON.parse('{props}');
-")}
+r#"const name = '"#
+#hydrater_name_str
+r#"';"#
+r#"const props = JSON.parse('"#
+unsafe {props}
+r#"');"#
 r#"
 if (window.__uibeam_initlock__) {
     while (!window.__uibeam_lasers__) await new Promise(resolve => setTimeout(resolve, 100));
