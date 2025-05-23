@@ -1,0 +1,10 @@
+name: title, maybe event: None
+name: data-uibeam-laser, maybe event: None
+name: onClick, maybe event: Some("onClick")
+name: onClick, maybe event: Some("onClick")
+name: initial_count, maybe event: None
+name: title, maybe event: None
+name: data-uibeam-laser, maybe event: None
+name: onClick, maybe event: Some("onClick")
+name: onClick, maybe event: Some("onClick")
+name: initial_count, maybe event: None

@@ -7,3 +7,4 @@ edition = "2024"
 uibeam = { path = "../../uibeam", features = ["laser"] }
 ohkami = { git = "https://github.com/ohkami-rs/ohkami", branch = "v0.24", features = ["rt_smol"] }
 smol   = { version = "2" }
+serde  = { version = "1", features = ["derive"] }

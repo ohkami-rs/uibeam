@@ -35,6 +35,9 @@ pub use uibeam_html::escape;
 pub use uibeam_macros::UI;
 #[cfg(feature = "laser")]
 pub use uibeam_macros::Laser;
+#[cfg(feature = "laser")]
+#[doc(hidden)]
+pub use uibeam_macros::consume;
 
 use std::borrow::Cow;
 

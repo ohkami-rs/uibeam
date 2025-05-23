@@ -18,46 +18,34 @@ pub(super) fn expand(
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
     let attribute_marker_impl = {
-        //let mut where_clause = where_clause.cloned();
-        //if !local {
-        //    if where_clause.is_none() {
-        //        where_clause = Some(WhereClause {
-        //            where_token: Default::default(),
-        //            predicates: Default::default(),
-        //        });
-        //    }
-        //    where_clause.as_mut().unwrap().predicates.push(
-        //        syn::parse2(quote! {
-        //            Self: ::uibeam::laser::serde::Serialize,
-        //        }).unwrap(),
-        //    );
-        //}
-
         quote! {
-            impl #impl_generics ::uibeam::laser::Laser_attribute for #name #ty_generics
-                #where_clause
-            {}
+            impl ::uibeam::laser::Laser_attribute for #name {}
         }
     };
 
     let hydrater = (!local).then(|| quote! {
         #[cfg(target_arch = "wasm32")]
         #[doc(hidden)]
-        #[allow(non_snake_case)]
-        #[::uibeam::laser::wasm_bindgen::prelude::wasm_bindgen]
-        pub fn #hydrater_name #impl_generics(props: #name #ty_generics, container: ::uibeam::laser::web_sys::Node)
-            #where_clause
-        {
-            ::uibeam::laser::hydrate(
-                <#name as ::uibeam::Laser>::render(props).into_vdom(),
-                container
-            )
+        #[allow(unused)]
+        pub mod #hydrater_name {
+            use ::uibeam::laser::wasm_bindgen;
+
+            #[cfg(target_arch = "wasm32")]
+            #[doc(hidden)]
+            #[allow(non_snake_case)]
+            #[wasm_bindgen::prelude::wasm_bindgen]
+            pub fn #hydrater_name(props: #name, container: ::uibeam::laser::web_sys::Node) {
+                ::uibeam::laser::hydrate(
+                    <#name as ::uibeam::Laser>::render(props).into_vdom(),
+                    container
+                )
+            }
         }
     });
 
     let beam_impl = if local {
         quote! {
-            impl<L: ::uibeam::Laser> ::uibeam::Beam for L {
+            impl ::uibeam::Beam for #name {
                 fn render(self) -> ::uibeam::UI {
                     unreachable!()
                 }
@@ -65,7 +53,10 @@ pub(super) fn expand(
         }
     } else {
         quote! {
-            impl<L: Laser + ::serde::Serialize> ::uibeam::Beam for L {
+            impl ::uibeam::Beam for #name
+            where
+                Self: ::uibeam::laser::serde::Serialize,
+            {
                 fn render(self) -> ::uibeam::UI {
                     #[cfg(target_arch = "wasm32")] {
                         unreachable!();
@@ -113,8 +104,14 @@ if (window.__uibeam_initlock__) {
     };
 
     Ok(quote! {
-        #[::uibeam::laser::wasm_bindgen::prelude::wasm_bindgen]
         #input
+
+        const _: () = {
+            use ::uibeam::laser::wasm_bindgen;
+            #[wasm_bindgen::prelude::wasm_bindgen]
+            #[::uibeam::consume]
+            #input
+        };
 
         #attribute_marker_impl
 

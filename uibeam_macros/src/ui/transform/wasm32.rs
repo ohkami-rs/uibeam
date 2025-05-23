@@ -7,6 +7,15 @@ use quote::{quote, ToTokens};
 use syn::{LitStr, Expr};
 
 fn as_event_handler(name: &str, expression: &Expr) -> Option<(&'static str, TokenStream)> {
+    {
+        use std::{io::Write, fs::OpenOptions};
+        OpenOptions::new()
+            .append(true)
+            .create(true)
+            .open("uibeam_macros.log")
+            .and_then(|mut file| writeln!(file, "name: {name}, maybe event: `{:?}`", name.strip_prefix("on").map(|s| s.to_ascii_lowercase())))
+            .ok();
+    }
     macro_rules! preact_event_handler {
         ($($event:literal: $prop:ident($Event:ty);)*) => {
             match &*name.strip_prefix("on")?.to_ascii_lowercase() {
@@ -134,10 +143,21 @@ pub(crate) fn transform(
                         AttributeValueToken::Interpolation(InterpolationTokens {
                             _unsafe, _brace, rust_expression
                         }) => {
+                            {
+                                use std::{io::Write, fs::OpenOptions};
+                                OpenOptions::new()
+                                    .append(true)
+                                    .create(true)
+                                    .open("uibeam_macros.interpolations.log")
+                                    .and_then(|mut f| writeln!(f, "name: {name}, maybe event: {:?}", {
+                                        as_event_handler(&name, &rust_expression).map(|(prop, _)| prop)
+                                    }))
+                                    .ok();
+                            }
                             match as_event_handler(&name, &rust_expression) {
-                                Some((prop, handler_tokens)) => {
+                                Some((prop, event_handler)) => {
                                     quote! {
-                                        (#prop, #handler_tokens)
+                                        (#prop, #event_handler)
                                     }
                                 }
                                 None => {

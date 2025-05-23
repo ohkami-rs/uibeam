@@ -1,6 +1,6 @@
 use ohkami::prelude::*;
 use ohkami::serde::Deserialize;
-use ohkami::format::Query;
+use ohkami::format::{Query, HTML};
 use uibeam::{UI, Beam, Laser, signal};
 
 struct Layout {
@@ -9,46 +9,47 @@ struct Layout {
 }
 impl Beam for Layout {
     fn render(self) -> UI {
-        <html>
-            <head>
-                <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" />
-                <title>{&*self.title}</title>
-            </head>
-            <body>
-                {self.children}
-            </body>
-        </html>
+        UI! {
+            <html>
+                <head>
+                    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" />
+                    <title>{&*self.title}</title>
+                </head>
+                <body>
+                    {self.children}
+                </body>
+            </html>
+        }
     }
 }
 impl Layout {
     fn fang_with_title(title: &str) -> impl FangAction {
         #[derive(Clone)]
         struct Fang {
-            title: std::sync::Arc<String>,
+            title: String,
         }
 
         impl FangAction for Fang {
             async fn back(&self, res: &mut Response) {
                 if res.headers.ContentType().is_some_and(|x| x.starts_with("text/html")) {
                     let content = res.drop_content().into_bytes().unwrap();
-                    res.set_html(uibeam::shoot(
-                        UI! {
-                            <Layout title={&*self.title.clone()}>
-                                unsafe {std::str::from_utf8(&*content).unwrap()}
-                            </Layout>
-                        }
-                    ));
+                    res.set_html(uibeam::shoot(UI! {
+                        <Layout title={self.title.to_string()}>
+                            unsafe {std::str::from_utf8(&*content).unwrap()}
+                        </Layout>
+                    }));
                 }
             }
         }
 
         Fang {
-            title: std::sync::Arc::new(title.to_string()),
+            title: title.to_string(),
         }
     }
 }
 
 #[Laser]
+#[derive(serde::Serialize)]
 struct Counter {
     initial_count: i32,
 }
@@ -81,12 +82,12 @@ struct CounterMeta {
     init: Option<i32>,
 }
 
-async fn index(Query(q): Query<CounterMeta>) -> UI {
+async fn index(Query(q): Query<CounterMeta>) -> HTML<std::borrow::Cow<'static, str>> {
     let initial_count = q.init.unwrap_or(0);
     
-    UI! {
+    HTML(uibeam::shoot(UI! {
         <Counter initial_count={initial_count} />
-    }
+    }))
 }
 
 async fn _main() {
@@ -97,5 +98,5 @@ async fn _main() {
 }
 
 fn main() {
-    smol::spawn(_main());
+    //smol::spawn(_main());
 }

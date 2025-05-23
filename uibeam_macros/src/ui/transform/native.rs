@@ -119,6 +119,11 @@ pub(crate) fn transform(
         interpolations: &mut Vec<Interpolation>,
     ) {
         for AttributeTokens { name, value } in attributes {
+            if name.to_string().starts_with("on") {
+                // ignore event handlers in template rendering
+                continue;
+            }
+
             current_piece.join(Piece::new(format!(" {name}")));
             if let Some(value) = value {
                 current_piece.join(Piece::new("="));

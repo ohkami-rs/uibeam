@@ -133,3 +133,8 @@ pub fn Laser(
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
 }
+
+#[proc_macro_attribute]
+pub fn consume(_: proc_macro::TokenStream, _: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    proc_macro::TokenStream::new()
+}
