@@ -98,5 +98,5 @@ async fn _main() {
 }
 
 fn main() {
-    //smol::spawn(_main());
+    smol::block_on(_main());
 }

@@ -2,7 +2,7 @@
 
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use syn::{ItemStruct, LitStr, WhereClause};
+use syn::{ItemStruct, LitStr};
 
 pub(super) fn expand(
     args: TokenStream,
@@ -14,8 +14,6 @@ pub(super) fn expand(
     let name = &input.ident;
     let hydrater_name = format_ident!("__uibeam_laser_{name}__");
     let hydrater_name_str = LitStr::new(&hydrater_name.to_string(), hydrater_name.span());
-
-    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
     let attribute_marker_impl = {
         quote! {

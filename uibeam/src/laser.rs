@@ -1,7 +1,5 @@
 #![cfg(feature = "laser")]
 
-use ::wasm_bindgen::prelude::*;
-
 #[doc(hidden)]
 pub use {::wasm_bindgen, ::web_sys, ::serde};
 
@@ -71,6 +69,7 @@ mod preact {
 
 #[cfg(target_arch = "wasm32")]
 use {
+    ::wasm_bindgen::prelude::*,
     ::js_sys::{Function, Array, Object, Reflect},
     ::wasm_bindgen::convert::{FromWasmAbi, IntoWasmAbi, TryFromJsValue},
 };

@@ -86,6 +86,7 @@ impl ToTokens for EventHandlerAnnotation {
         tokens.extend(quote! {
             {
                 fn __<Handler: Fn(#event_type)>(handler: Handler) {}
+                #[allow(unused_braces)]
                 __(#handler_expression);
             }
         });
