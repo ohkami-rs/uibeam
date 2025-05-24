@@ -8,7 +8,6 @@ use ohkami::format::{Query, HTML};
 struct LayoutFang {
     title: &'static str,
 }
-
 impl FangAction for LayoutFang {
     async fn back(&self, res: &mut Response) {
         if res.headers.ContentType().is_some_and(|x| x.starts_with("text/html")) {
@@ -20,6 +19,18 @@ impl FangAction for LayoutFang {
                 </Layout>
             }));
         }
+    }
+}
+
+#[derive(Clone)]
+struct Logger;
+impl FangAction for Logger {
+    async fn fore(&self, req: &mut Request) -> Result<(), Response> {
+        println!("{req:?}");
+        Ok(())
+    }
+    async fn back(&self, res: &mut Response) {
+        println!("{res:?}");
     }
 }
 
@@ -39,6 +50,7 @@ async fn index(Query(q): Query<CounterMeta>) -> HTML<std::borrow::Cow<'static, s
 fn main() {
     smol::block_on(async {
         Ohkami::new((
+            Logger,
             LayoutFang { title: "Counter Example" },
             "/".GET(index),
         )).howl("localhost:5000").await

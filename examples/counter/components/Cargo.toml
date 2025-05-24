@@ -3,6 +3,9 @@ name    = "components"
 version = "0.0.0"
 edition = "2024"
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 [dependencies]
 uibeam = { workspace = true }
 serde  = { workspace = true }
