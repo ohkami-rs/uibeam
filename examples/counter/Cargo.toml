@@ -1,10 +1,19 @@
+[workspace]
+resolver = "3"
+members  = [".", "components"]
+
+[workspace.dependencies]
+uibeam = { path = "../../uibeam", features = ["laser"] }
+serde  = { version = "1", features = ["derive"] }
+
 [package]
 name    = "counter"
 version = "0.0.0"
 edition = "2024"
 
 [dependencies]
-uibeam = { path = "../../uibeam", features = ["laser"] }
+components = { path = "components" }
+uibeam = { workspace = true }
+serde  = { workspace = true }
 ohkami = { git = "https://github.com/ohkami-rs/ohkami", branch = "v0.24", features = ["rt_smol"] }
 smol   = { version = "2" }
-serde  = { version = "1", features = ["derive"] }
