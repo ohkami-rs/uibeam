@@ -4,14 +4,14 @@ use super::super::parse::{NodeTokens, ContentPieceTokens, InterpolationTokens, A
 use super::{Component, prop_for_event};
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens};
-use syn::{LitStr, Ident, Expr};
+use syn::{LitStr, Expr};
 
-fn as_event_handler(name: &str, expression: &Expr) -> Option<(Ident, TokenStream)> {
+fn as_event_handler(name: &str, expression: &Expr) -> Option<(LitStr, TokenStream)> {
     prop_for_event(&*name.strip_prefix("on")?.to_ascii_lowercase())
         .map(|(prop, event)| (
-            prop,
+            LitStr::new(&prop.to_string(), prop.span()),
             quote! {
-                ::uibeam::laser::wasm_bindgen::Closure::<dyn Fn(#event)>::new(
+                ::uibeam::laser::wasm_bindgen::closure::Closure::<dyn Fn(#event)>::new(
                     #expression
                 ).into_js_value()
             }

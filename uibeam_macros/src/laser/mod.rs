@@ -26,6 +26,7 @@ pub(super) fn expand(
         #[doc(hidden)]
         #[allow(unused)]
         pub mod #hydrater_name {
+            use super::#name;
             use ::uibeam::laser::wasm_bindgen;
 
             #[cfg(target_arch = "wasm32")]

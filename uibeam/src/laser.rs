@@ -185,7 +185,7 @@ pub fn signal<T: serde::Serialize + for<'de>serde::Deserialize<'de> + Clone + 's
         )
     }
     #[cfg(target_arch = "wasm32")] {
-        let signal = preact::signal(value.into());
+        let signal = preact::signal(serde_wasm_bindgen::to_value(&value).unwrap_throw());
         let signal = Object::into_abi(signal);
 
         let get = move || {
@@ -204,14 +204,14 @@ pub fn signal<T: serde::Serialize + for<'de>serde::Deserialize<'de> + Clone + 's
     }
 }
 
-pub fn computed<T: for<'de>serde::Deserialize<'de> + Clone + 'static>(
+pub fn computed<T: serde::Serialize + for<'de>serde::Deserialize<'de> + Clone + 'static>(
     getter: impl (Fn() -> T) + Clone + 'static
 ) -> impl (Fn() -> T) + Clone + 'static {
     #[cfg(not(target_arch = "wasm32"))] {// for template rendering
         getter
     }
     #[cfg(target_arch = "wasm32")] {
-        let getter = Closure::<dyn Fn()->JsValue>::new(move || getter().unchecked_into())
+        let getter = Closure::<dyn Fn()->JsValue>::new(move || serde_wasm_bindgen::to_value(&getter()).unwrap_throw())
             .into_js_value()
             .unchecked_into();
 
