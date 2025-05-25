@@ -84,7 +84,11 @@ if (window.__uibeam_initlock__) {
     while (!window.__uibeam_lasers__) await new Promise(resolve => setTimeout(resolve, 100));
 } else {
     window.__uibeam_initlock__ = true;
-    const { default: init, ..lasers } = await import('./pkg/lasers.js');
+    document.body.insertAdjacentHTML('afterbegin', '<script type="importmap">{
+        "preact": "https://esm.sh/preact",
+        "@preact/signals": "https://esm.sh/@preact/signals?external=preact"
+    }</script>');
+    const { default: init, ...lasers } = await import('/.uibeam/lasers.js');
     await init();
     window.__uibeam_lasers__ = lasers;
 }

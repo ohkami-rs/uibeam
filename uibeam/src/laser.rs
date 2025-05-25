@@ -20,7 +20,7 @@ pub trait Laser: Laser_attribute {
 mod preact {
     use super::*;
     
-    #[wasm_bindgen(module = "https://esm.sh/preact")]
+    #[wasm_bindgen(module = "preact")]
     unsafe extern "C" {
         #[wasm_bindgen(js_name = "hydrate")]
         pub(super) fn hydrate(vdom: JsValue, container: ::web_sys::Node);
@@ -48,7 +48,7 @@ mod preact {
         ) -> JsValue;
     }
 
-    #[wasm_bindgen(module = "https://esm.sh/@preact/signals?external=preact")]
+    #[wasm_bindgen(module = "@preact/signals")]
     unsafe extern "C" {
         #[wasm_bindgen(js_name = "useSignal")]
         pub(super) fn signal(value: JsValue) -> Object;
