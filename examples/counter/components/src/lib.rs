@@ -22,7 +22,7 @@ impl Beam for Layout {
 }
 
 #[Laser]
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Counter {
     pub initial_count: i32,
 }

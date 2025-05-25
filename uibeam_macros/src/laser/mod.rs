@@ -28,12 +28,18 @@ pub(super) fn expand(
         pub mod #hydrater_name {
             use super::#name;
             use ::uibeam::laser::wasm_bindgen;
+            use ::uibeam::laser::wasm_bindgen::{JsCast, UnwrapThrowExt};
 
             #[cfg(target_arch = "wasm32")]
             #[doc(hidden)]
             #[allow(non_snake_case)]
             #[wasm_bindgen::prelude::wasm_bindgen]
-            pub fn #hydrater_name(props: #name, container: ::uibeam::laser::web_sys::Node) {
+            pub fn #hydrater_name(
+                props: ::uibeam::laser::js_sys::Object,
+                container: ::uibeam::laser::web_sys::Node
+            ) {
+                let props: #name = ::uibeam::laser::serde_wasm_bindgen::from_value(props.unchecked_into())
+                    .unwrap_throw();
                 ::uibeam::laser::hydrate(
                     <#name as ::uibeam::Laser>::render(props).into_vdom(),
                     container
@@ -54,7 +60,7 @@ pub(super) fn expand(
         quote! {
             impl ::uibeam::Beam for #name
             where
-                Self: ::uibeam::laser::serde::Serialize,
+                Self: ::uibeam::laser::serde::Serialize + for<'de> ::uibeam::laser::serde::Deserialize<'de>,
             {
                 fn render(self) -> ::uibeam::UI {
                     #[cfg(target_arch = "wasm32")] {
@@ -84,17 +90,40 @@ if (window.__uibeam_initlock__) {
     while (!window.__uibeam_lasers__) await new Promise(resolve => setTimeout(resolve, 100));
 } else {
     window.__uibeam_initlock__ = true;
-    document.body.insertAdjacentHTML('afterbegin', '<script type="importmap">{
+
+    const importMap = document.createElement('script');
+    importMap.type = 'importmap';
+    importMap.textContent = `{"imports": {
         "preact": "https://esm.sh/preact",
+        "preact/hooks": "https://esm.sh/preact/hooks?external=preact",
         "@preact/signals": "https://esm.sh/@preact/signals?external=preact"
-    }</script>');
+    }}`;
+    document.head.appendChild(importMap);
+
     const { default: init, ...lasers } = await import('/.uibeam/lasers.js');
     await init();
     window.__uibeam_lasers__ = lasers;
+
+    if (lasers === undefined) {
+        throw new Error('lasers is undefined. Make sure to import the laser module correctly.');
+    }
+}
+const container = document.querySelector(`[data-uibeam-laser=${name}]`);
+if (!container) {
+    throw new Error(`No container found for laser: ${name}`);
+}
+if (!props) {
+    throw new Error(`No props found for laser: ${name}`);
+}
+if (!window.__uibeam_lasers__ || !window.__uibeam_lasers__[name]) {
+    throw new Error(`Laser not found: ${name}`);
+}
+if (window.__uibeam_lasers__[name] === undefined) {
+    throw new Error(`Laser is undefined: ${name}`);
 }
 (window.__uibeam_lasers__[name])(
     props,
-    document.querySelector(`[data-uibeam-laser=${name}]`)
+    container
 );
 "#
                                 </script>

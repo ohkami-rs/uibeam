@@ -1,7 +1,7 @@
 #![cfg(feature = "laser")]
 
 #[doc(hidden)]
-pub use {::wasm_bindgen, ::web_sys, ::serde};
+pub use {::wasm_bindgen, ::js_sys, ::web_sys, ::serde, ::serde_wasm_bindgen};
 
 #[doc(hidden)]
 pub fn serialize_props<P: ::serde::Serialize>(props: &P) -> String {
