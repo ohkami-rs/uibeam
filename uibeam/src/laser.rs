@@ -189,32 +189,20 @@ impl VNode {
 pub struct Signal<T: serde::Serialize + for<'de>serde::Deserialize<'de>> {
     #[cfg(target_arch = "wasm32")]
     preact_signal: Object,
-    /// for `Deref` impl on single-threaded wasm
-    /// (and also for template rendering)
-    current_value: std::cell::UnsafeCell<T>,
+    /// buffer for `Deref` impl on single-threaded wasm
+    /// (and also used for template rendering)
+    current_value: std::rc::Rc<std::cell::UnsafeCell<T>>,
 }
 
-impl<T: serde::Serialize + for<'de>serde::Deserialize<'de>> Signal<T> {
-    pub fn new(value: T) -> Self {
+impl<T: serde::Serialize + for<'de>serde::Deserialize<'de>> Clone for Signal<T> {// not require T: Clone
+    fn clone(&self) -> Self {
         Self {
             #[cfg(target_arch = "wasm32")]
-            preact_signal: preact::signal(serde_wasm_bindgen::to_value(&value).unwrap_throw()),
-            current_value: std::cell::UnsafeCell::new(value),
+            preact_signal: self.preact_signal.clone(),
+            current_value: self.current_value.clone(),
         }
     }
 
-    pub fn set(&self, value: T) {
-        #[cfg(not(target_arch = "wasm32"))] {// for template rendering
-            unsafe { *self.current_value.get() = value; }
-        }
-        #[cfg(target_arch = "wasm32")] {
-            Reflect::set(
-                &self.preact_signal,
-                &"value".into(),
-                &serde_wasm_bindgen::to_value(&value).unwrap_throw()
-            ).unwrap_throw();
-        }
-    }
 }
 
 impl<T: serde::Serialize + for<'de>serde::Deserialize<'de>> std::ops::Deref for Signal<T> {
@@ -234,26 +222,75 @@ impl<T: serde::Serialize + for<'de>serde::Deserialize<'de>> std::ops::Deref for 
     }
 }
 
-pub fn computed<T: serde::Serialize + for<'de>serde::Deserialize<'de> + Clone + 'static>(
-    getter: impl (Fn() -> T) + Clone + 'static
-) -> impl (Fn() -> T) + Clone + 'static {
-    #[cfg(not(target_arch = "wasm32"))] {// for template rendering
-        getter
-    }
-    #[cfg(target_arch = "wasm32")] {
-        let getter = Closure::<dyn Fn()->JsValue>::new(move || serde_wasm_bindgen::to_value(&getter()).unwrap_throw())
-            .into_js_value()
-            .unchecked_into();
-
-        let computed = preact::computed(getter);
-        let computed = Object::into_abi(computed);
-
-        move || {
-            let computed = unsafe {Object::from_abi(computed)};
-            let value = Reflect::get(&computed, &"value".into()).unwrap_throw();
-            serde_wasm_bindgen::from_value(value).unwrap_throw()
+impl<T: serde::Serialize + for<'de>serde::Deserialize<'de>> Signal<T> {
+    pub fn new(value: T) -> Self {
+        Self {
+            #[cfg(target_arch = "wasm32")]
+            preact_signal: preact::signal(serde_wasm_bindgen::to_value(&value).unwrap_throw()),
+            current_value: std::rc::Rc::new(std::cell::UnsafeCell::new(value)),
         }
     }
+
+    pub fn set(&self, value: T) {
+        #[cfg(not(target_arch = "wasm32"))] {// for template rendering
+            unsafe { *self.current_value.get() = value; }
+        }
+        #[cfg(target_arch = "wasm32")] {
+            Reflect::set(
+                &self.preact_signal,
+                &"value".into(),
+                &serde_wasm_bindgen::to_value(&value).unwrap_throw()
+            ).unwrap_throw();
+        }
+    }
+}
+
+pub struct Computed<T: serde::Serialize + for<'de>serde::Deserialize<'de>>(Signal<T>);
+
+impl<T: serde::Serialize + for<'de>serde::Deserialize<'de>> Clone for Computed<T> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
+impl<T: serde::Serialize + for<'de>serde::Deserialize<'de>> std::ops::Deref for Computed<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        self.0.deref()
+    }
+}
+
+impl<T: serde::Serialize + for<'de>serde::Deserialize<'de>> Computed<T> {
+    pub fn new(getter: impl (Fn() -> T) + 'static) -> Self {
+        #[cfg(not(target_arch = "wasm32"))] {// for template rendering
+            Self(Signal::new(getter()))
+        }
+        #[cfg(target_arch = "wasm32")] {
+            let init = getter();
+
+            let preact_computed = preact::computed(Closure::<dyn Fn() -> JsValue>::new(move || {
+                serde_wasm_bindgen::to_value(&getter()).unwrap_throw()
+            }).into_js_value().unchecked_into());
+
+            Self(Signal {
+                preact_signal: preact_computed,
+                current_value: std::rc::Rc::new(std::cell::UnsafeCell::new(init)),
+            })
+        }
+    }
+}
+
+pub fn signal<T: serde::Serialize + for<'de>serde::Deserialize<'de> + 'static>(
+    value: T
+) -> Signal<T> {
+    Signal::new(value)
+}
+
+pub fn computed<T: serde::Serialize + for<'de>serde::Deserialize<'de> + 'static>(
+    getter: impl (Fn() -> T) + 'static
+) -> Computed<T> {
+    Computed::new(getter)
 }
 
 #[macro_export]
@@ -288,6 +325,28 @@ pub fn effect(
             .unchecked_into();
         preact::effect(f);
     }
+}
+
+#[macro_export]
+macro_rules! effect {
+    (|| $result:expr) => {
+        $crate::laser::effect(|| $result)
+    };
+    (move || $result:expr) => {
+        $crate::laser::effect(move || $result)
+    };
+    ($dep_signal:ident => $result:expr) => {
+        $crate::laser::effect({
+            let $dep_signal = $dep_signal.clone();
+            move || $result
+        })
+    };
+    (($($dep_signal:ident),*) => $result:expr) => {
+        $crate::laser::effect({
+            $(let $dep_signal = $dep_signal.clone();)+
+            move || $result
+        })
+    };
 }
 
 pub fn batch(
