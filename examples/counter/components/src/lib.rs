@@ -32,7 +32,18 @@ impl Laser for Counter {
         #[cfg(target_arch = "wasm32")]
         uibeam::laser::web_sys::console::log_1(&format!("Counter initialized with count: {}", self.initial_count).into());
 
-//        let (count, set_count) = signal(self.initial_count);
+        let _signal_creator = signal::<i32>;//(self.initial_count);
+        #[cfg(target_arch = "wasm32")]
+        uibeam::laser::web_sys::console::log_2(&"Signal creator:".into(), &std::any::type_name_of_val(&_signal_creator).into());
+
+        let _dummy_signal_creator = uibeam::laser::dummy_signal::<i32>;
+        #[cfg(target_arch = "wasm32")]
+        uibeam::laser::web_sys::console::log_2(&"Dummy signal creator:".into(), &std::any::type_name_of_val(&_dummy_signal_creator).into());
+        let _dummy_signal = _dummy_signal_creator();
+        #[cfg(target_arch = "wasm32")]
+        uibeam::laser::web_sys::console::log_2(&"Dummy signal created:".into(), &_dummy_signal.into());
+
+        //let (count, set_count) = signal(self.initial_count);
 //
 //        #[cfg(target_arch = "wasm32")]
 //        uibeam::laser::web_sys::console::log_1(&"Signal created for count".into());
@@ -61,7 +72,7 @@ impl Laser for Counter {
             move |_| //set_count(count() - 1)
             {
                 #[cfg(target_arch = "wasm32")] {
-                    uibeam::laser::web_sys::console::log_1(&"Increment button clicked".into());
+                    uibeam::laser::web_sys::console::log_1(&"Decrement button clicked".into());
                     let count = uibeam::laser::web_sys::window()
                         .unwrap()
                         .document()

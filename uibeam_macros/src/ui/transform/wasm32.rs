@@ -29,6 +29,12 @@ pub(crate) fn transform(
 
     fn encode(t: &mut TokenStream, tokens: NodeTokens) {
         fn into_props(attributes: Vec<AttributeTokens>) -> TokenStream {
+            if attributes.is_empty() {
+                return quote! {
+                    ::uibeam::laser::js_sys::Object::new()
+                };
+            }
+
             let kvs = attributes.into_iter().map(|AttributeTokens { name, value }| {
                 let name = name.to_string();
                 match value {
@@ -71,7 +77,13 @@ pub(crate) fn transform(
                 }
             });
             quote! {
-                vec![#(#kvs),*]
+                {
+                    let props = ::uibeam::laser::js_sys::Object::new();
+                    for (k, v) in [#(#kvs),*] {
+                        ::uibeam::laser::js_sys::Reflect::set(&props, &k.into(), &v).unwrap();
+                    }
+                    props
+                }
             }
         }
 

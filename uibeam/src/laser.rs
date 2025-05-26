@@ -96,6 +96,7 @@ fn type_ident<T>() -> &'static str {
 #[cfg(target_arch = "wasm32")]
 pub fn hydrate(
     vdom: VNode,
+    // component: impl Laser + serde::Serialize,
     container: ::web_sys::Node,
 ) {
     ::web_sys::console::log_2(
@@ -115,21 +116,28 @@ pub struct NodeType(JsValue);
 #[cfg(target_arch = "wasm32")]
 impl NodeType {
     pub fn tag(tag: &'static str) -> NodeType {
+        ::web_sys::console::log_1(&format!("Creating NodeType for tag: {}", tag).into());
+
         NodeType(tag.into())
     }
 
     pub fn component<L>() -> NodeType
     where
-        L: Laser + TryFromJsValue<Error = JsValue>,
+        L: Laser + for<'de> serde::Deserialize<'de>,
     {
         let component_function: Function = Closure::<dyn Fn(JsValue)->JsValue>::new(|props| {
-            let props = <L as TryFromJsValue>::try_from_js_value(props).unwrap_throw();
+            let props: L = serde_wasm_bindgen::from_value(props).unwrap_throw();
             <L as Laser>::render(props).into_vdom().0
         }).into_js_value().unchecked_into();
 
         let ident = JsValue::from(type_ident::<L>());
         Reflect::set(&component_function, &"name".into(), &ident).ok();
         Reflect::set(&component_function, &"displayName".into(), &ident).ok();
+
+        ::web_sys::console::log_2(
+            &"Creating NodeType for component: ".into(),
+            component_function.unchecked_ref(),
+        );
 
         NodeType(component_function.unchecked_into())
     }
@@ -139,7 +147,7 @@ impl NodeType {
 impl VNode {
     pub fn new(
         r#type: NodeType,
-        props: Vec<(&'static str, JsValue)>,
+        props: Object,//Vec<(&'static str, JsValue)>,
         children: Vec<VNode>,
     ) -> VNode {
         ::web_sys::console::log_2(
@@ -147,19 +155,19 @@ impl VNode {
             &r#type.0,
         );
 
-        let props_entries = {
-            let entries = props.into_iter().map(|(k, v)| {
-                let entry = [k.into(), v].into_iter().collect::<Array>();
-                let entry: JsValue = entry.unchecked_into();
-                entry
-            }).collect::<Array>();
-            let entries: JsValue = entries.unchecked_into();
-            entries
-        };
+        // let props_entries = {
+        //     let entries = props.into_iter().map(|(k, v)| {
+        //         let entry = [k.into(), v].into_iter().collect::<Array>();
+        //         let entry: JsValue = entry.unchecked_into();
+        //         entry
+        //     }).collect::<Array>();
+        //     let entries: JsValue = entries.unchecked_into();
+        //     entries
+        // };
 
         VNode(preact::create_element(
             r#type.0,
-            Object::from_entries(&props_entries).unwrap_throw(),
+            props,//Object::from_entries(&props_entries).unwrap_throw(),
             children.into_iter().map(|vdom| vdom.0).collect::<Array>(),
         ))
     }
@@ -188,6 +196,18 @@ impl VNode {
     }
 }
 
+pub fn dummy_signal<T: serde::Serialize + for<'de>serde::Deserialize<'de> + Clone + 'static>() -> String {
+    #[cfg(not(target_arch = "wasm32"))] {// for template rendering
+        "dummy_signal".to_string()
+    }
+    #[cfg(target_arch = "wasm32")] {
+        //let type_name = type_ident::<T>();
+        //::web_sys::console::log_1(&format!("Creating dummy signal for type: {}", type_name).into());
+        ::web_sys::console::log_1(&format!("Creating dummy signal...").into());
+        format!("dummy_signal")
+    }
+}
+
 pub fn signal<T: serde::Serialize + for<'de>serde::Deserialize<'de> + Clone + 'static>(value: T) -> (
     impl (Fn() -> T) + Clone + 'static,
     impl (Fn(T)) + Clone + 'static
@@ -199,7 +219,7 @@ pub fn signal<T: serde::Serialize + for<'de>serde::Deserialize<'de> + Clone + 's
         )
     }
     #[cfg(target_arch = "wasm32")] {
-        ::web_sys::console::log_1(&format!("Creating signal for type: {}", type_ident::<T>()).into());
+        ::web_sys::console::log_1(&"Creating signal".into());
 
         let signal = preact::signal(serde_wasm_bindgen::to_value(&value).unwrap_throw());
 

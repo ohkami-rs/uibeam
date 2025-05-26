@@ -44,10 +44,16 @@ pub(super) fn expand(
                     props.unchecked_ref()
                 );
 
-                let props: #name = ::uibeam::laser::serde_wasm_bindgen::from_value(props.unchecked_into())
-                    .unwrap_throw();
+                //let props: #name = ::uibeam::laser::serde_wasm_bindgen::from_value(props.unchecked_into())
+                //    .unwrap_throw();
                 ::uibeam::laser::hydrate(
-                    <#name as ::uibeam::Laser>::render(props).into_vdom(),
+                    //<#name as ::uibeam::Laser>::render(props).into_vdom(),
+                    ::uibeam::laser::VNode::new(
+                        ::uibeam::laser::NodeType::component::<#name>(),
+                        props,
+                        vec![]//#children
+                    ),
+
                     container
                 )
             }
