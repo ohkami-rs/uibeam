@@ -156,7 +156,6 @@ impl<T: serde::Serialize + for<'de>serde::Deserialize<'de>> Clone for Signal<T> 
             current_value: self.current_value.clone(),
         }
     }
-
 }
 
 impl<T: serde::Serialize + for<'de>serde::Deserialize<'de>> std::ops::Deref for Signal<T> {

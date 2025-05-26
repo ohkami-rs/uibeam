@@ -38,22 +38,12 @@ pub(super) fn expand(
                 props: ::uibeam::laser::js_sys::Object,
                 container: ::uibeam::laser::web_sys::Node
             ) {
-                ::uibeam::laser::web_sys::console::log_3(
-                    &"Hydrating laser %s with props %o".into(),
-                    &#hydrater_name_str.into(),
-                    props.unchecked_ref()
-                );
-
-                //let props: #name = ::uibeam::laser::serde_wasm_bindgen::from_value(props.unchecked_into())
-                //    .unwrap_throw();
                 ::uibeam::laser::hydrate(
-                    //<#name as ::uibeam::Laser>::render(props).into_vdom(),
                     ::uibeam::laser::VNode::new(
                         ::uibeam::laser::NodeType::component::<#name>(),
                         props,
-                        vec![]//#children
+                        vec![]
                     ),
-
                     container
                 )
             }
@@ -99,7 +89,7 @@ unsafe {props}
 r#"');"#
 r#"
 if (window.__uibeam_initlock__) {
-    while (!window.__uibeam_lasers__) await new Promise(resolve => setTimeout(resolve, 100));
+    for (let i=0; i++; i<42 && !window.__uibeam_lasers__) await new Promise(resolve => setTimeout(resolve, 100));
 } else {
     window.__uibeam_initlock__ = true;
 
@@ -115,28 +105,9 @@ if (window.__uibeam_initlock__) {
     const { default: init, ...lasers } = await import('/.uibeam/lasers.js');
     await init();
     window.__uibeam_lasers__ = lasers;
-
-    if (lasers === undefined) {
-        throw new Error('lasers is undefined. Make sure to import the laser module correctly.');
-    }
 }
 const container = document.querySelector(`[data-uibeam-laser=${name}]`);
-if (!container) {
-    throw new Error(`No container found for laser: ${name}`);
-}
-if (!props) {
-    throw new Error(`No props found for laser: ${name}`);
-}
-if (!window.__uibeam_lasers__ || !window.__uibeam_lasers__[name]) {
-    throw new Error(`Laser not found: ${name}`);
-}
-if (window.__uibeam_lasers__[name] === undefined) {
-    throw new Error(`Laser is undefined: ${name}`);
-}
-(window.__uibeam_lasers__[name])(
-    props,
-    container
-);
+(window.__uibeam_lasers__[name])(props, container);
 "#
                                 </script>
                             </div>
