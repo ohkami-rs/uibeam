@@ -98,6 +98,11 @@ pub fn hydrate(
     vdom: VNode,
     container: ::web_sys::Node,
 ) {
+    ::web_sys::console::log_2(
+        &"Hydrating VNode: ".into(),
+        &vdom.0,
+    );
+
     preact::hydrate(vdom.0, container);
 }
 
@@ -137,6 +142,11 @@ impl VNode {
         props: Vec<(&'static str, JsValue)>,
         children: Vec<VNode>,
     ) -> VNode {
+        ::web_sys::console::log_2(
+            &"Creating VNode with type: ".into(),
+            &r#type.0,
+        );
+
         let props_entries = {
             let entries = props.into_iter().map(|(k, v)| {
                 let entry = [k.into(), v].into_iter().collect::<Array>();
@@ -157,6 +167,8 @@ impl VNode {
     pub fn fragment(
         children: Vec<VNode>,
     ) -> VNode {
+        ::web_sys::console::log_1(&"Creating VNode fragment".into());
+
         let props = Object::new();
         Reflect::set(
             &props,
@@ -167,6 +179,8 @@ impl VNode {
     }
 
     pub fn text(text: impl Into<std::borrow::Cow<'static, str>>) -> VNode {
+        ::web_sys::console::log_1(&format!("Creating VNode text").into());
+
         match text.into() {
             std::borrow::Cow::Owned(s) => VNode(s.into()),
             std::borrow::Cow::Borrowed(s) => VNode(s.into()),
@@ -185,16 +199,31 @@ pub fn signal<T: serde::Serialize + for<'de>serde::Deserialize<'de> + Clone + 's
         )
     }
     #[cfg(target_arch = "wasm32")] {
+        ::web_sys::console::log_1(&format!("Creating signal for type: {}", type_ident::<T>()).into());
+
         let signal = preact::signal(serde_wasm_bindgen::to_value(&value).unwrap_throw());
+
+        ::web_sys::console::log_2(
+            &"Signal created:".into(),
+            signal.unchecked_ref()
+        );
+
         let signal = Object::into_abi(signal);
 
         let get = move || {
+            ::web_sys::console::log_1(&"Getting signal value".into());
+
             let signal = unsafe {Object::from_abi(signal)};
             let value = Reflect::get(&signal, &"value".into()).unwrap_throw();
             serde_wasm_bindgen::from_value(value).unwrap_throw()
         };
 
         let set = move |value: T| {
+            ::web_sys::console::log_2(
+                &"Setting signal value:".into(),
+                &serde_wasm_bindgen::to_value(&value).unwrap_throw()
+            );
+
             let signal = unsafe {Object::from_abi(signal)};
             let value = serde_wasm_bindgen::to_value(&value).unwrap_throw();
             Reflect::set(&signal, &"value".into(), &value).unwrap_throw();

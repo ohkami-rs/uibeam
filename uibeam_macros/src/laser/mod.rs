@@ -38,6 +38,12 @@ pub(super) fn expand(
                 props: ::uibeam::laser::js_sys::Object,
                 container: ::uibeam::laser::web_sys::Node
             ) {
+                ::uibeam::laser::web_sys::console::log_3(
+                    &"Hydrating laser %s with props %o".into(),
+                    &#hydrater_name_str.into(),
+                    props.unchecked_ref()
+                );
+
                 let props: #name = ::uibeam::laser::serde_wasm_bindgen::from_value(props.unchecked_into())
                     .unwrap_throw();
                 ::uibeam::laser::hydrate(
