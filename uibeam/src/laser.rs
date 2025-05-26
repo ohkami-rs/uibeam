@@ -71,39 +71,13 @@ mod preact {
 use {
     ::wasm_bindgen::prelude::*,
     ::js_sys::{Function, Array, Object, Reflect},
-    ::wasm_bindgen::convert::{FromWasmAbi, IntoWasmAbi, TryFromJsValue},
 };
-
-#[cfg(target_arch = "wasm32")]
-fn type_ident<T>() -> &'static str {
-    let type_name = std::any::type_name::<T>();
-    let type_path = if type_name.ends_with('>') {
-        /* `type_name` has generics like `playground::handler<alloc::string::String>` */
-        /* ref: <https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=e02e32853dddf5385769d1718c481814> */
-        let (type_path, _/*generics*/) = type_name
-            .rsplit_once('<')
-            .expect("unexpectedly independent `>` in std::any::type_name");
-        type_path
-    } else {
-        type_name
-    };
-    let (_/*path from crate root*/, type_ident) = type_path
-        .rsplit_once("::")
-        .expect("unexpected format of std::any::type_name");
-    type_ident
-}
 
 #[cfg(target_arch = "wasm32")]
 pub fn hydrate(
     vdom: VNode,
-    // component: impl Laser + serde::Serialize,
     container: ::web_sys::Node,
 ) {
-    ::web_sys::console::log_2(
-        &"Hydrating VNode: ".into(),
-        &vdom.0,
-    );
-
     preact::hydrate(vdom.0, container);
 }
 
@@ -116,8 +90,6 @@ pub struct NodeType(JsValue);
 #[cfg(target_arch = "wasm32")]
 impl NodeType {
     pub fn tag(tag: &'static str) -> NodeType {
-        ::web_sys::console::log_1(&format!("Creating NodeType for tag: {}", tag).into());
-
         NodeType(tag.into())
     }
 
@@ -130,15 +102,6 @@ impl NodeType {
             <L as Laser>::render(props).into_vdom().0
         }).into_js_value().unchecked_into();
 
-        let ident = JsValue::from(type_ident::<L>());
-        Reflect::set(&component_function, &"name".into(), &ident).ok();
-        Reflect::set(&component_function, &"displayName".into(), &ident).ok();
-
-        ::web_sys::console::log_2(
-            &"Creating NodeType for component: ".into(),
-            component_function.unchecked_ref(),
-        );
-
         NodeType(component_function.unchecked_into())
     }
 }
@@ -147,17 +110,12 @@ impl NodeType {
 impl VNode {
     pub fn new(
         r#type: NodeType,
-        props: Object,//Vec<(&'static str, JsValue)>,
+        props: Object,
         children: Vec<VNode>,
     ) -> VNode {
-        ::web_sys::console::log_2(
-            &"Creating VNode with type: ".into(),
-            &r#type.0,
-        );
-
         VNode(preact::create_element(
             r#type.0,
-            props,//Object::from_entries(&props_entries).unwrap_throw(),
+            props,
             children.into_iter().map(|vdom| vdom.0).collect::<Array>(),
         ))
     }
@@ -165,8 +123,6 @@ impl VNode {
     pub fn fragment(
         children: Vec<VNode>,
     ) -> VNode {
-        ::web_sys::console::log_1(&"Creating VNode fragment".into());
-
         let props = Object::new();
         Reflect::set(
             &props,
@@ -177,8 +133,6 @@ impl VNode {
     }
 
     pub fn text(text: impl Into<std::borrow::Cow<'static, str>>) -> VNode {
-        ::web_sys::console::log_1(&format!("Creating VNode text").into());
-
         match text.into() {
             std::borrow::Cow::Owned(s) => VNode(s.into()),
             std::borrow::Cow::Borrowed(s) => VNode(s.into()),
