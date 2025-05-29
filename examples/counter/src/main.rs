@@ -43,7 +43,14 @@ async fn index(Query(q): Query<CounterMeta>) -> HTML<std::borrow::Cow<'static, s
     let initial_count = q.init.unwrap_or(0);
     
     HTML(uibeam::shoot(UI! {
-        <Counter initial_count={initial_count} />
+        <main class="display-flex flex-col items-center justify-center min-h-screen bg-gray-100">
+            <h1 class="text-4xl font-bold mb-8">"Counter Example"</h1>
+            <h2>"Counter 1"</h2>
+            <Counter initial_count={initial_count} />
+            <hr />
+            <h2>"Counter 2"</h2>
+            <Counter initial_count={initial_count + 100} />
+        </main>
     }))
 }
 

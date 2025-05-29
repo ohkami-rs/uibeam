@@ -112,7 +112,8 @@ if (window.__uibeam_initlock__) {
     await init();
     window.__uibeam_lasers__ = lasers;
 }
-const container = document.querySelector(`[data-uibeam-laser=${name}]`);
+const container = document.querySelector(`div[data-uibeam-laser=${name}]:not([data-uibeam-laser-hydrated])`);
+container.setAttribute('data-uibeam-laser-hydrated', '');
 (window.__uibeam_lasers__[name])(props, container);
 "#
                                 </script>

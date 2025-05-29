@@ -41,7 +41,7 @@ impl Laser for Counter {
 
         UI! {
             <div>
-                <h1 class="text-2xl font-bold">"Count: "{*count}</h1>
+                <p class="text-2xl font-bold">"Count: "{*count}</p>
                 <button class="bg-blue-500 text-white px-4 py-2 rounded" onclick={increment}>"+"</button>
                 <button class="bg-red-500 text-white px-4 py-2 rounded" onclick={decrement}>"-"</button>
             </div>
