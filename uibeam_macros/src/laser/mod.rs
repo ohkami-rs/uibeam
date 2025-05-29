@@ -95,7 +95,7 @@ unsafe {props}
 r#"');"#
 r#"
 if (window.__uibeam_initlock__) {
-    for (let i=0; i++; i<42 && !window.__uibeam_lasers__) await new Promise(resolve => setTimeout(resolve, 100));
+    for (let i=0; i<42 && !window.__uibeam_lasers__; i++) await new Promise(resolve => setTimeout(resolve, 100));
 } else {
     window.__uibeam_initlock__ = true;
 
