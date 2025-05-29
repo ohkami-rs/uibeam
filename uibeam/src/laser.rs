@@ -234,10 +234,20 @@ impl<T: serde::Serialize + for<'de>serde::Deserialize<'de>> Computed<T> {
     }
 }
 
-pub fn signal<T: serde::Serialize + for<'de>serde::Deserialize<'de> + 'static>(
-    value: T
-) -> Signal<T> {
-    Signal::new(value)
+#[macro_export]
+macro_rules! callback {
+    ([$($dep:ident),*], ($($arg:ident $(: $Type:ty)?),*) => $result:expr) => {
+        {
+            $(let $dep = $dep.clone();)*
+            move |$($arg $(: $Type)?),*| $result
+        }
+    };
+    ([$($dep:ident),*], (_ $(: $Type:ty)?) => $result:expr) => {
+        {
+            $(let $dep = $dep.clone();)*
+            move |_ $(: $Type)?| $result
+        }
+    };
 }
 
 pub fn computed<T: serde::Serialize + for<'de>serde::Deserialize<'de> + 'static>(
@@ -248,23 +258,8 @@ pub fn computed<T: serde::Serialize + for<'de>serde::Deserialize<'de> + 'static>
 
 #[macro_export]
 macro_rules! computed {
-    (|| $result:expr) => {
-        $crate::laser::computed(|| $result)
-    };
-    (move || $result:expr) => {
-        $crate::laser::computed(move || $result)
-    };
-    ($dep_signal:ident => $result:expr) => {
-        $crate::laser::computed({
-            let $dep_signal = $dep_signal.clone();
-            move || $result
-        })
-    };
-    (($($dep_signal:ident),*) => $result:expr) => {
-        $crate::laser::computed({
-            $(let $dep_signal = $dep_signal.clone();)+
-            move || $result
-        })
+    ($($t:tt)*) => {
+        $crate::laser::computed($crate::callback!($($t)*))
     };
 }
 
@@ -282,23 +277,8 @@ pub fn effect(
 
 #[macro_export]
 macro_rules! effect {
-    (|| $result:expr) => {
-        $crate::laser::effect(|| $result)
-    };
-    (move || $result:expr) => {
-        $crate::laser::effect(move || $result)
-    };
-    ($dep_signal:ident => $result:expr) => {
-        $crate::laser::effect({
-            let $dep_signal = $dep_signal.clone();
-            move || $result
-        })
-    };
-    (($($dep_signal:ident),*) => $result:expr) => {
-        $crate::laser::effect({
-            $(let $dep_signal = $dep_signal.clone();)+
-            move || $result
-        })
+    ($($t:tt)*) => {
+        $crate::laser::effect($crate::callback!($($t)*))
     };
 }
 

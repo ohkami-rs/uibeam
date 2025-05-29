@@ -1,4 +1,4 @@
-use uibeam::{UI, Beam, Laser, signal};
+use uibeam::{UI, Beam, Laser, Signal, callback};
 
 pub struct Layout {
     pub title: String,
@@ -29,17 +29,15 @@ pub struct Counter {
 
 impl Laser for Counter {
     fn render(self) -> UI {
-        let count = signal(self.initial_count);
+        let count = Signal::new(self.initial_count);
 
-        let increment = {
-            let count = count.clone();
-            move |_| count.set(*count + 1)
-        };
+        let increment = callback!([count], (_) => {
+            count.set(*count + 1);
+        });
 
-        let decrement = {
-            let count = count.clone();
-            move |_| count.set(*count - 1)
-        };
+        let decrement = callback!([count], (_) => {
+            count.set(*count - 1);
+        });
 
         UI! {
             <div>

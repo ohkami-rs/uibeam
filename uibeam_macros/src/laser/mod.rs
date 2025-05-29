@@ -54,7 +54,13 @@ pub(super) fn expand(
         quote! {
             impl ::uibeam::Beam for #name {
                 fn render(self) -> ::uibeam::UI {
-                    unreachable!()
+                    #[cfg(target_arch = "wasm32")] {
+                        unreachable!();
+                    }
+
+                    #[cfg(not(target_arch = "wasm32"))] {
+                        panic!("`#[Laser(local)]` can NOT be used outside of a `#[Laser]`")
+                    }
                 }
             }
         }
