@@ -248,7 +248,8 @@ pub(super) fn transform(
                     }
                 };
                 quote! {
-                    #name: #value.into(),
+                    #[allow(unused_braces)]
+                    #name: (#value).into(),
                 }
             });
             let children = content.map(|c| {
