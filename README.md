@@ -276,8 +276,8 @@ working example: [examples/counter](./examples/counter)
             let increment = callback!(
                 // dependent signals
                 [count],
-                // (args, ...) => expression
-                (_) => count.set(*count + 1)
+                // |args, ...| expression
+                |_| count.set(*count + 1)
             );
     
             /* expanded:
@@ -288,7 +288,7 @@ working example: [examples/counter](./examples/counter)
             };
             */
     
-            let decrement = callback!([count], (_) => {
+            let decrement = callback!([count], |_| {
                 count.set(*count - 1)
             });
     

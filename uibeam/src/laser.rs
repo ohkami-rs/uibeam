@@ -240,13 +240,13 @@ impl<T: serde::Serialize + for<'de>serde::Deserialize<'de>> Computed<T> {
 
 #[macro_export]
 macro_rules! callback {
-    ([$($dep:ident),*], ($($arg:ident $(: $Type:ty)?),*) => $result:expr) => {
+    ([$($dep:ident),*], |$($arg:ident $(: $Type:ty)?),*| $result:expr) => {
         {
             $(let $dep = $dep.clone();)*
             move |$($arg $(: $Type)?),*| $result
         }
     };
-    ([$($dep:ident),*], (_ $(: $Type:ty)?) => $result:expr) => {
+    ([$($dep:ident),*], |_ $(: $Type:ty)?| $result:expr) => {
         {
             $(let $dep = $dep.clone();)*
             move |_ $(: $Type)?| $result

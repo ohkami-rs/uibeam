@@ -31,11 +31,11 @@ impl Laser for Counter {
     fn render(self) -> UI {
         let count = Signal::new(self.initial_count);
 
-        let increment = callback!([count], (_) => {
+        let increment = callback!([count], |_| {
             count.set(*count + 1);
         });
 
-        let decrement = callback!([count], (_) => {
+        let decrement = callback!([count], |_| {
             count.set(*count - 1);
         });
 

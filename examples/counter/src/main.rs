@@ -62,7 +62,7 @@ fn main() {
         Ohkami::new((
             Logger,
             LayoutFang { title: "Counter Example" },
-            "/.uibeam".Dir("./components/.uibeam"),
+            "/.uibeam".Dir("./components/pkg"),
             "/".GET(index),
         )).howl("localhost:5000").await
     });
