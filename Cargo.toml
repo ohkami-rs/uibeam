@@ -3,15 +3,15 @@ resolver = "3"
 members  = ["uibeam", "uibeam_html", "uibeam_macros"]
 
 [workspace.package]
-version    = "0.2.2"
+version    = "0.3.0"
 edition    = "2024"
 authors    = ["kanarus <kanarus786@gmail.com>"]
 homepage   = "https://crates.io/uibeam"
 repository = "https://github.com/ohkami-rs/uibeam"
 readme     = "README.md"
 license    = "MIT"
-keywords   = ["jsx", "html", "template-engine"]
-categories = ["template-engine", "web-programming"]
+keywords   = ["jsx", "html", "template-engine", "web", "ui"]
+categories = ["template-engine", "web-programming", "wasm"]
 
 [workspace.metadata.tasks]
 CI = """

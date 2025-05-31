@@ -1,5 +1,8 @@
 #![cfg(feature = "laser")]
 
+// TODO: support more events (update together with `uibeam_macros/src/ui/transform.rs`)
+pub use ::web_sys::{AnimationEvent, MouseEvent, PointerEvent, InputEvent, FocusEvent, CompositionEvent, KeyboardEvent, TouchEvent, TransitionEvent, WheelEvent, Event};
+
 #[doc(hidden)]
 pub use {::wasm_bindgen, ::js_sys, ::web_sys, ::serde, ::serde_wasm_bindgen};
 
@@ -167,6 +170,7 @@ impl<T: serde::Serialize + for<'de>serde::Deserialize<'de>> std::ops::Deref for 
         }
         #[cfg(target_arch = "wasm32")] {
             let value = serde_wasm_bindgen::from_value(
+                // TODO: skip deserialization if value is not changed 
                 Reflect::get(&self.preact_signal, &"value".into()).unwrap_throw()
             ).unwrap_throw();
             unsafe { *self.current_value.get() = value; }

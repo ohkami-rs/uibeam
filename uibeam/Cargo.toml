@@ -1,7 +1,7 @@
 [package]
 name          = "uibeam"
 documentation = "https://docs.rs/uibeam"
-description   = "A lightweight, JSX-style HTML template engine for Rust"
+description   = "A lightweight, JSX-style Web UI library for Rust"
 version       = { workspace = true }
 edition       = { workspace = true }
 authors       = { workspace = true }
@@ -26,8 +26,8 @@ axum      = ["__integration__", "dep:axum-core"]
 actix-web = ["__integration__", "dep:actix-web"]
 
 [dependencies]
-uibeam_html   = { path = "../uibeam_html",   version = "=0.2.2" }
-uibeam_macros = { path = "../uibeam_macros", version = "=0.2.2" }
+uibeam_html   = { path = "../uibeam_html",   version = "=0.3.0" }
+uibeam_macros = { path = "../uibeam_macros", version = "=0.3.0" }
 
 # for islands
 serde              = { optional = true, version = "1.0" }
@@ -59,4 +59,5 @@ version          = "4.11.0"
 tokio     = { version = "1.45.0", features = ["rt-multi-thread", "net", "macros"] }
 axum      = { version = "0.8.4" }
 actix-web = { version = "4.11.0", default-features = false, features = ["macros"] }
+tower-http = { version = "0.6.4", features = ["fs"] }
 # [2025-05-19] build fails without `default-features = false`

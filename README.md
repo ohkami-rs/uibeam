@@ -3,7 +3,7 @@
         UIBeam
     </h1>
     <p>
-        A lightweight, JSX-style HTML template engine for Rust
+        A lightweight, JSX-style Web UI library for Rust
     </p>
 </div>
 
@@ -17,7 +17,8 @@
 
 - `UI!` : JSX-style template syntax with compile-time checks
 - `Beam` : Component system
-- Simple : Simply organized API and codebase, with zero external dependencies
+- `Laser` : Client component working as WASM island
+- Simple : Simply organized API and codebase
 - Efficient : Emitting efficient codes, avoiding redundant memory allocations as smartly as possible
 - Better UX : HTML completions and hovers in `UI!` by VSCode extension ( search by "_uibeam_" from extension marketplace )
 
@@ -27,7 +28,7 @@
 
 ```toml
 [dependencies]
-uibeam = "0.2.2"
+uibeam = "0.3.0"
 ```
 
 ### `UI!` syntax
@@ -36,7 +37,7 @@ uibeam = "0.2.2"
 use uibeam::UI;
 
 fn main() {
-    let user_name = "foo".to_string();
+    let user_name = "foo";
 
     let style = "
         color: red; \
@@ -63,7 +64,48 @@ fn main() {
 }
 ```
 
-### Conditional & Iterative rendering
+### unsafely insert HTML string
+
+**raw string literal** ( `r#"..."#` ) or **unsafe block** contents are rendered *without HTML-escape* :
+
+<!-- ignore for `include_str!` -->
+```rust,ignore
+use uibeam::UI;
+
+fn main() {
+    println!("{}", uibeam::shoot(UI! {
+        <html>
+            <body>
+                /* ↓ wrong here: scripts are html-escaped... */
+
+                <script>
+                    "console.log('1 << 3 =', 1 << 3);"
+                </script>
+
+                <script>
+                    {include_str!("index.js")}
+                </script>
+
+                /* ↓ scripts are NOT html-escaped, rendered as they are */
+
+                <script>
+                    r#"console.log('1 << 3 =', 1 << 3);"#
+                </script>
+
+                <script>
+                    unsafe {include_str!("index.js")}
+                </script>
+
+                <script>
+                    unsafe {"console.log('1 << 3 =', 1 << 3);"}
+                </script>
+            </body>
+        </html>
+    }));
+}
+```
+
+### conditional & iterative rendering
 
 `{}` at node-position in `UI!` can render, in addition to `Display`-able values, any `impl IntoIterator<Item = UI>`. This includes `Option<UI>` or any other iterators yielding `UI`s !
 
@@ -106,7 +148,7 @@ fn main() {
 }
 ```
 
-### Components with `Beam`
+## `Beam` - Component with struct and JSX-like syntax
 
 ```rust
 use uibeam::{Beam, UI};
@@ -183,46 +225,103 @@ fn main() {
 }
 ```
 
-### Unsafely insert HTML string
+## `Laser` - Client component by WASM island
 
-**raw string literal** ( `r#"..."#` ) or **unsafe block** contents are rendered *without HTML-escape*.
+### architecture
 
-<!-- ignore for `include_str!` -->
-```rust,ignore
-use uibeam::UI;
+`Laser` trait provides a way to build client components in WASM. They works as _*islands*_ : initially rendered in server, sent with serializing, and deserialized and hydrated in client.
 
-fn main() {
-    println!("{}", uibeam::shoot(UI! {
-        <html>
-            <body>
-                /* ↓ wrong here: scripts are html-escaped... */
+`Signal`, `computed`, `effect` are available in `Laser`s.
 
-                <script>
-                    "console.log('1 << 3 =', 1 << 3);"
-                </script>
+At current version (v0.3), `Laser` system is built up on [Preact](https://preactjs.com). This is _*experimental*_ design choice and maybe fully/partially replaced into some Rust implementaion in future.
 
-                <script>
-                    {include_str!("index.js")}
-                </script>
+<small><i>(But this may be kind of better choice to avoid huge size of WASM output)</i></small>
 
-                /* ↓ scripts are NOT html-escaped, rendered as they are */
+### usage
 
-                <script>
-                    r#"console.log('1 << 3 =', 1 << 3);"#
-                </script>
+1. activate `"laser"` feature, and add `serde`:
 
-                <script>
-                    unsafe {include_str!("index.js")}
-                </script>
+    ```toml
+    [dependencies]
+    uibeam = { version = "0.3.0", features = ["laser"] }
+    serde  = { version = "1", features = ["derive"] }
+    ```
 
-                <script>
-                    unsafe {"console.log('1 << 3 =', 1 << 3);"}
-                </script>
-            </body>
-        </html>
-    }));
-}
-```
+2. create an UIBeam-specific crate (e.g. `lasers`) as a workspace member, and have all `Laser`s in that crate.
+
+(Of cource, no problem if including all `Beam`s not only `Laser`s. Then the name of this crate should be `components` or something.)
+
+3. build your `Laser`s:
+
+    ```rust
+    use uibeam::{UI, Laser, Signal, callback};
+    use serde::{Serialize, Deserialize};
+    
+    #[Laser]
+    #[derive(Serialize, Deserialize)]
+    struct Counter;
+    
+    impl Laser for Counter {
+        fn render(self) -> UI {
+            let count = Signal::new(0);
+    
+            // callback utility
+            let increment = callback!(
+                // dependent signals
+                [count],
+                // (args, ...) => expression
+                (_) => count.set(*count + 1)
+            );
+    
+            /* expanded:
+    
+            let increment = {
+                let count = count.clone();
+                move |_| count.set(*count + 1)
+            };
+            */
+    
+            let decrement = callback!([count], (_) => {
+                count.set(*count - 1)
+            });
+    
+            UI! {
+                <p>"Count: "{*count}</p>
+                <button onclick={increment}>"+"</button>
+                <button onclick={decrement}>"-"</button>
+            }
+        }
+    }
+    ```
+
+    `#[Laser(local)]` ebables to build _**local Lasers**_:
+    
+    - not require `Serialize` `Deserialize` and can have unserializable items in fields, such as `fn(web_sys::Event)`.
+    - only available as children of a non-local `Laser`.
+
+4. compile this crate by `wasm-pack` into **`web`** target with out-name **`lasers`**:
+
+    ```sh
+    wasm-pack build --target web --out-name lasers
+    ```
+ 
+    and set up to serve the output directly (default: `pkg`) at **`/.uibeam`**:
+ 
+    ```rust
+    // axum example
+ 
+    use axum::Router;
+    use tower_http::services::ServeDir;
+ 
+    fn app() -> Router {
+        Router::new()
+            .nest_service(
+                "/.uibeam",
+                ServeDir::new("./lasers/pkg")
+            )
+            // ...
+    }
+    ```
 
 ## Integrations with web frameworks
 
