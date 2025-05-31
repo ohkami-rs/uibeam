@@ -229,19 +229,19 @@ fn main() {
 
 ### architecture
 
-`Laser` trait provides a way to build client components in WASM. They works as _*islands*_ : initially rendered in server, sent with serializing, and deserialized and hydrated in client.
+`Laser` trait provides a way to build client components in WASM. They works as _*islands*_ : initially rendered in server, sent with serialized props, and hydrated with deserialized props in client.
 
 `Signal`, `computed`, `effect` are available in `Laser`s.
 
 At current version (v0.3), `Laser` system is built up on [Preact](https://preactjs.com).
 
-This is experimental design choice and maybe fully/partially replaced into some Rust implementaion in future. <i>(But this may be kind of better choice, for example, in avoiding huge size of WASM output.)</i>
+This is experimental design choice and maybe fully/partially replaced into some Rust implementaion in future. <i>(But this may be kind of better choice, for example, at avoiding huge size of WASM output.)</i>
 
 ### usage
 
 working example: [examples/counter](./examples/counter)
 
-1. activate `"laser"` feature, and add `serde`:
+1. Activate `"laser"` feature, and add `serde`:
 
     ```toml
     [dependencies]
@@ -249,16 +249,16 @@ working example: [examples/counter](./examples/counter)
     serde  = { version = "1", features = ["derive"] }
     ```
 
-2. create an UIBeam-specific library crate (e.g. `lasers`) as a workspace member, and have all `Laser`s in that crate. (of cource, no problem if including all `Beam`s not only `Laser`s. Then the name of this crate should be `components` or something.)
+2. Create an UIBeam-specific library crate (e.g. `lasers`) as a workspace member, and have all `Laser`s in that crate. (of cource, no problem if including all `Beam`s not only `Laser`s. Then the name of this crate should be `components` or something.)
 
-   make sure to specify `crate-type = ["cdylib", "rlib"]`:
+   Make sure to specify `crate-type = ["cdylib", "rlib"]`:
 
     ```toml
     [lib]
     crate-type = ["cdylib", "rlib"]
     ```
    
-3. build your `Laser`s:
+3. Build your `Laser`s:
 
     ```rust
     use uibeam::{UI, Laser, Signal, callback};
@@ -306,7 +306,7 @@ working example: [examples/counter](./examples/counter)
     - not require `Serialize` `Deserialize` and can have unserializable items in fields, such as `fn(web_sys::Event)`.
     - only available as children of a non-local `Laser`.
 
-4. compile this crate by `wasm-pack build` with **`--target web --out-name lasers`**:
+4. Compile to WASM by `wasm-pack build` with **`--target web --out-name lasers`**:
 
     ```sh
     # when naming the crate `components`
@@ -319,7 +319,7 @@ working example: [examples/counter](./examples/counter)
     wasm-pack build components --target web --out-name lasers
     ```
 
-    and set up to serve the output directly (default: `pkg`) at **`/.uibeam`**:
+   and set up to serve the output directly (default: `pkg`) at **`/.uibeam`**:
  
     ```rust
     // axum example
@@ -336,6 +336,8 @@ working example: [examples/counter](./examples/counter)
             // ...
     }
     ```
+
+   As a result, `components/pkg/lasers.js` is served at `/.uibeam/lasers.js` and automatically loaded together with WASM by a Laser in the first hydration.
 
 ## Integrations with web frameworks
 
