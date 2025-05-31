@@ -1,4 +1,6 @@
 mod ui;
+#[cfg(feature = "laser")]
+mod laser;
 
 #[proc_macro]
 #[allow(non_snake_case)]
@@ -120,11 +122,11 @@ pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 }
 
 #[cfg(feature = "laser")]
-mod laser;
-
-#[cfg(feature = "laser")]
 #[proc_macro_attribute]
 #[allow(non_snake_case)]
+/// # `Laser` - Client component by WASM island
+/// 
+/// <!-- TODO: document (based on README's) -->
 pub fn Laser(
     args: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
@@ -134,6 +136,7 @@ pub fn Laser(
         .into()
 }
 
+#[doc(hidden)]
 #[proc_macro_attribute]
 pub fn consume(_: proc_macro::TokenStream, _: proc_macro::TokenStream) -> proc_macro::TokenStream {
     proc_macro::TokenStream::new()
