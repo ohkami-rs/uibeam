@@ -233,11 +233,13 @@ fn main() {
 
 `Signal`, `computed`, `effect` are available in `Laser`s.
 
-At current version (v0.3), `Laser` system is built up on [Preact](https://preactjs.com). This is _*experimental*_ design choice and maybe fully/partially replaced into some Rust implementaion in future.
+At current version (v0.3), `Laser` system is built up on [Preact](https://preactjs.com).
 
-<small><i>(But this may be kind of better choice to avoid huge size of WASM output)</i></small>
+This is experimental design choice and maybe fully/partially replaced into some Rust implementaion in future. <i>(But this may be kind of better choice, for example, in avoiding huge size of WASM output.)</i>
 
 ### usage
+
+working example: [examples/counter](./examples/counter)
 
 1. activate `"laser"` feature, and add `serde`:
 
@@ -247,10 +249,15 @@ At current version (v0.3), `Laser` system is built up on [Preact](https://preact
     serde  = { version = "1", features = ["derive"] }
     ```
 
-2. create an UIBeam-specific crate (e.g. `lasers`) as a workspace member, and have all `Laser`s in that crate.
+2. create an UIBeam-specific library crate (e.g. `lasers`) as a workspace member, and have all `Laser`s in that crate. (of cource, no problem if including all `Beam`s not only `Laser`s. Then the name of this crate should be `components` or something.)
 
-(Of cource, no problem if including all `Beam`s not only `Laser`s. Then the name of this crate should be `components` or something.)
+   make sure to specify `crate-type = ["cdylib", "rlib"]`:
 
+    ```toml
+    [lib]
+    crate-type = ["cdylib", "rlib"]
+    ```
+   
 3. build your `Laser`s:
 
     ```rust
