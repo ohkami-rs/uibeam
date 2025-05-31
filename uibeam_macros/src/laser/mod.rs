@@ -95,8 +95,13 @@ r#"const props = JSON.parse('"#
 unsafe {props}
 r#"');"#
 r#"
+const container = document.querySelector(`div[data-uibeam-laser=${name}]:not([data-uibeam-laser-hydrated])`);
 if (window.__uibeam_initlock__) {
     for (let i=0; i<42 && !window.__uibeam_lasers__; i++) await new Promise(resolve => setTimeout(resolve, 100));
+    if (!window.__uibeam_lasers__) {
+        container.setAttribute('data-uibeam-laser', `${name}@FAILED`);
+        throw new Error(`/.uibeam/lasers.js` is not loaded yet, please check your network connection or the server configuration.`);
+    }
 } else {
     window.__uibeam_initlock__ = true;
 
@@ -113,7 +118,6 @@ if (window.__uibeam_initlock__) {
     await init();
     window.__uibeam_lasers__ = lasers;
 }
-const container = document.querySelector(`div[data-uibeam-laser=${name}]:not([data-uibeam-laser-hydrated])`);
 container.setAttribute('data-uibeam-laser-hydrated', '');
 (window.__uibeam_lasers__[name])(props, container);
 "#
