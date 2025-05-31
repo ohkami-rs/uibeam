@@ -37,7 +37,7 @@ pub(super) fn expand(
             pub fn #hydrater_name(
                 props: ::uibeam::laser::js_sys::Object,
                 container: ::uibeam::laser::web_sys::Node
-            ) {
+            ) {// TODO: not execute hydration when the container is not displayed in window
                 ::uibeam::laser::hydrate(
                     ::uibeam::laser::VNode::new(
                         ::uibeam::laser::NodeType::component::<#name>(),
