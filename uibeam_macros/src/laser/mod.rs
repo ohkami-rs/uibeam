@@ -50,7 +50,7 @@ pub(super) fn expand(
         }
     });
 // TODO: reject local lasers outside of `#[Laser]` **by compile-time check**
-//       instead of runtime `panic!`
+//       instead of runtime `panic!` (memo: trait Component :> Beam ; <- children)
     let beam_impl = if local {
         quote! {
             impl ::uibeam::Beam for #name {
