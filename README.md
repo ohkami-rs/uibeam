@@ -306,12 +306,19 @@ working example: [examples/counter](./examples/counter)
     - not require `Serialize` `Deserialize` and can have unserializable items in fields, such as `fn(web_sys::Event)`.
     - only available as children of a non-local `Laser`.
 
-4. compile this crate by `wasm-pack` into **`web`** target with out-name **`lasers`**:
+4. compile this crate by `wasm-pack build` with **`--target web --out-name lasers`**:
 
     ```sh
+    # when naming the crate `components`
+
+    cd components
     wasm-pack build --target web --out-name lasers
+
+    # or
+
+    wasm-pack build components --target web --out-name lasers
     ```
- 
+
     and set up to serve the output directly (default: `pkg`) at **`/.uibeam`**:
  
     ```rust
@@ -324,7 +331,7 @@ working example: [examples/counter](./examples/counter)
         Router::new()
             .nest_service(
                 "/.uibeam",
-                ServeDir::new("./lasers/pkg")
+                ServeDir::new("./components/pkg")
             )
             // ...
     }

@@ -41,8 +41,9 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
 
             let ehannotations = (ehannotations.len() > 0).then(|| {
                 quote! {
-                    #[cfg(debug_assertions)]
-                    #(#ehannotations)*
+                    if false {
+                        #(#ehannotations)*
+                    }
                 }
             });
 

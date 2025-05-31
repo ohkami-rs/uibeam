@@ -7,14 +7,19 @@ uibeam = { path = "../../uibeam", features = ["laser"] }
 serde  = { version = "1", features = ["derive"] }
 
 [workspace.metadata.tasks]
-build = """
-    cd components
-    if [ -d pkg ]; then
-        rm -rf pkg/**.*
+build-dev = """
+    if [ -d components/pkg ]; then
+        rm -rf components/pkg/;
     fi
-    wasm-pack build --target web --out-name lasers
-    cd ..
+    wasm-pack build components --target web --out-name lasers --dev
     cargo build
+"""
+build-release = """
+    if [ -d components/pkg ]; then
+        rm -rf components/pkg/;
+    fi
+    wasm-pack build components --target web --out-name lasers # default is release
+    cargo build --release
 """
 
 [package]
