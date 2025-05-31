@@ -9,16 +9,12 @@ serde  = { version = "1", features = ["derive"] }
 [workspace.metadata.tasks]
 build = """
     cd components
-    if [ -d .uibeam ]; then
-        rm -rf .uibeam/**.*
+    if [ -d pkg ]; then
+        rm -rf pkg/**.*
     fi
-    wasm-pack build --target web --out-dir .uibeam --out-name lasers
+    wasm-pack build --target web --out-name lasers
     cd ..
     cargo build
-"""
-run = """
-    cargo task build
-    cargo run
 """
 
 [package]
