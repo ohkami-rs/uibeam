@@ -110,7 +110,7 @@ await init();
 window.__uibeam_lasers__ = lasers;
     } catch (e) {
 container.setAttribute('data-uibeam-laser-hydration-status', 'FAILED');
-throw(`Failed to initialize lasers: ${e}`);
+throw(`Failed to load lasers: ${e}`);
     }
 }
 (window.__uibeam_lasers__[name])(props, container);
