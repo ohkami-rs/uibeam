@@ -48,8 +48,14 @@ async fn index(Query(q): Query<CounterMeta>) -> HTML<std::borrow::Cow<'static, s
             <div class="space-y-8">
                 {[-100, -10, 0, 10, 100].iter().enumerate().map(|(i, &offset)| UI! {
                     <div class="flex items-center justify-center space-x-4">
-                        <h2 class="text-2xl">"Counter #"{1+i}</h2>
-                        <Counter initial_count={initial_count + offset} />
+                        <div class="w-1/3 min-w-fit grid gap-4 grid-cols-[1fr_144px]">
+                            <div class="flex items-center">
+                                <p class="text-2xl">"Counter #"{1+i}</p>
+                            </div>
+                            <div>
+                                <Counter initial_count={initial_count + offset} />
+                            </div>
+                        </div>
                     </div>
                 })}
             </div>

@@ -10,7 +10,7 @@ impl Beam for Layout {
         UI! {
             <html>
                 <head>
-                    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" />
+                    <link rel="stylesheet" href="/.uibeam/tailwind.css" />
                     <title>{&*self.title}</title>
                 </head>
                 <body>
@@ -41,9 +41,15 @@ impl Laser for Counter {
 
         UI! {
             <div>
-                <p class="text-2xl font-bold">"Count: "{*count}</p>
-                <button class="bg-blue-500 text-white px-4 py-2 rounded" onclick={increment}>"+"</button>
-                <button class="bg-red-500 text-white px-4 py-2 rounded" onclick={decrement}>"-"</button>
+                <div class="w-[144px]">
+                    <p class="text-2xl font-bold text-center">
+                        "Count: "{*count}
+                    </p>
+                    <div class="text-center">
+                        <button class="cursor-pointer bg-red-500  px-3 py-1 text-white rounded-md" onclick={decrement}>"-"</button>
+                        <button class="cursor-pointer bg-blue-500 px-3 py-1 text-white rounded-md" onclick={increment}>"+"</button>
+                    </div>
+                </div>
             </div>
         }
     }
