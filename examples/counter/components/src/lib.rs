@@ -46,8 +46,8 @@ impl Laser for Counter {
                         "Count: "{*count}
                     </p>
                     <div class="text-center">
-                        <button class="cursor-pointer bg-red-500  px-3 py-1 text-white rounded-md" onclick={decrement}>"-"</button>
-                        <button class="cursor-pointer bg-blue-500 px-3 py-1 text-white rounded-md" onclick={increment}>"+"</button>
+                        <button class="cursor-pointer bg-red-500  w-[32px] py-1 text-white rounded-md" onclick={decrement}>"-"</button>
+                        <button class="cursor-pointer bg-blue-500 w-[32px] py-1 text-white rounded-md" onclick={increment}>"+"</button>
                     </div>
                 </div>
             </div>
