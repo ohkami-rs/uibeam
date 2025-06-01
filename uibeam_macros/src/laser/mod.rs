@@ -89,7 +89,7 @@ r#"const name = '"# #hydrater_name_str r#"';"#
 r#"const props = JSON.parse('"# unsafe {props} r#"');"#
 r#"
 const container = document.querySelector(`[data-uibeam-laser='${name}']:not([data-uibeam-laser-hydration-status])`);
-container.setAttribute('data-uibeam-laser-hydration-status', 'FOUND');
+container.setAttribute('data-uibeam-laser-hydration-status', 'INIT');
 if (window.__uibeam_initlock__) {
     container.setAttribute('data-uibeam-laser-hydration-status', 'PENDING');
     for (let i=0; i<30 && !window.__uibeam_lasers__; i++) await new Promise(resolve => setTimeout(resolve, 100));
