@@ -94,8 +94,8 @@ if (window.__uibeam_initlock__) {
     container.setAttribute('data-uibeam-laser-hydration-status', 'PENDING');
     for (let i=0; i<30 && !window.__uibeam_lasers__; i++) await new Promise(resolve => setTimeout(resolve, 100));
     if (!window.__uibeam_lasers__) {
-        container.setAttribute('data-uibeam-laser-hydration-status', 'FAILED');
-        throw('`/.uibeam/lasers.js` is not loaded yet. Please check your network connection or the server configuration.');
+container.setAttribute('data-uibeam-laser-hydration-status', 'FAILED');
+throw('`/.uibeam/lasers.js` is not loaded yet. Please check your network connection or the server configuration.');
     }
 } else {
     container.setAttribute('data-uibeam-laser-hydration-status', 'LOADING');
