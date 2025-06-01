@@ -37,7 +37,7 @@ pub(super) fn expand(
             pub fn #hydrater_name(
                 props: ::uibeam::laser::js_sys::Object,
                 container: ::uibeam::laser::web_sys::Node
-            ) {// TODO: not execute hydration when the container is not displayed in window
+            ) {
                 ::uibeam::laser::hydrate(
                     ::uibeam::laser::VNode::new(
                         ::uibeam::laser::NodeType::component::<#name>(),
@@ -80,7 +80,7 @@ pub(super) fn expand(
                         let props: String = ::uibeam::laser::serialize_props(&self);
 
                         let template: ::std::borrow::Cow<'static, str> = ::uibeam::shoot(<Self as Laser>::render(self));
-
+// TODO: control hydration flow based on visibility on screen (e.g. by `IntersectionObserver`) 
                         ::uibeam::UI! {
                             <div data-uibeam-laser=#hydrater_name_str>
                                 unsafe {template}
