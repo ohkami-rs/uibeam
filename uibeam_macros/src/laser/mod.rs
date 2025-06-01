@@ -88,17 +88,17 @@ pub(super) fn expand(
 r#"const name = '"# #hydrater_name_str r#"';"#
 r#"const props = JSON.parse('"# unsafe {props} r#"');"#
 r#"
-const container = document.querySelector(`[data-uibeam-laser='${name}']:not([data-uibeam-laser-hydration-status])`);
-container.setAttribute('data-uibeam-laser-hydration-status', 'INIT');
+const container = document.querySelector(`[data-uibeam-laser='${name}']:not([data-uibeam-hydration-status])`);
+container.setAttribute('data-uibeam-hydration-status', 'INIT');
 if (window.__uibeam_initlock__) {
-    container.setAttribute('data-uibeam-laser-hydration-status', 'PENDING');
+    container.setAttribute('data-uibeam-hydration-status', 'PENDING');
     for (let i=0; i<50 && !window.__uibeam_lasers__; i++) await new Promise(resolve => setTimeout(resolve, 100));
     if (!window.__uibeam_lasers__) {
-container.setAttribute('data-uibeam-laser-hydration-status', 'FAILED');
+container.setAttribute('data-uibeam-hydration-status', 'FAILED');
 throw('`/.uibeam/lasers.js` is not loaded yet. Please check your network connection or the server configuration.');
     }
 } else {
-    container.setAttribute('data-uibeam-laser-hydration-status', 'LOADING');
+    container.setAttribute('data-uibeam-hydration-status', 'LOADING');
     window.__uibeam_initlock__ = true;
 const importmap = document.createElement('script');
 importmap.type = 'importmap';
@@ -109,12 +109,12 @@ const { default: init, ...lasers } = await import('/.uibeam/lasers.js');
 await init();
 window.__uibeam_lasers__ = lasers;
     } catch (e) {
-container.setAttribute('data-uibeam-laser-hydration-status', 'FAILED');
+container.setAttribute('data-uibeam-hydration-status', 'FAILED');
 throw(`Failed to load lasers: ${e}`);
     }
 }
 (window.__uibeam_lasers__[name])(props, container);
-container.setAttribute('data-uibeam-laser-hydration-status', 'DONE');
+container.setAttribute('data-uibeam-hydration-status', 'DONE');
 "#
                                 </script>
                             </div>
