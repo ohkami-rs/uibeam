@@ -79,7 +79,7 @@ pub(super) fn expand(
                     #[cfg(not(target_arch = "wasm32"))] {
                         let props: String = ::uibeam::laser::serialize_props(&self);
                         let template: ::std::borrow::Cow<'static, str> = ::uibeam::shoot(<Self as Laser>::render(self));
-                        
+
 // TODO: control hydration flow based on visibility on screen (e.g. by `IntersectionObserver`) 
                         ::uibeam::UI! {
                             <div data-uibeam-laser=#hydrater_name_str>
@@ -95,23 +95,23 @@ if (window.__uibeam_initlock__) {
     container.setAttribute('data-uibeam-hydration-status', 'PENDING');
     for (let i=0; i<50 && !window.__uibeam_lasers__; i++) await new Promise(resolve => setTimeout(resolve, 100));
     if (!window.__uibeam_lasers__) {
-container.setAttribute('data-uibeam-hydration-status', 'FAILED');
-throw('`/.uibeam/lasers.js` is not loaded yet. Please check your network connection or the server configuration.');
+        container.setAttribute('data-uibeam-hydration-status', 'FAILED');
+        throw('`/.uibeam/lasers.js` is not loaded yet. Please check your network connection or the server configuration.');
     }
 } else {
     container.setAttribute('data-uibeam-hydration-status', 'LOADING');
     window.__uibeam_initlock__ = true;
-const importmap = document.createElement('script');
-importmap.type = 'importmap';
-importmap.textContent = '{"imports": {"preact": "https://esm.sh/preact", "preact/hooks": "https://esm.sh/preact/hooks?external=preact", "@preact/signals": "https://esm.sh/@preact/signals?external=preact"}}';
-document.head.appendChild(importmap);
+    const importmap = document.createElement('script');
+    importmap.type = 'importmap';
+    importmap.textContent = '{"imports": {"preact": "https://esm.sh/preact", "preact/hooks": "https://esm.sh/preact/hooks?external=preact", "@preact/signals": "https://esm.sh/@preact/signals?external=preact"}}';
+    document.head.appendChild(importmap);
     try {
-const { default: init, ...lasers } = await import('/.uibeam/lasers.js');
-await init();
-window.__uibeam_lasers__ = lasers;
+        const { default: init, ...lasers } = await import('/.uibeam/lasers.js');
+        await init();
+        window.__uibeam_lasers__ = lasers;
     } catch (e) {
-container.setAttribute('data-uibeam-hydration-status', 'FAILED');
-throw(`Failed to load lasers: ${e}`);
+        container.setAttribute('data-uibeam-hydration-status', 'FAILED');
+        throw(`Failed to load lasers: ${e}`);
     }
 }
 (window.__uibeam_lasers__[name])(props, container);
