@@ -21,6 +21,21 @@ impl Beam for Layout {
     }
 }
 
+#[Laser(local)]
+pub struct Button {
+    pub label: String,
+    pub class: Option<&'static str>,
+    pub onclick: Box<dyn Fn(uibeam::laser::Event)>,
+}
+
+impl Laser for Button {
+    fn render(self) -> UI {
+        UI! {
+            <button>{self.label}</button>
+        }
+    }
+}
+
 #[Laser]
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct Counter {

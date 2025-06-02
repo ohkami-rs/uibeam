@@ -17,7 +17,7 @@ pub(super) fn expand(
 
     let attribute_marker_impl = {
         quote! {
-            impl ::uibeam::laser::Laser_attribute for #name {}
+            impl ::uibeam::laser::Laser_attribute for #name where Self: ::uibeam::Laser {}
         }
     };
 
@@ -128,13 +128,6 @@ container.setAttribute('data-uibeam-hydration-status', 'DONE');
 
     Ok(quote! {
         #input
-
-        const _: () = {
-            use ::uibeam::laser::wasm_bindgen;
-            #[wasm_bindgen::prelude::wasm_bindgen]
-            #[::uibeam::consume]
-            #input
-        };
 
         #attribute_marker_impl
 

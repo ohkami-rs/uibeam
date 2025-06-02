@@ -235,25 +235,31 @@ pub(crate) fn transform(
         interpolations.push(Interpolation::Children({
             let attributes = attributes.iter().map(|a| {
                 let name = a.name.as_ident().expect("Component attribute name must be a valid Rust identifier");
-                let value = match &a.value {
-                    None => quote! {
-                        true
-                    },
+                let (value, is_literal) = match &a.value {
+                    None => {
+                        (quote! {true}, false)
+                    }
                     Some(AttributeValueTokens { value, .. }) => match value {
                         AttributeValueToken::StringLiteral(lit) => {
-                            lit.into_token_stream()
+                            (lit.into_token_stream(), true)
                         }
                         AttributeValueToken::IntegerLiteral(lit) => {
-                            LitStr::new(&lit.base10_digits(), lit.span()).into_token_stream()
+                            (LitStr::new(&lit.base10_digits(), lit.span()).into_token_stream(), true)
                         }
                         AttributeValueToken::Interpolation(InterpolationTokens { rust_expression, .. }) => {
-                            rust_expression.into_token_stream()
+                            (rust_expression.into_token_stream(), false)
                         }
                     }
                 };
-                quote! {
-                    #[allow(unused_braces)]
-                    #name: (#value).into(),
+                if is_literal {
+                    quote! {
+                        #[allow(unused_braces)]
+                        #name: (#value).into(),
+                    }
+                } else {
+                    quote! {
+                        #name: #value,
+                    }
                 }
             });
             let children = content.map(|c| {

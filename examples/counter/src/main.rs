@@ -1,4 +1,4 @@
-use components::{Layout, Counter};
+use components::{Layout, Counter, Button};
 use uibeam::UI;
 use ohkami::prelude::*;
 use ohkami::serde::Deserialize;
@@ -14,7 +14,7 @@ impl FangAction for LayoutFang {
             let content = res.drop_content().into_bytes().unwrap();
             let content = std::str::from_utf8(&*content).unwrap();
             res.set_html(uibeam::shoot(UI! {
-                <Layout title={self.title}>
+                <Layout title={self.title.to_string()}>
                     unsafe {content}
                 </Layout>
             }));
@@ -41,6 +41,11 @@ struct CounterMeta {
 
 async fn index(Query(q): Query<CounterMeta>) -> HTML<std::borrow::Cow<'static, str>> {
     let initial_count = q.init.unwrap_or(0);
+
+    let handle_click//: Box<dyn Fn(uibeam::laser::Event)>
+        = Box::new(|_: uibeam::laser::Event| {
+            println!("Button clicked!");
+        });
     
     HTML(uibeam::shoot(UI! {
         <main>
@@ -60,6 +65,11 @@ async fn index(Query(q): Query<CounterMeta>) -> HTML<std::borrow::Cow<'static, s
                 })}
             </div>
         </main>
+        <Button
+            label="Click me"
+            class="bg-blue-500 text-white px-4 py-2 rounded"
+            onclick={handle_click}
+        />
     }))
 }
 
