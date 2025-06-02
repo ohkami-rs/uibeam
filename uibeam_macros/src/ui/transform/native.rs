@@ -1,8 +1,8 @@
-use super::super::parse::{NodeTokens, ContentPieceTokens, InterpolationTokens, AttributeTokens, AttributeValueTokens, AttributeValueToken};
+use super::super::parse::{UIDirectives, NodeTokens, ContentPieceTokens, InterpolationTokens, AttributeTokens, AttributeValueTokens, AttributeValueToken};
 use super::{Component, prop_for_event};
 use proc_macro2::{TokenStream, Span};
 use quote::{quote, ToTokens};
-use syn::{Expr, ExprLit, Lit, LitStr, Type};
+use syn::{parse_quote, Expr, ExprLit, Lit, LitStr, Type};
 
 pub(crate) struct Piece(Option<String>);
 impl ToTokens for Piece {
@@ -96,6 +96,7 @@ impl ToTokens for EventHandlerAnnotation {
 /// Derives `({HTML-escaped literal pieces}, {interpolating expressions})`
 /// from the `NodeTokens`
 pub(crate) fn transform(
+    directives: &UIDirectives,
     tokens: NodeTokens,
 ) -> (
     Vec<Piece>,
@@ -107,13 +108,14 @@ pub(crate) fn transform(
     let mut piece = Piece::none();
 
     fn handle_node_tokens(
+        directives: &UIDirectives,
         node: NodeTokens,
         current_piece: &mut Piece,
         pieces: &mut Vec<Piece>,
         interpolations: &mut Vec<Interpolation>,
         ehannotations: &mut Vec<EventHandlerAnnotation>,
     ) {
-        let (child_pieces, child_interpolations, child_ehannotation) = transform(node);
+        let (child_pieces, child_interpolations, child_ehannotation) = transform(directives, node);
 
         let mut child_pieces = child_pieces.into_iter();
         
@@ -180,6 +182,7 @@ pub(crate) fn transform(
     }
 
     fn handle_content_pieces(
+        directives: &UIDirectives,
         content: Vec<ContentPieceTokens>,
         current_piece: &mut Piece,
         pieces: &mut Vec<Piece>,
@@ -219,6 +222,7 @@ pub(crate) fn transform(
                     }
                 }
                 ContentPieceTokens::Node(node) => handle_node_tokens(
+                    directives,
                     node,
                     current_piece,
                     pieces,
@@ -270,8 +274,10 @@ pub(crate) fn transform(
                     children: ::uibeam::UI! { #children_tokens },
                 }
             });
+            let component_bound = directives.component_bound.clone()
+                .unwrap_or(parse_quote! { ::uibeam::Beam });
             syn::parse2(quote! {
-                <#name as ::uibeam::Beam>::render(#name {
+                <#name as #component_bound>::render(#name {
                     #(#attributes)*
                     #children
                 })
@@ -316,6 +322,7 @@ pub(crate) fn transform(
                 );
                 piece.join(Piece::new(">"));
                 handle_content_pieces(
+                    directives,
                     content,
                     &mut piece,
                     &mut pieces,
@@ -339,6 +346,7 @@ pub(crate) fn transform(
 
             NodeTokens::TextNode(node_pieces) => {
                 handle_content_pieces(
+                    directives,
                     node_pieces,
                     &mut piece,
                     &mut pieces,

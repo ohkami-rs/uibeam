@@ -1,12 +1,18 @@
 use quote::{quote, ToTokens};
 use syn::parse::{Parse, ParseStream};
 use syn::spanned::Spanned;
-use syn::{token, Expr, Ident, LitInt, LitStr, Token};
+use syn::{token, Expr, Ident, LitInt, LitStr, Path, Token};
+
+#[derive(Default)]
+pub(super) struct UIDirectives {
+    pub(super) component_bound: Option<Path>,
+}
 
 /// Parsed representation of the UI macro input.
 /// 
 /// This is almost HTML syntax, but with some Rust expressions embedded within `{}`.
 pub(super) struct UITokens {
+    pub(super) directives: UIDirectives,
     pub(super) nodes: Vec<NodeTokens>,
 }
 
@@ -107,13 +113,40 @@ pub(super) enum AttributeValueToken {
 
 //////////////////////////////////////////////////////////////////////////////////////////
 
+impl Parse for UIDirectives {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let mut directives = UIDirectives::default();
+        while input.peek(Token![@]) {
+            let _: Token![@] = input.parse()?;
+            match &*input.parse::<Ident>()?.to_string() {
+                "component_bound" => {
+                    let _: Token![:] = input.parse()?;
+                    let bound: LitStr = input.parse()?;
+                    let _: Token![;] = input.parse()?;
+                    directives.component_bound = Some(syn::parse_str(&bound.value())?);
+                }
+                other => {
+                    return Err(input.error(format!("Unknown directive: `@{other}`")));
+                }
+            }
+        }
+        Ok(directives)
+    }
+}
+
 impl Parse for UITokens {
     fn parse(input: ParseStream) -> syn::Result<Self> {
+        let directives = input.peek(Token![@])
+            .then(|| input.parse())
+            .transpose()?
+            .unwrap_or_default();
+
         let mut nodes = Vec::new();
         while !input.is_empty() {
             nodes.push(input.parse()?);
         }
-        Ok(UITokens { nodes })
+
+        Ok(UITokens { directives, nodes })
     }
 }
 
