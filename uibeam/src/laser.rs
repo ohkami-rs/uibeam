@@ -170,7 +170,7 @@ impl<T: serde::Serialize + for<'de>serde::Deserialize<'de>> std::ops::Deref for 
         }
         #[cfg(target_arch = "wasm32")] {
             let value = serde_wasm_bindgen::from_value(
-                // TODO: skip deserialization if value is not changed 
+// TODO: skip deserialization if value is not changed 
                 Reflect::get(&self.preact_signal, &"value".into()).unwrap_throw()
             ).unwrap_throw();
             unsafe { *self.current_value.get() = value; }

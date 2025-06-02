@@ -78,12 +78,13 @@ pub(super) fn expand(
 
                     #[cfg(not(target_arch = "wasm32"))] {
                         let props: String = ::uibeam::laser::serialize_props(&self);
-
                         let template: ::std::borrow::Cow<'static, str> = ::uibeam::shoot(<Self as Laser>::render(self));
+                        
 // TODO: control hydration flow based on visibility on screen (e.g. by `IntersectionObserver`) 
                         ::uibeam::UI! {
                             <div data-uibeam-laser=#hydrater_name_str>
                                 unsafe {template}
+                                
                                 <script type="module">
 r#"const name = '"# #hydrater_name_str r#"';"#
 r#"const props = JSON.parse('"# unsafe {props} r#"');"#

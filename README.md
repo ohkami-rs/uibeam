@@ -304,7 +304,7 @@ working example: [examples/counter](./examples/counter)
     `#[Laser(local)]` ebables to build _**local Lasers**_:
     
     - not require `Serialize` `Deserialize` and can have unserializable items in fields, such as `fn(web_sys::Event)`.
-    - only available as children of a non-local `Laser`.
+    - only available as `UI` elements of a non-local `Laser`.
 
 4. Compile to WASM by `wasm-pack build` with **`--target web --out-name lasers`**:
 
