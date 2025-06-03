@@ -66,7 +66,7 @@ pub struct UI(
 /// - `<StructName></StructName>` **requires** the struct to have `children`
 ///   field. The 0 or more children nodes are passed to `children` as `UI`.
 /// - Attributes are interpreted as the struct's fields. Literals are
-///   passed as `(it).into()`.
+///   passed as `(it).into()`, and `{any expression}`s are passed directly.
 /// 
 /// See [ `UI!` ](macro@UI)'s doc for more details on it.
 /// 

@@ -51,7 +51,7 @@ mod laser;
 /// - `<StructName></StructName>` **requires** the struct to have `children`
 ///   field. The 0 or more children nodes are passed to `children` as `UI`.
 /// - Attributes are interpreted as the struct's fields. Literals are
-///   passed as `(it).into()`, and `{expression}`s are passed directly.
+///   passed as `(it).into()`, and `{any expression}`s are passed directly.
 /// 
 /// ```jsx
 /// <Struct a="1" b={"2".to_string()} />
