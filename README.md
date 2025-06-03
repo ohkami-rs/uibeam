@@ -216,7 +216,7 @@ impl Beam for AdminPage {
 
 fn main() {
     let ui = UI! {
-        <Layout title="admin page">  // title: "admin page".into()
+        <Layout title="admin page">  // title: ("admin page").into()
             <AdminPage />  // children: (AdminPage {}).render()
         </Layout>
     };

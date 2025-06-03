@@ -55,21 +55,19 @@ impl Laser for Counter {
         });
 
         UI! {
-            <div onunknown={callback!([], |_| {})}>
-                <div class="w-[144px]">
-                    <p class="text-2xl font-bold text-center">
-                        "Count: "{*count}
-                    </p>
-                    <div class="text-center">
-                        <button
-                            class="cursor-pointer bg-red-500  w-[32px] py-1 text-white rounded-md"
-                            onclick={decrement}
-                        >"-"</button>
-                        <button
-                            class="cursor-pointer bg-blue-500 w-[32px] py-1 text-white rounded-md"
-                            onclick={increment}
-                        >"+"</button>
-                    </div>
+            <div class="w-[144px]">
+                <p class="text-2xl font-bold text-center">
+                    "Count: "{*count}
+                </p>
+                <div class="text-center">
+                    <button
+                        class="cursor-pointer bg-red-500  w-[32px] py-1 text-white rounded-md"
+                        onclick={decrement}
+                    >"-"</button>
+                    <button
+                        class="cursor-pointer bg-blue-500 w-[32px] py-1 text-white rounded-md"
+                        onclick={increment}
+                    >"+"</button>
                 </div>
             </div>
         }
