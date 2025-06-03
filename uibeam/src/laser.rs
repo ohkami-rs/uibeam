@@ -4,14 +4,16 @@
 pub use ::web_sys::{
     Event,
     AnimationEvent,
+    ClipboardEvent,
+    CompositionEvent,
+    FocusEvent,
+    InputEvent,
+    KeyboardEvent,
     MouseEvent,
     PointerEvent,
-    InputEvent,
-    FocusEvent,
-    CompositionEvent,
-    KeyboardEvent,
     TouchEvent,
     TransitionEvent,
+    UiEvent,
     WheelEvent,
 };
 

@@ -4,8 +4,8 @@ pub(super) mod native;
 pub(super) mod wasm32;
 
 use super::parse::{NodeTokens, ContentPieceTokens, HtmlIdent, AttributeTokens};
+use proc_macro2::Span;
 use syn::{Ident, Type};
-use quote::quote;
 
 struct Component<'n> {
     name: &'n Ident,
@@ -40,25 +40,62 @@ impl NodeTokens {
     }
 }
 
-fn prop_for_event(event: &str) -> Option<(Ident, Type)> {
+fn prop_for_event(event: &str) -> syn::Result<(Ident, Type)> {
     macro_rules! preact_handlers {
         ($($eventname:literal: $propName:ident($Event:ty);)*) => {
             match event {
                 $(
-                    $eventname => Some((
+                    $eventname => Ok((
                         Ident::new(stringify!($propName), proc_macro2::Span::call_site()),
-                        syn::parse2::<Type>(quote! {::uibeam::laser::web_sys::$Event}).unwrap()
+                        syn::parse_quote! {::uibeam::laser::web_sys::$Event}
                     )),
                 )*
-                _ => None
+                _ => Err(syn::Error::new(Span::call_site(), format!(
+                    "Handler for unknown event `{event}`. If it's valid event, \
+                    please submit an issue at https://github.com/ohkami-rs/uibeam/issues \
+                    to add support for it! \
+                    NOTE: custom event handlers are not supported in current version."
+                )))
             }
         };
     }
     preact_handlers! {
+        "afterprint":       onAfterPrint(Event);
+        "beforeprint":      onBeforePrint(Event);
+        "beforeunload":     onBeforeUnload(Event);
+        "beforematch":      onBeforeMatch(Event);
+        "change":           onChange(Event);
+        "fullscreenchange": onFullScreenChange(Event);
+        "fullscreenerror":  onFullScreenError(Event);
+        "load":             onLoad(Event);
+        "scroll":           onScroll(Event);
+        "scrollend":        onScrollEnd(Event);
+        "offline":          onOffline(Event);
+        "online":           onOnline(Event);
+
         "animationcancel":    onAnimationCancel(AnimationEvent);
         "animationend":       onAnimationEnd(AnimationEvent);
         "animationiteration": onAnimationIteration(AnimationEvent);
         "animationstart":     onAnimationStart(AnimationEvent);
+
+        "copy":  onCopy(ClipboardEvent);
+        "cut":   onCut(ClipboardEvent);
+        "paste": onPaste(ClipboardEvent);
+
+        "compositionend":    onCompositionEnd(CompositionEvent);
+        "compositionstart":  onCompositionStart(CompositionEvent);
+        "compositionupdate": onCompositionUpdate(CompositionEvent);
+
+        "blur":     onBlur(FocusEvent);
+        "focus":    onFocus(FocusEvent);
+        "focusin":  onFocusIn(FocusEvent);
+        "focusout": onFocusOut(FocusEvent);
+
+        "input":       onInput(InputEvent);
+        "beforeinput": onBeforeInput(InputEvent);
+
+        "keydown":  onKeyDown(KeyboardEvent);
+        "keyup":    onKeyUp(KeyboardEvent);
 
         "auxclick":    onAuxClick(MouseEvent);
         "contextmenu": onContextMenu(MouseEvent);
@@ -84,21 +121,6 @@ fn prop_for_event(event: &str) -> Option<(Ident, Type)> {
         "pointerrawupdate":   onPointerRawUpdate(PointerEvent);
         "pointerup":          onPointerUp(PointerEvent);
 
-        "beforeinput": onBeforeInput(InputEvent);
-
-        "blur":     onBlur(FocusEvent);
-        "focus":    onFocus(FocusEvent);
-        "focusin":  onFocusIn(FocusEvent);
-        "focusout": onFocusOut(FocusEvent);
-
-        "compositionend":    onCompositionEnd(CompositionEvent);
-        "compositionstart":  onCompositionStart(CompositionEvent);
-        "compositionupdate": onCompositionUpdate(CompositionEvent);
-
-        "keydown":  onKeyDown(KeyboardEvent);
-        "keypress": onKeyPress(KeyboardEvent);
-        "keyup":    onKeyUp(KeyboardEvent);
-
         "touchcancel": onTouchCancel(TouchEvent);
         "touchend":    onTouchEnd(TouchEvent);
         "touchmove":   onTouchMove(TouchEvent);
@@ -109,23 +131,8 @@ fn prop_for_event(event: &str) -> Option<(Ident, Type)> {
         "transitionrun":    onTransitionRun(TransitionEvent);
         "transitionstart":  onTransitionStart(TransitionEvent);
 
-        "wheel": onWheel(WheelEvent);
-
-        "beforematch":      onBeforeMatch(Event);
-        "change":           onChange(Event);
-        "fullscreenchange": onFullScreenChange(Event);
-        "fullscreenerror":  onFullScreenError(Event);
-        "input":            onInput(Event);
-        "load":             onLoad(Event);
-        "scroll":           onScroll(Event);
-        "scrollend":        onScrollEnd(Event);
-
-        "afterprint":   onAfterPrint(Event);
-        "beforeprint":  onBeforePrint(Event);
-        "beforeunload": onBeforeUnload(Event);
-        "offline":      onOffline(Event);
-        "online":       onOnline(Event);
-
         "resize": onResize(UiEvent);
+
+        "wheel": onWheel(WheelEvent);
     }
 }

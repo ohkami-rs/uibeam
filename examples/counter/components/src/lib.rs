@@ -55,7 +55,7 @@ impl Laser for Counter {
         });
 
         UI! {
-            <div>
+            <div onunknown={callback!([], |_| {})}>
                 <div class="w-[144px]">
                     <p class="text-2xl font-bold text-center">
                         "Count: "{*count}

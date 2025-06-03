@@ -6,9 +6,9 @@ use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens};
 use syn::{LitStr, Expr};
 
-fn as_event_handler(name: &str, expression: &Expr) -> Option<(LitStr, TokenStream)> {
-    prop_for_event(&*name.strip_prefix("on")?.to_ascii_lowercase())
-        .map(|(prop, event)| (
+fn as_event_handler(name: &str, expression: &Expr) -> Option<syn::Result<(LitStr, TokenStream)>> {
+    name.strip_prefix("on").map(|event|
+        prop_for_event(&*event.to_ascii_lowercase()).map(|(prop, event)| (
             LitStr::new(&prop.to_string(), prop.span()),
             quote! {
                 ::uibeam::laser::wasm_bindgen::closure::Closure::<dyn Fn(#event)>::new(
@@ -16,67 +16,70 @@ fn as_event_handler(name: &str, expression: &Expr) -> Option<(LitStr, TokenStrea
                 ).into_js_value()
             }
         ))
+    )
 }
 
 /// Derives Rust codes that builds an `uibeam::laser::VNode` expression
 /// corresponded to the `UI!` input
 pub(crate) fn transform(
     tokens: NodeTokens,
-) -> TokenStream {
+) -> syn::Result<TokenStream> {
     let mut t = TokenStream::new();
-    encode(&mut t, tokens);
-    return t;
+    encode(&mut t, tokens)?;
+    return Ok(t);
 
-    fn encode(t: &mut TokenStream, tokens: NodeTokens) {
-        fn into_props(attributes: Vec<AttributeTokens>) -> TokenStream {
+    fn encode(t: &mut TokenStream, tokens: NodeTokens) -> syn::Result<()> {
+        fn into_props(attributes: Vec<AttributeTokens>) -> syn::Result<TokenStream> {
             if attributes.is_empty() {
-                return quote! {
+                return Ok(quote! {
                     ::uibeam::laser::js_sys::Object::new()
-                };
+                });
             }
 
             let kvs = attributes.into_iter().map(|AttributeTokens { name, value }| {
                 let name = name.to_string();
                 match value {
                     None => {
-                        quote! {
+                        Ok(quote! {
                             (#name, ::uibeam::laser::wasm_bindgen::JsValue::TRUE)
-                        }
+                        })
                     }
                     Some(AttributeValueTokens { _eq, value }) => match value {
                         AttributeValueToken::IntegerLiteral(i) => {
-                            quote! {
+                            Ok(quote! {
                                 (#name, ::uibeam::laser::wasm_bindgen::JsValue::from(#i))
-                            }
+                            })
                         },
                         AttributeValueToken::StringLiteral(s) => {
                             let s = LitStr::new(&uibeam_html::escape(&s.value()), s.span());
-                            quote! {
+                            Ok(quote! {
                                 (#name, ::uibeam::laser::wasm_bindgen::JsValue::from(#s))
-                            }
+                            })
                         },
                         AttributeValueToken::Interpolation(InterpolationTokens {
                             _unsafe, _brace, rust_expression
                         }) => {
                             match as_event_handler(&name, &rust_expression) {
-                                Some((prop, event_handler)) => {
-                                    quote! {
+                                Some(eh) => {
+                                    let (prop, event_handler) = eh?;
+                                    Ok(quote! {
                                         (#prop, #event_handler)
-                                    }
+                                    })
                                 }
                                 None => {
-                                    quote! {
+                                    Ok(quote! {
                                         (#name, ::uibeam::laser::wasm_bindgen::JsValue::from(
                                             ::uibeam::AttributeValue::from(#rust_expression)
                                         ))
-                                    }
+                                    })
                                 }
                             }
                         }
                     }
                 }
-            });
-            quote! {
+            }).collect::<syn::Result<Vec<_>>>()?;
+
+            Ok(quote! {
                 {
                     let props = ::uibeam::laser::js_sys::Object::new();
                     for (k, v) in [#(#kvs),*] {
@@ -84,10 +87,10 @@ pub(crate) fn transform(
                     }
                     props
                 }
-            }
+            })
         }
 
-        fn into_children(content: Vec<ContentPieceTokens>) -> TokenStream {
+        fn into_children(content: Vec<ContentPieceTokens>) -> syn::Result<TokenStream> {
             let children = content.into_iter().map(|piece| {
                 match piece {
                     ContentPieceTokens::StaticText(text) => {
@@ -96,35 +99,35 @@ pub(crate) fn transform(
                         } else {
                             LitStr::new(&uibeam_html::escape(&text.value()), text.span())
                         };
-                        quote! {
+                        Ok(quote! {
                             ::uibeam::laser::VNode::text(#text)
-                        }
+                        })
                     }
                     ContentPieceTokens::Interpolation(InterpolationTokens {
                         _unsafe, _brace, rust_expression
                     }) => {
                         let is_escape = syn::LitBool::new(_unsafe.is_none(), Span::call_site());
-                        quote! {
+                        Ok(quote! {
                             ::uibeam::IntoChildren::<_, #is_escape>::into_children(
                                 #rust_expression
                             ).into_vdom()
-                        }
+                        })
                     }
                     ContentPieceTokens::Node(n) => {
                         transform(n)
                     }
                 }
-            });
+            }).collect::<syn::Result<Vec<_>>>()?;
 
-            quote! {
+            Ok(quote! {
                 vec![#(#children),*]
-            }
+            })
         }
 
         if let Some(Component { name, attributes, content }) = tokens.as_beam() {
-            let props = into_props(attributes.to_vec());
+            let props = into_props(attributes.to_vec())?;
 
-            let children = into_children(content.map(<[_]>::to_vec).unwrap_or_else(Vec::new));
+            let children = into_children(content.map(<[_]>::to_vec).unwrap_or_else(Vec::new))?;
 
             (quote! {
                 ::uibeam::laser::VNode::new(
@@ -151,9 +154,9 @@ pub(crate) fn transform(
                 } => {
                     let tag = tag.to_string();
 
-                    let props = into_props(attributes);
+                    let props = into_props(attributes)?;
 
-                    let children = into_children(content);
+                    let children = into_children(content)?;
 
                     (quote! {
                         ::uibeam::laser::VNode::new(
@@ -173,7 +176,7 @@ pub(crate) fn transform(
                 } => {
                     let tag = tag.to_string();
 
-                    let props = into_props(attributes);
+                    let props = into_props(attributes)?;
 
                     (quote! {
                         ::uibeam::laser::VNode::new(
@@ -185,10 +188,10 @@ pub(crate) fn transform(
                 }
                 
                 NodeTokens::TextNode(node_pieces) => {
-                    into_children(node_pieces)
-                        .to_tokens(t);
+                    into_children(node_pieces)?.to_tokens(t);
                 }
             }
         }
+        Ok(())
     }
 }

@@ -10,11 +10,11 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
     #[cfg(feature = "laser")]
     let wasm32_ui = {
         let wasm32_nodes = nodes.clone().into_iter().map(|node| {
-            let vdom_tokens = transform::wasm32::transform(node);
-            quote! {
+            let vdom_tokens = transform::wasm32::transform(node)?;
+            Ok(quote! {
                 ::uibeam::UI::new_unchecked(#vdom_tokens)
-            }
-        });
+            })
+        }).collect::<syn::Result<Vec<_>>>()?;
 
         quote! {
             <::uibeam::UI>::from_iter([#(#wasm32_nodes),*])
@@ -33,7 +33,7 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
         });
 
         let native_nodes = nodes.into_iter().map(|node| {
-            let (mut literals, expressions, ehannotations) = transform::native::transform(node);
+            let (mut literals, expressions, ehannotations) = transform::native::transform(node)?;
             if should_insert_doctype {
                 literals.first_mut().unwrap().edit(|lit| *lit = format!("<!DOCTYPE html>{lit}"));
                 should_insert_doctype = false;
@@ -47,7 +47,7 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
                 }
             });
 
-            quote! {
+            Ok(quote! {
                 unsafe {
                     #ehannotations
                     ::uibeam::UI::new_unchecked(
@@ -55,8 +55,8 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
                         [#(#expressions),*]
                     )
                 }
-            }
-        });
+            })
+        }).collect::<syn::Result<Vec<_>>>()?;
 
         quote! {
             <::uibeam::UI>::concat([#(#native_nodes),*])

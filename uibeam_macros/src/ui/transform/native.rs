@@ -97,11 +97,11 @@ impl ToTokens for EventHandlerAnnotation {
 /// from the `NodeTokens`
 pub(crate) fn transform(
     tokens: NodeTokens,
-) -> (
+) -> syn::Result<(
     Vec<Piece>,
     Vec<Interpolation>,
     Vec<EventHandlerAnnotation>,
-) {
+)> {
     let (mut pieces, mut interpolations, mut ehannotations) = (Vec::new(), Vec::new(), Vec::new());
 
     let mut piece = Piece::none();
@@ -112,8 +112,8 @@ pub(crate) fn transform(
         pieces: &mut Vec<Piece>,
         interpolations: &mut Vec<Interpolation>,
         ehannotations: &mut Vec<EventHandlerAnnotation>,
-    ) {
-        let (child_pieces, child_interpolations, child_ehannotation) = transform(node);
+    ) -> syn::Result<()> {
+        let (child_pieces, child_interpolations, child_ehannotation) = transform(node)?;
 
         let mut child_pieces = child_pieces.into_iter();
         
@@ -131,6 +131,8 @@ pub(crate) fn transform(
         }
 
         ehannotations.extend(child_ehannotation);
+
+        Ok(())
     }
 
     fn handle_attributes(
@@ -139,17 +141,14 @@ pub(crate) fn transform(
         pieces: &mut Vec<Piece>,
         interpolations: &mut Vec<Interpolation>,
         ehannotations: &mut Vec<EventHandlerAnnotation>,
-    ) {
+    ) -> syn::Result<()> {
         for AttributeTokens { name, value } in attributes {
             if let Some(event) = name.to_string().strip_prefix("on") {
-                if let Some((_prop, event_type)) = prop_for_event(&event.to_ascii_lowercase()) {
-                    if let Some(value) = value.map(|t| t.value) {
-                        ehannotations.push(EventHandlerAnnotation {
-                            handler_expression: syn::parse2(value.into_token_stream()).unwrap(),
-                            event_type,
-                        });
-                    }
-                }
+                let (_prop, event_type) = prop_for_event(&event.to_ascii_lowercase())?;
+                ehannotations.push(EventHandlerAnnotation {
+                    handler_expression: syn::parse2(value.unwrap().value.into_token_stream())?,
+                    event_type
+                });
                 continue;
             }
 
@@ -177,6 +176,7 @@ pub(crate) fn transform(
                 }
             }
         }
+        Ok(())
     }
 
     fn handle_content_pieces(
@@ -185,7 +185,7 @@ pub(crate) fn transform(
         pieces: &mut Vec<Piece>,
         interpolations: &mut Vec<Interpolation>,
         ehannotations: &mut Vec<EventHandlerAnnotation>,
-    ) {
+    ) -> syn::Result<()> {
         for c in content {
             match c {
                 ContentPieceTokens::StaticText(text) => {
@@ -224,9 +224,10 @@ pub(crate) fn transform(
                     pieces,
                     interpolations,
                     ehannotations,
-                )
+                )?
             }
         }
+        Ok(())
     }
 
     if let Some(Component { name, attributes, content }) = tokens.as_beam() {
@@ -313,7 +314,7 @@ pub(crate) fn transform(
                     &mut pieces,
                     &mut interpolations,
                     &mut ehannotations,
-                );
+                )?;
                 piece.join(Piece::new(">"));
                 handle_content_pieces(
                     content,
@@ -321,7 +322,7 @@ pub(crate) fn transform(
                     &mut pieces,
                     &mut interpolations,
                     &mut ehannotations,
-                );
+                )?;
                 piece.join(Piece::new(format!("</{tag}>")));
             }
 
@@ -333,7 +334,7 @@ pub(crate) fn transform(
                     &mut pieces,
                     &mut interpolations,
                     &mut ehannotations,
-                );
+                )?;
                 piece.join(Piece::new("/>"));
             }
 
@@ -344,12 +345,12 @@ pub(crate) fn transform(
                     &mut pieces,
                     &mut interpolations,
                     &mut ehannotations,
-                );
+                )?;
             }
         }
 
         piece.commit(&mut pieces);
     }
 
-    (pieces, interpolations, ehannotations)
+    Ok((pieces, interpolations, ehannotations))
 }

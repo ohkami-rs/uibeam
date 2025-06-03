@@ -37,8 +37,19 @@ serde-wasm-bindgen = { optional = true, version = "0.6" }
 js-sys             = { optional = true, version = "0.3" }
 web-sys            = { optional = true, version = "0.3", features = [
     "console", "Window", "Document", "Element", "Text",
-    "AnimationEvent", "CompositionEvent", "FocusEvent", "InputEvent", "KeyboardEvent",
-    "MouseEvent", "PointerEvent", "TouchEvent", "TransitionEvent", "UiEvent", "WheelEvent",
+    "Event",
+    "AnimationEvent",
+    "ClipboardEvent",
+    "CompositionEvent",
+    "FocusEvent",
+    "InputEvent",
+    "KeyboardEvent",
+    "MouseEvent",
+    "PointerEvent",
+    "TouchEvent",
+    "TransitionEvent",
+    "UiEvent",
+    "WheelEvent",
 ] }
 
 # for integrations
