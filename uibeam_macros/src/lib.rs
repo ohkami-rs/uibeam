@@ -29,7 +29,7 @@ mod laser;
 /// 
 /// ### Attribute Values
 /// 
-/// - _string literals_ : Any string literals are allowed. No `{}` is needed.
+/// - _string/integer literals_ : Any string/integer literals are allowed. No `{}` is needed.
 /// - _interpolations_ : Rust expressions surrounded by `{}` :
 ///   - `&'static str`, `String`, `Cow<'static, str>` are allowed as string values.
 ///   - `i8`, `i16`, `i32`, `i64`, `isize`, `u8`, `u16`, `u32`, `u64`, `usize` are allowed as number values.
@@ -50,32 +50,32 @@ mod laser;
 /// 
 /// - `<StructName></StructName>` **requires** the struct to have `children`
 ///   field. The 0 or more children nodes are passed to `children` as `UI`.
-/// - Attributes are interpreted as the struct's fields. The values are
-///   passed to each field with `.into()`.
+/// - Attributes are interpreted as the struct's fields. Literals are
+///   passed as `(it).into()`, and `{expression}`s are passed directly.
 /// 
 /// ```jsx
-/// <Struct a="1" b="2" />
+/// <Struct a="1" b={"2".to_string()} />
 /// 
 /// // generates
 /// 
 /// Struct {
-///     a: "1".into(),
-///     b: "2".into(),
+///     a: ("1").into(),
+///     b: "2".to_string(),
 /// }
 /// ```
 /// 
 /// ---
 /// 
 /// ```jsx
-/// <Struct a="1" b="2">
+/// <Struct a="1" b={"2".to_string()}>
 ///     <p>"hello"</p>
 /// </Struct>
 /// 
 /// // generates
 /// 
 /// Struct {
-///     a: "1".into(),
-///     b: "2".into(),
+///     a: ("1").into(),
+///     b: "2".to_string(),
 ///     children: /* a `UI` representing `<p>hello</p>` */
 /// }
 /// ```
