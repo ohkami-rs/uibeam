@@ -233,12 +233,12 @@ pub enum AttributeValue {
     Boolean(bool),
 }
 #[cfg(all(feature = "laser", target_arch = "wasm32"))]
-impl Into<wasm_bindgen::JsValue> for AttributeValue {
-    fn into(self) -> wasm_bindgen::JsValue {
-        match self {
-            Self::Integer(int) => int.into(),
-            Self::Boolean(boo) => boo.into(),
-            Self::Text(text) => match uibeam_html::escape(&text) {
+impl From<AttributeValue> for wasm_bindgen::JsValue {
+    fn from(value: AttributeValue) -> wasm_bindgen::JsValue {
+        match value {
+            AttributeValue::Integer(int) => int.into(),
+            AttributeValue::Boolean(boo) => boo.into(),
+            AttributeValue::Text(text) => match uibeam_html::escape(&text) {
                 Cow::Owned(escaped) => escaped.into(),
                 Cow::Borrowed(_) => match text {
                     Cow::Owned(s) => s.into(),

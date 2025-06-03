@@ -22,16 +22,24 @@ impl Beam for Layout {
 }
 
 #[Laser(local)]
-pub struct Button {
-    pub label: String,
-    pub class: Option<&'static str>,
-    pub onclick: Box<dyn Fn(uibeam::laser::Event)>,
+struct Button {
+    label: String,
+    class: Option<&'static str>,
+    onclick: Box<dyn Fn(uibeam::laser::PointerEvent)>,
 }
 
 impl Laser for Button {
     fn render(self) -> UI {
+        let class = format!(
+            "cursor-pointer bg-red-500 w-[32px] py-1 text-white rounded-md {}",
+            self.class.unwrap_or("")
+        );
+
         UI! {
-            <button>{self.label}</button>
+            <button
+                class={class}
+                onclick={self.onclick}
+            >{self.label}</button>
         }
     }
 }

@@ -65,11 +65,6 @@ async fn index(Query(q): Query<CounterMeta>) -> HTML<std::borrow::Cow<'static, s
                 })}
             </div>
         </main>
-        <Button
-            label="Click me"
-            class="bg-blue-500 text-white px-4 py-2 rounded"
-            onclick={handle_click}
-        />
     }))
 }
 
