@@ -50,7 +50,7 @@ pub(super) fn expand(
         }
     });
 // TODO: reject local lasers outside of `#[Laser]` **by compile-time check**
-//       instead of runtime `panic!` (memo: trait Component :> Beam ; <- children)
+//       instead of silently not-hydrated
     let beam_impl = if local {
         quote! {
             impl ::uibeam::Beam for #name {
@@ -60,7 +60,7 @@ pub(super) fn expand(
                     }
 
                     #[cfg(not(target_arch = "wasm32"))] {
-                        panic!("`#[Laser(local)]` can NOT be used outside of a `#[Laser]`")
+                        <Self as Laser>::render(self)
                     }
                 }
             }

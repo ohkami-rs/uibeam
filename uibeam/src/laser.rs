@@ -1,7 +1,19 @@
 #![cfg(feature = "laser")]
 
 // TODO: support more events (update together with `uibeam_macros/src/ui/transform.rs`)
-pub use ::web_sys::{AnimationEvent, MouseEvent, PointerEvent, InputEvent, FocusEvent, CompositionEvent, KeyboardEvent, TouchEvent, TransitionEvent, WheelEvent, Event};
+pub use ::web_sys::{
+    Event,
+    AnimationEvent,
+    MouseEvent,
+    PointerEvent,
+    InputEvent,
+    FocusEvent,
+    CompositionEvent,
+    KeyboardEvent,
+    TouchEvent,
+    TransitionEvent,
+    WheelEvent,
+};
 
 #[doc(hidden)]
 pub use {::wasm_bindgen, ::js_sys, ::web_sys, ::serde, ::serde_wasm_bindgen};

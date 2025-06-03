@@ -303,13 +303,14 @@ working example: [examples/counter](./examples/counter)
 
     `#[Laser(local)]` ebables to build _**local Lasers**_:
     
-    - not require `Serialize` `Deserialize` and can have unserializable items in fields, such as `fn(web_sys::Event)`.
-    - only available as `UI` elements of a non-local `Laser`.
+    - not require `Serialize` `Deserialize` and can have unserializable items in its fields such as `fn(web_sys::Event)`.
+    - only available as a `UI` element of a non-local `Laser` or other local `Laser`.\
+      otherwise: **not hydrated**. currently this is silent behavior. (maybe rejected by compile-time check in future version)
 
 4. Compile to WASM by `wasm-pack build` with **`--target web --out-name lasers`**:
 
     ```sh
-    # when naming the crate `components`
+    # example when naming the crate `components`
 
     cd components
     wasm-pack build --target web --out-name lasers
