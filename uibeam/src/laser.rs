@@ -1,19 +1,7 @@
 #![cfg(feature = "laser")]
 
 // TODO: support more events (update together with `uibeam_macros/src/ui/transform.rs`)
-pub use ::web_sys::{
-    Event,
-    AnimationEvent,
-    MouseEvent,
-    PointerEvent,
-    InputEvent,
-    FocusEvent,
-    CompositionEvent,
-    KeyboardEvent,
-    TouchEvent,
-    TransitionEvent,
-    WheelEvent,
-};
+pub use ::web_sys::{AnimationEvent, MouseEvent, PointerEvent, InputEvent, FocusEvent, CompositionEvent, KeyboardEvent, TouchEvent, TransitionEvent, WheelEvent, Event};
 
 #[doc(hidden)]
 pub use {::wasm_bindgen, ::js_sys, ::web_sys, ::serde, ::serde_wasm_bindgen};
@@ -29,18 +17,6 @@ pub trait Laser_attribute {}
 
 pub trait Laser: Laser_attribute {
     fn render(self) -> crate::UI;
-}
-
-#[doc(hidden)]
-/// Component :> Beam, Laser
-pub trait Component {
-    fn render(self) -> crate::UI;
-}
-impl<B: Beam> Component for B {
-    #[inline(always)]
-    fn render(self) -> crate::UI {
-        <B as Beam>::render(self)
-    }
 }
 
 #[cfg(target_arch = "wasm32")]

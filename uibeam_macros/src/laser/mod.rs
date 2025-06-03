@@ -53,14 +53,14 @@ pub(super) fn expand(
 //       instead of runtime `panic!` (memo: trait Component :> Beam ; <- children)
     let beam_impl = if local {
         quote! {
-            impl ::uibeam::Component for #name {
+            impl ::uibeam::Beam for #name {
                 fn render(self) -> ::uibeam::UI {
                     #[cfg(target_arch = "wasm32")] {
                         unreachable!();
                     }
 
                     #[cfg(not(target_arch = "wasm32"))] {
-                        <Self as Laser>::render(self)
+                        panic!("`#[Laser(local)]` can NOT be used outside of a `#[Laser]`")
                     }
                 }
             }
@@ -82,8 +82,6 @@ pub(super) fn expand(
 
 // TODO: control hydration flow based on visibility on screen (e.g. by `IntersectionObserver`) 
                         ::uibeam::UI! {
-                            @component_bound: "::uibeam::Component";
-
                             <div data-uibeam-laser=#hydrater_name_str>
                                 unsafe {template}
                                 

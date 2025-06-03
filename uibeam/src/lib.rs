@@ -30,7 +30,7 @@ mod integration;
 pub mod laser;
 
 #[cfg(feature = "laser")]
-pub use laser::{Component, Laser, Signal, computed, effect};
+pub use laser::{Laser, Signal, computed, effect};
 /* macro_export: `callback`, `computed`, `effect` */
 pub use uibeam_html::escape;
 pub use uibeam_macros::UI;

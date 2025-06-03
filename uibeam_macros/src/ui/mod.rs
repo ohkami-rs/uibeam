@@ -5,7 +5,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 
 pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
-    let parse::UITokens { directives, mut nodes } = syn::parse2(input)?;
+    let parse::UITokens { mut nodes } = syn::parse2(input)?;
 
     #[cfg(feature = "laser")]
     let wasm32_ui = {
@@ -33,7 +33,7 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
         });
 
         let native_nodes = nodes.into_iter().map(|node| {
-            let (mut literals, expressions, ehannotations) = transform::native::transform(&directives, node);
+            let (mut literals, expressions, ehannotations) = transform::native::transform(node);
             if should_insert_doctype {
                 literals.first_mut().unwrap().edit(|lit| *lit = format!("<!DOCTYPE html>{lit}"));
                 should_insert_doctype = false;
