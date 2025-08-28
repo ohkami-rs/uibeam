@@ -134,7 +134,7 @@ fn main() {
             <h2>{t.title}</h2>
 
             <h3>"subtasks"</h3>
-            <ul>- Better UX : 
+            <ul>
                 {t.subtasks.iter().map(|s| UI! {
                     <li>{s}</li>
                 })}
