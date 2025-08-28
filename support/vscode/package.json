@@ -2,7 +2,7 @@
   "private": true,
   "name": "uibeam",
   "displayName": "UIBeam",
-  "icon": "https://raw.githubusercontent.com/ohkami-rs/assets/main/logo.png",
+  "icon": "assets/ohkami-rs.png",
   "version": "0.1.8",
   "description": "HTML completions and hovers for UIBeam",
   "license": "MIT",
