@@ -13,10 +13,13 @@
 //! </div>
 //! 
 //! - `UI!` : JSX-style template syntax with compile-time checks
-//! - `Beam` : Component system
-//! - Simple : Simply organized API and codebase, with zero external dependencies
-//! - Efficient : Emitting efficient codes, avoiding redundant memory allocations as smartly as possible
-//! - Better UX : HTML completions and hovers in `UI!` by VSCode extension ( search by "_uibeam_" from extension marketplace )
+//! - `Beam` : Component System
+//! - `Laser` : Client Component working as WASM island (_experimental_)
+//! 
+//! With
+//! simply organized API and codebase,
+//! emitting efficient template rendering avoiding redundant memory allocations as smartly as possible,
+//! and HTML completions and hovers in `UI!` by VSCode extension ( search "uibeam" from extension marketplace )
 //! 
 //! ![](https://github.com/ohkami-rs/uibeam/raw/HEAD/support/vscode/assets/completion.png)
 
