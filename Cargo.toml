@@ -3,15 +3,15 @@ resolver = "3"
 members  = ["uibeam", "uibeam_html", "uibeam_macros"]
 
 [workspace.package]
-version    = "0.2.3"
+version    = "0.3.0"
 edition    = "2024"
 authors    = ["kanarus <kanarus786@gmail.com>"]
 homepage   = "https://crates.io/uibeam"
 repository = "https://github.com/ohkami-rs/uibeam"
 readme     = "README.md"
 license    = "MIT"
-keywords   = ["jsx", "html", "template-engine"]
-categories = ["template-engine", "web-programming"]
+keywords   = ["jsx", "html", "template-engine", "web", "ui"]
+categories = ["template-engine", "web-programming", "wasm"]
 
 [workspace.metadata.tasks]
 CI = """
@@ -20,14 +20,17 @@ cargo metask \
 """
 
 test = """
-cargo metask \
-    test_crates \
-    test_examples
+cargo metask test_crates test_examples
 """
 test_crates = """
+    cd uibeam
+    echo "================[doc]================\n"
     cargo test --doc --all-features
     echo "================[vanilla]================\n"
     cargo test --lib
+    echo "================[laser]================\n"
+    cargo test --lib --features laser
+    echo "================[integrations]================\n"
     for integration in $(cargo info --color never uibeam | awk '/\\[.*__integration__.*\\]/ {print $1}'); do
         echo "================[$integration]================\n"
         cargo test --lib --features "$integration"
@@ -37,9 +40,9 @@ test_examples = """
     cd examples
     for directory in ./*/; do
         if [ "$(basename $directory)" != "target" ]; then
+            echo "================[$(basename $directory)]================\n"
             cd "$directory"
             cargo test
-            cargo run
             cd ..
         fi
     done

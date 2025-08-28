@@ -10,6 +10,7 @@ pub(super) struct UITokens {
     pub(super) nodes: Vec<NodeTokens>,
 }
 
+#[derive(Clone)]
 pub(super) enum NodeTokens {
     Doctype {
         _open: Token![<],
@@ -44,6 +45,7 @@ mod keyword {
     syn::custom_keyword!(html);
 }
 
+#[derive(Clone)]
 pub(super) struct HtmlIdent {
     head: Ident,
     rest: Vec<(Token![-], Ident)>,
@@ -71,27 +73,32 @@ impl std::fmt::Display for HtmlIdent {
     }
 }
 
+#[derive(Clone)]
 pub(super) enum ContentPieceTokens {
     Interpolation(InterpolationTokens),
     StaticText(LitStr),
     Node(NodeTokens),
 }
 
+#[derive(Clone)]
 pub(super) struct InterpolationTokens {
     pub(super) _unsafe: Option<Token![unsafe]>,
     pub(super) _brace: token::Brace,
     pub(super) rust_expression: Expr,
 }
 
+#[derive(Clone)]
 pub(super) struct AttributeTokens {
     pub(super) name: HtmlIdent,
     pub(super) value: Option<AttributeValueTokens>,
 }
 
+#[derive(Clone)]
 pub(super) struct AttributeValueTokens {
     pub(super) _eq: Token![=],
     pub(super) value: AttributeValueToken,
 }
+#[derive(Clone)]
 pub(super) enum AttributeValueToken {
     StringLiteral(LitStr),
     IntegerLiteral(LitInt),
@@ -385,7 +392,12 @@ impl ToTokens for AttributeTokens {
 impl ToTokens for AttributeValueTokens {
     fn to_tokens(&self, t: &mut proc_macro2::TokenStream) {
         self._eq.to_tokens(t);
-        match &self.value {
+        self.value.to_tokens(t);
+    }
+}
+impl ToTokens for AttributeValueToken {
+    fn to_tokens(&self, t: &mut proc_macro2::TokenStream) {
+        match self {
             AttributeValueToken::StringLiteral(lit_str) => {
                 lit_str.to_tokens(t);
             }

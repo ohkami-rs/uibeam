@@ -42,11 +42,11 @@ fn main() {
             </custom-element2>
             <Hello
                 user_name="uibeam"
-                style={format!("\
+                style={Some(format!("\
                     color: green; \
                     font-size: 30px; \
                     text-decoration: underline; \
-                ")}
+                "))}
             >
                 <p>"[message] this is a test message"</p>
             </Hello>
