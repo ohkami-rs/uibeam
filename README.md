@@ -16,11 +16,11 @@
 ## Features
 
 - `UI!` : JSX-style template syntax with compile-time checks
-- `Beam` : Component system
-- `Laser` : Client component working as WASM island
+- `Beam` : Component System for templates
+- `Laser` : Client Component working as WASM island (_experimental_)
 - Simple : Simply organized API and codebase
 - Efficient : Emitting efficient codes, avoiding redundant memory allocations as smartly as possible
-- Better UX : HTML completions and hovers in `UI!` by VSCode extension ( search by "_uibeam_" from extension marketplace )
+- Better UX : HTML completions and hovers in `UI!` by VSCode extension ( search "uibeam" from extension marketplace )
 
 ![](https://github.com/ohkami-rs/uibeam/raw/HEAD/support/vscode/assets/completion.png)
 
@@ -148,7 +148,7 @@ fn main() {
 }
 ```
 
-## `Beam` - Component with struct and JSX-like syntax
+## `Beam` - Template Component with struct and JSX-like syntax
 
 ```rust
 use uibeam::{Beam, UI};
@@ -225,23 +225,21 @@ fn main() {
 }
 ```
 
-## `Laser` - Client component by WASM island
+## `Laser` - Client Component by WASM island (_experimental_)
 
 ### architecture
 
-`Laser` trait provides a way to build client components in WASM. They works as _*islands*_ : initially rendered in server, sent with serialized props, and hydrated with deserialized props in client.
+`Laser` is experimental, [`Preact`](https://preactjs.com)-based client component system in WASM.
+
+`Laser`s work as _*WASM islands*_ : initially rendered in server, sent with serialized props, and hydrated with deserialized props in client.
 
 `Signal`, `computed`, `effect` are available in `Laser`s.
 
-At current version (v0.3), `Laser` system is built up on [Preact](https://preactjs.com).
-
-This is experimental design choice and maybe fully/partially replaced into some Rust implementaion in future. <i>(But this may be kind of better choice, for example, at avoiding huge size of WASM output.)</i>
-
 ### usage
 
-working example: [examples/counter](./examples/counter)
+working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/main/examples/counter)
 
-1. Activate `"laser"` feature, and add `serde`:
+1. Activate `"laser"` feature and add `serde` to dependencies:
 
     ```toml
     [dependencies]
@@ -249,7 +247,11 @@ working example: [examples/counter](./examples/counter)
     serde  = { version = "1", features = ["derive"] }
     ```
 
-2. Create an UIBeam-specific library crate (e.g. `lasers`) as a workspace member, and have all `Laser`s in that crate. (of cource, no problem if including all `Beam`s not only `Laser`s. Then the name of this crate should be `components` or something.)
+2. Create an UIBeam-specific library crate (e.g. `lasers`) as a workspace member,
+   and have all `Laser`s in that crate.
+   
+   (of cource, no problem if including all `Beam`s not only `Laser`s.
+   then the name of this crate may be `components` or something?)
 
    Make sure to specify `crate-type = ["cdylib", "rlib"]`:
 
@@ -323,7 +325,7 @@ working example: [examples/counter](./examples/counter)
    and set up to serve the output directly (default: `pkg`) at **`/.uibeam`**:
  
     ```rust
-    // axum example
+    /* axum example */
  
     use axum::Router;
     use tower_http::services::ServeDir;
@@ -332,13 +334,29 @@ working example: [examples/counter](./examples/counter)
         Router::new()
             .nest_service(
                 "/.uibeam",
-                ServeDir::new("./components/pkg")
+                ServeDir::new("./lasers/pkg")
             )
             // ...
     }
     ```
 
-   As a result, `components/pkg/lasers.js` is served at `/.uibeam/lasers.js` and automatically loaded together with WASM by a Laser in the first hydration.
+   (as a result, generated `lasers/pkg/lasers.js` is served at `/.uibeam/lasers.js`
+   and automatically loaded together with WASM by a Laser in the first hydration.)
+
+5. Use your `Laser`s in any `UI!` rendering:
+
+   ```rust,ignore
+   use lasers::Counter;
+   use uibeam::UI;
+   
+   async fn index() -> UI {
+       UI! {
+           <Counter />
+       }
+   }
+   ```
+   
+   This `UI` is initially rendered as a static template, and later hydrated with the `/.uibeam` directory.
 
 ## Integrations with web frameworks
 

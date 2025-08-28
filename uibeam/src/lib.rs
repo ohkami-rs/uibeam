@@ -8,7 +8,7 @@
 //!         UIBeam
 //!     </h1>
 //!     <p>
-//!         A lightweight, JSX-style HTML template engine for Rust
+//!         A lightweight, JSX-style Web UI library for Rust
 //!     </p>
 //! </div>
 //! 
@@ -185,8 +185,8 @@ impl UI {
             0 => UI::EMPTY,
             1 => unsafe {
                 // SAFETY:
-                // * original `uis` is moved to this function
-                //   and never used again by anyone
+                // * original `uis` is moved to this function,
+                //   so never used again by anyone
                 // * `ManuallyDrop` prevents double free
                 //   and returned `Self`'s destructor will free this memory
                 std::ptr::read(

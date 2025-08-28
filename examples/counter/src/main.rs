@@ -1,8 +1,8 @@
-use components::{Layout, Counter, Button};
+use components::{Layout, Counter};
 use uibeam::UI;
-use ohkami::prelude::*;
+use ohkami::{Ohkami, Route, FangAction, Request, Response};
 use ohkami::serde::Deserialize;
-use ohkami::format::{Query, HTML};
+use ohkami::claw::{param::Query, content::Html};
 
 #[derive(Clone)]
 struct LayoutFang {
@@ -10,7 +10,7 @@ struct LayoutFang {
 }
 impl FangAction for LayoutFang {
     async fn back(&self, res: &mut Response) {
-        if res.headers.ContentType().is_some_and(|x| x.starts_with("text/html")) {
+        if res.headers.content_type().is_some_and(|x| x.starts_with("text/html")) {
             let content = res.drop_content().into_bytes().unwrap();
             let content = std::str::from_utf8(&*content).unwrap();
             res.set_html(uibeam::shoot(UI! {
@@ -39,15 +39,10 @@ struct CounterMeta {
     init: Option<i32>,
 }
 
-async fn index(Query(q): Query<CounterMeta>) -> HTML<std::borrow::Cow<'static, str>> {
+async fn index(Query(q): Query<CounterMeta>) -> Html<std::borrow::Cow<'static, str>> {
     let initial_count = q.init.unwrap_or(0);
 
-    let handle_click//: Box<dyn Fn(uibeam::laser::Event)>
-        = Box::new(|_: uibeam::laser::Event| {
-            println!("Button clicked!");
-        });
-    
-    HTML(uibeam::shoot(UI! {
+    Html(uibeam::shoot(UI! {
         <main>
             <h1 class="text-4xl font-bold mb-8 text-center">"Counter Example"</h1>
             <div class="space-y-8">
@@ -73,7 +68,7 @@ fn main() {
         Ohkami::new((
             Logger,
             LayoutFang { title: "Counter Example" },
-            "/.uibeam".Dir("./components/pkg"),
+            "/.uibeam".Mount("./components/pkg"),
             "/".GET(index),
         )).howl("localhost:5000").await
     });

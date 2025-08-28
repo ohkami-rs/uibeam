@@ -245,7 +245,7 @@ pub(crate) fn transform(
                             (lit.into_token_stream(), true)
                         }
                         AttributeValueToken::IntegerLiteral(lit) => {
-                            (LitStr::new(&lit.base10_digits(), lit.span()).into_token_stream(), true)
+                            (lit.into_token_stream(), true)
                         }
                         AttributeValueToken::Interpolation(InterpolationTokens { rust_expression, .. }) => {
                             (rust_expression.into_token_stream(), false)

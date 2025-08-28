@@ -8,13 +8,13 @@ serde  = { version = "1", features = ["derive"] }
 
 [workspace.metadata.tasks]
 build-dev = """
-    if [ -d components/pkg ]; then rm -rf components/pkg/; fi
+    [ -d components/pkg ] && rm -rf components/pkg || :
     wasm-pack build components --target web --out-name lasers --dev
     tailwindcss -c tailwind.config.js -o components/pkg/tailwind.css
     cargo build
 """
 build-release = """
-    if [ -d components/pkg ]; then rm -rf components/pkg/; fi
+    [ -d components/pkg ] && rm -rf components/pkg || :
     wasm-pack build components --target web --out-name lasers # default is release
     tailwindcss -c tailwind.config.js -o components/pkg/tailwind.css
     cargo build --release
@@ -26,8 +26,8 @@ version = "0.0.0"
 edition = "2024"
 
 [dependencies]
-components = { path = "components" }
+components = { path = "./components" }
 uibeam = { workspace = true }
 serde  = { workspace = true }
-ohkami = { git = "https://github.com/ohkami-rs/ohkami", branch = "v0.24", features = ["rt_smol"] }
+ohkami = { version = "0.24", features = ["rt_smol"] }
 smol   = { version = "2" }

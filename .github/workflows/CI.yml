@@ -13,14 +13,11 @@ jobs:
       matrix:
         toolchain: [stable, nightly]
         target: ['x86_64-unknown-linux-gnu', 'wasm32-unknown-unknown']
-        task: [test_crates, test_examples]
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ matrix.toolchain }}
+      - run: rustup update && rustup default ${{ matrix.toolchain }}
       
       - run: |
           sudo apt install mold clang
@@ -28,14 +25,7 @@ jobs:
           echo 'linker    = "clang"'                                   >> $HOME/.cargo/config.toml
           echo 'rustflags = ["-C", "link-arg=-fuse-ld=/usr/bin/mold"]' >> $HOME/.cargo/config.toml
       
-      - id: cache_cargo_bin
-        uses: actions/cache@v4
-        with:
-          key:  ${{ runner.os }}-cargo-bin
-          path: ~/.cargo/bin
-      - if: ${{ steps.cache_cargo_bin.outputs.cache-hit != 'true' }}
-        run: |
-          cargo install cargo-metask
+      - run: cargo install cargo-metask
 
-      - run: export CARGO_BUILD_TARGET=${{ matrix.target }} && cargo task ${{ matrix.task }}
+      - run: export CARGO_BUILD_TARGET=${{ matrix.target }} && cargo task CI
   

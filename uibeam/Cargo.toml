@@ -67,8 +67,8 @@ default-features = false
 version          = "4.11.0"
 
 [dev-dependencies]
-tokio     = { version = "1.45.0", features = ["rt-multi-thread", "net", "macros"] }
-axum      = { version = "0.8.4" }
-actix-web = { version = "4.11.0", default-features = false, features = ["macros"] }
-tower-http = { version = "0.6.4", features = ["fs"] }
-# [2025-05-19] build fails without `default-features = false`
+tokio      = { version = "1.45.0", features = ["rt-multi-thread", "net", "macros"] }
+axum       = { version = "0.8.4" }
+actix-web  = { version = "4.11.0", default-features = false, features = ["macros"] }
+tower-http = { version = "0.6.4", features = ["fs"] } # [2025-05-19] build fails without `default-features = false`
+web-sys    = { version = "0.3", features = ["HtmlInputElement"] } # for doc tests around Lasers

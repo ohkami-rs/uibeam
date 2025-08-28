@@ -21,6 +21,7 @@ pub use ::web_sys::{
 pub use {::wasm_bindgen, ::js_sys, ::web_sys, ::serde, ::serde_wasm_bindgen};
 
 #[doc(hidden)]
+#[inline]
 pub fn serialize_props<P: ::serde::Serialize>(props: &P) -> String {
     ::serde_json::to_string(props).unwrap()
 }
@@ -29,6 +30,52 @@ pub fn serialize_props<P: ::serde::Serialize>(props: &P) -> String {
 #[allow(non_camel_case_types)]
 pub trait Laser_attribute {}
 
+/// Client Component working as WASM island (_experimental_)
+/// 
+/// See [README](https://github.com/ohkami-rs/uibeam/blob/main/README.md) for detailed usage.
+/// 
+/// ## Example
+/// ```
+/// use uibeam::{UI, Laser, Signal, callback};
+/// 
+/// #[Laser]
+/// #[derive(serde::Serialize, serde::Deserialize)]
+/// pub struct Counter {
+///     pub initial_count: i32,
+/// }
+/// 
+/// impl Laser for Counter {
+///     fn render(self) -> UI {
+///         let count = Signal::new(self.initial_count);
+/// 
+///         let increment = callback!([count], |_| {
+///             count.set(*count + 1);
+///         });
+/// 
+///         let decrement = callback!([count], |_| {
+///             count.set(*count - 1);
+///         });
+/// 
+///         UI! {
+///             <div class="w-[144px]">
+///                 <p class="text-2xl font-bold text-center">
+///                     "Count: "{*count}
+///                 </p>
+///                 <div class="text-center">
+///                     <button
+///                         class="cursor-pointer bg-red-500  w-[32px] py-1 text-white rounded-md"
+///                         onclick={decrement}
+///                     >"-"</button>
+///                     <button
+///                         class="cursor-pointer bg-blue-500 w-[32px] py-1 text-white rounded-md"
+///                         onclick={increment}
+///                     >"+"</button>
+///                 </div>
+///             </div>
+///         }
+///     }
+/// }
+/// ```
 pub trait Laser: Laser_attribute {
     fn render(self) -> crate::UI;
 }
@@ -60,9 +107,7 @@ mod preact {
         pub(super) fn create_ref() -> JsValue;
 
         #[wasm_bindgen(js_name = "Fragment")]
-        pub(super) fn fragment(
-            props: Object,
-        ) -> JsValue;
+        pub(super) fn fragment(props: Object) -> JsValue;
     }
 
     #[wasm_bindgen(module = "@preact/signals")]
@@ -252,18 +297,93 @@ impl<T: serde::Serialize + for<'de>serde::Deserialize<'de>> Computed<T> {
     }
 }
 
+/// Shorthand for creating closures that capture variables by cloning them.
+/// 
+/// This is useful when creating **event handlers or callbacks using signals**:
+/// 
+/// ```
+/// use uibeam::{Signal, callback};
+/// use uibeam::laser::{InputEvent, PointerEvent};
+/// use wasm_bindgen::JsCast;
+/// use web_sys::HtmlInputElement;
+/// 
+/// # fn usage() {
+/// let name = Signal::new("Alice".to_owned());
+/// let count = Signal::new(0);
+/// 
+/// let handle_name_input = callback!([name], |e: InputEvent| {
+///     let input_element: HtmlInputElement = e
+///         .current_target().unwrap()
+///         .dyn_into().unwrap();
+///     name.set(input_element.value());
+/// });
+/// 
+/// let handle_increment_click = callback!([count], |_: PointerEvent| {
+///     count.set(*count + 1);
+/// });
+/// # }
+/// ```
+/// 
+/// ## Example
+/// ```
+/// use uibeam::{UI, Laser, Signal, callback};
+/// 
+/// #[Laser]
+/// #[derive(serde::Serialize, serde::Deserialize)]
+/// pub struct Counter {
+///     pub initial_count: i32,
+/// }
+/// 
+/// impl Laser for Counter {
+///     fn render(self) -> UI {
+///         let count = Signal::new(self.initial_count);
+/// 
+///         let increment = callback!([count], |_| {
+///             count.set(*count + 1);
+///         });
+/// 
+///         let decrement = callback!([count], |_| {
+///             count.set(*count - 1);
+///         });
+/// 
+///         UI! {
+///             <div class="w-[144px]">
+///                 <p class="text-2xl font-bold text-center">
+///                     "Count: "{*count}
+///                 </p>
+///                 <div class="text-center">
+///                     <button
+///                         class="cursor-pointer bg-red-500  w-[32px] py-1 text-white rounded-md"
+///                         onclick={decrement}
+///                     >"-"</button>
+///                     <button
+///                         class="cursor-pointer bg-blue-500 w-[32px] py-1 text-white rounded-md"
+///                         onclick={increment}
+///                     >"+"</button>
+///                 </div>
+///             </div>
+///         }
+///     }
+/// }
+/// ```
 #[macro_export]
 macro_rules! callback {
-    ([$($dep:ident),*], |$($arg:ident $(: $Type:ty)?),*| $result:expr) => {
+    ([$($dep:ident),*], || $result:expr) => {
         {
-            $(let $dep = $dep.clone();)*
-            move |$($arg $(: $Type)?),*| $result
+            $(let $dep = $dep.clone();)+
+            move || $result
         }
     };
     ([$($dep:ident),*], |_ $(: $Type:ty)?| $result:expr) => {
         {
             $(let $dep = $dep.clone();)*
             move |_ $(: $Type)?| $result
+        }
+    };
+    ([$($dep:ident),*], |$($arg:ident $(: $Type:ty)?),+| $result:expr) => {
+        {
+            $(let $dep = $dep.clone();)+
+            move |$($arg $(: $Type)?),+| $result
         }
     };
 }
@@ -274,6 +394,50 @@ pub fn computed<T: serde::Serialize + for<'de>serde::Deserialize<'de> + 'static>
     Computed::new(getter)
 }
 
+/// `computed!([deps, ...], || -> T { ... })` creates a `Computed<T>` signal
+/// that automatically updates when any of the `deps` signals change.
+/// 
+/// This is shorthand for `computed(callback!(...))`.
+/// 
+/// ## Example
+/// ```
+/// use uibeam::{UI, Laser, Signal, callback, computed};
+/// 
+/// #[Laser]
+/// #[derive(serde::Serialize, serde::Deserialize)]
+/// pub struct ComputedExample;
+/// 
+/// impl Laser for ComputedExample {
+///     fn render(self) -> UI {
+///         let count = Signal::new(0u32);
+/// 
+///         let count_squared = computed!([count], || {
+///             (*count).pow(2)
+///         });
+/// 
+///         let increment = callback!([count], |_| {
+///             count.set(*count + 1);
+///         });
+/// 
+///         UI! {
+///             <div class="w-[144px]">
+///                 <p class="text-2xl font-bold text-center">
+///                     "Count: "{*count}
+///                 </p>
+///                 <p class="text-2xl font-bold text-center">
+///                     "Count Squared: "{*count_squared}
+///                 </p>
+///                 <div class="text-center">
+///                     <button
+///                         class="cursor-pointer bg-blue-500 w-[32px] py-1 text-white rounded-md"
+///                         onclick={increment}
+///                     >"+"</button>
+///                 </div>
+///             </div>
+///         }
+///     }
+/// }
+/// ```
 #[macro_export]
 macro_rules! computed {
     ($($t:tt)*) => {
@@ -293,6 +457,48 @@ pub fn effect(
     }
 }
 
+/// `effect!([deps, ...], || { ... })` creates a reactive effect that automatically
+/// re-runs whenever any of the `deps` signals change.
+/// 
+/// This is shorthand for `effect(callback!(...))`.
+///
+/// ## Example
+/// ```
+/// use uibeam::{UI, Laser, Signal, callback, effect};
+/// use web_sys::console;
+///
+/// #[Laser]
+/// #[derive(serde::Serialize, serde::Deserialize)]
+/// pub struct EffectExample;
+/// 
+/// impl Laser for EffectExample {
+///     fn render(self) -> UI {
+///         let count = Signal::new(0);
+/// 
+///         effect!([count], || {
+///             console::log_1(&format!("Count changed: {}", *count).into());
+///         });
+/// 
+///         let increment = callback!([count], |_| {
+///             count.set(*count + 1);
+///         });
+/// 
+///         UI! {
+///             <div class="w-[144px]">
+///                 <p class="text-2xl font-bold text-center">
+///                     "Count: "{*count}
+///                 </p>
+///                 <div class="text-center">
+///                     <button
+///                         class="cursor-pointer bg-blue-500 w-[32px] py-1 text-white rounded-md"
+///                         onclick={increment}
+///                     >"+"</button>
+///                 </div>
+///             </div>
+///         }
+///     }
+/// }
+/// ```
 #[macro_export]
 macro_rules! effect {
     ($($t:tt)*) => {

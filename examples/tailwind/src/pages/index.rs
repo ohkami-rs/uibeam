@@ -41,7 +41,7 @@ pub(super) fn page() -> UI {
             "The intuitive solutions for Rust web development"
         </p>
 
-        <ContactList contacts={[
+        <ContactList contacts={vec![
             Contact {
                 title: "GitHub",
                 address: "ohkami-rs",

@@ -20,14 +20,17 @@ cargo metask \
 """
 
 test = """
-cargo metask \
-    test_crates \
-    test_examples
+cargo metask test_crates test_examples
 """
 test_crates = """
+    cd uibeam
+    echo "================[doc]================\n"
     cargo test --doc --all-features
     echo "================[vanilla]================\n"
     cargo test --lib
+    echo "================[laser]================\n"
+    cargo test --lib --features laser
+    echo "================[integrations]================\n"
     for integration in $(cargo info --color never uibeam | awk '/\\[.*__integration__.*\\]/ {print $1}'); do
         echo "================[$integration]================\n"
         cargo test --lib --features "$integration"
@@ -37,9 +40,9 @@ test_examples = """
     cd examples
     for directory in ./*/; do
         if [ "$(basename $directory)" != "target" ]; then
+            echo "================[$(basename $directory)]================\n"
             cd "$directory"
             cargo test
-            cargo run
             cd ..
         fi
     done
