@@ -56,7 +56,7 @@ pub(super) fn expand(
             impl ::uibeam::Beam for #name {
                 fn render(self) -> ::uibeam::UI {
                     #[cfg(target_arch = "wasm32")] {
-                        unreachable!();
+                        unimplemented!("Sorry, Laser is currently not supported on WASM host!");
                     }
 
                     #[cfg(not(target_arch = "wasm32"))] {
@@ -73,7 +73,7 @@ pub(super) fn expand(
             {
                 fn render(self) -> ::uibeam::UI {
                     #[cfg(target_arch = "wasm32")] {
-                        unreachable!();
+                        unimplemented!("Sorry, Laser is currently not supported on WASM host!");
                     }
 
                     #[cfg(not(target_arch = "wasm32"))] {

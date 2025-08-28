@@ -227,13 +227,21 @@ fn main() {
 
 ## `Laser` - Client Component by WASM island (_experimental_)
 
-### architecture
+### overview
 
 `Laser` is experimental, [`Preact`](https://preactjs.com)-based client component system in WASM.
 
 `Laser`s work as _*WASM islands*_ : initially rendered in server, sent with serialized props, and hydrated with deserialized props in client.
 
 `Signal`, `computed`, `effect` are available in `Laser`s.
+
+### note
+
+Currently `Laser` system is:
+
+- experimantal.
+- working with/based on [`Preact`](https://preactjs.com).
+- **NOT supported on WASM host** like Cloudflare Workers.
 
 ### usage
 
