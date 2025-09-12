@@ -1,26 +1,26 @@
-name: Publish VSCode extension
+name: PublishSupport
 
 on:
   push:
-    branches: [main]
-    paths: ['support/vscode/**']
+    branches: ['main']
+    paths: ['support/**']
 
 jobs:
   publish:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: latest
           
-      - name: Install dependencies
+      - name: Install npm dependencies
         working-directory: support/vscode
         run: npm install
 
-      - name: Publish extension
+      - name: Publish VSCode Extension
         working-directory: support/vscode
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
