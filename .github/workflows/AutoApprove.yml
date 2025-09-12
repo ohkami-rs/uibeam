@@ -1,6 +1,6 @@
 # will be removed when this project has more than one maintainers
 
-name: auto-approve
+name: AutoApprove
 
 on:
   pull_request:
@@ -15,7 +15,7 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: approve
         env:
           GH_TOKEN: ${{ github.token }}
