@@ -3,7 +3,7 @@
   "name": "uibeam",
   "displayName": "UIBeam",
   "icon": "assets/ohkami-rs.png",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "HTML completions and hovers for UIBeam",
   "license": "MIT",
   "publisher": "ohkami-rs",
@@ -35,11 +35,11 @@
     "vscode:prerelease": "vsce package --out ./out/uibeam.vsix --pre-release && vsce publish --packagePath ./out/uibeam.vsix --pre-release"
   },
   "devDependencies": {
-    "@types/node": "^24.3.1",
-    "@types/vscode": "^1.104.0",
-    "@vscode/vsce": "^3.6.0",
-    "typescript": "^5.8.2",
-    "vitest": "^3.2.4"
+    "@types/node": "^24.10.1",
+    "@types/vscode": "^1.106.1",
+    "@vscode/vsce": "^3.7.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.10"
   },
   "dependencies": {
     "vscode-html-languageservice": "^5.5.1"
