@@ -20,7 +20,7 @@
     "url": "https://github.com/ohkami-rs/uibeam/issues"
   },
   "engines": {
-    "vscode": "^1.104.0"
+    "vscode": "^1.106.1"
   },
   "activationEvents": [
     "onLanguage:rust"
