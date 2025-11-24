@@ -3,7 +3,7 @@ resolver = "3"
 members  = ["uibeam", "uibeam_html", "uibeam_macros"]
 
 [workspace.package]
-version    = "0.3.0"
+version    = "0.3.1"
 edition    = "2024"
 authors    = ["kanarus <kanarus786@gmail.com>"]
 homepage   = "https://crates.io/uibeam"
@@ -32,15 +32,20 @@ test_crates = """
     cargo test --lib --features laser
     echo "================[integrations]================\n"
     for integration in $(cargo info --color never uibeam | awk '/\\[.*__integration__.*\\]/ {print $1}'); do
-        echo "================[$integration]================\n"
-        cargo test --lib --features "$integration"
+        if [ "$integration" != "openapi" ]; then
+            echo "================[integration:$integration]================\n"
+            cargo test --lib --features "$integration"
+            cargo test --lib --features "$integration",openapi
+            cargo test --lib --features "$integration",laser
+            cargo test --lib --features "$integration",laser,openapi
+        fi
     done
 """
 test_examples = """
     cd examples
     for directory in ./*/; do
         if [ "$(basename $directory)" != "target" ]; then
-            echo "================[$(basename $directory)]================\n"
+            echo "================[example:$(basename $directory)]================\n"
             cd "$directory"
             cargo test
             cd ..

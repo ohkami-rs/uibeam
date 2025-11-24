@@ -419,6 +419,32 @@ async fn main() -> std::io::Result<()> {
 }
 ```
 
+### [Ohkami](https://github.com/ohkami-rs/ohkami) - by "ohkami" feature
+
+- UIBeam *v0.3* is compatible with Ohkami *v0.24*.
+- Ohkami's `openapi` feature is supported via UIBeam's `openapi` feature flag.
+- UIBeam itself is runtime-agnostic and available with any async runtimes supported by Ohkami.
+
+```rust,no_run
+use ohkami::{Ohkami, Route};
+use uibeam::UI;
+
+async fn handler() -> UI {
+    UI! {
+        <h1>"Hello, Ohkami!"</h1>
+    }
+}
+
+#[tokio::main]
+async fn main() {
+    Ohkami::new((
+        "/".GET(handler),
+    ))
+    .howl("localhost:5000")
+    .await
+}
+```
+
 ## License
 
 UIBeam is licensed under [MIT LICENSE](./LICENSE).
