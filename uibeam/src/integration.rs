@@ -23,3 +23,19 @@ impl actix_web::Responder for UI {
         actix_web::web::Html::new(shoot(self)).respond_to(req)
     }
 }
+
+#[cfg(feature = "ohkami")]
+#[cfg_attr(docsrs, doc(cfg(feature = "ohkami")))]
+impl ohkami::claw::content::IntoContent for UI {
+    const CONTENT_TYPE: &'static str = <ohkami::claw::content::Html as ohkami::claw::content::IntoContent>::CONTENT_TYPE;
+    
+    #[inline]
+    fn into_content(self) -> Result<std::borrow::Cow<'static, [u8]>, impl std::fmt::Display> {
+        ohkami::claw::content::IntoContent::into_content(ohkami::claw::content::Html(shoot(self)))
+    }
+    
+    #[cfg(feature = "openapi")]
+    fn openapi_responsebody() -> impl Into<ohkami::openapi::schema::SchemaRef> {
+        <ohkami::claw::content::Html as ohkami::claw::content::IntoContent>::openapi_responsebody()
+    }
+}

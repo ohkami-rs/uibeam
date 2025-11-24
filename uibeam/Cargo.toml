@@ -21,13 +21,15 @@ laser = [
     "dep:serde", "dep:serde_json", "dep:serde-wasm-bindgen",
     "dep:wasm-bindgen", "dep:js-sys", "dep:web-sys"
 ]
-__integration__ = ["dep:http", "dep:mime"]
-axum      = ["__integration__", "dep:axum-core"]
+__integration__ = []
+axum      = ["__integration__", "dep:axum-core", "dep:http", "dep:mime"]
 actix-web = ["__integration__", "dep:actix-web"]
+ohkami    = ["__integration__", "dep:ohkami"]
+openapi   = ["__integration__", "ohkami?/openapi"] # activate some frameworks' built-in openapi support in the future
 
 [dependencies]
-uibeam_html   = { path = "../uibeam_html",   version = "=0.3.0" }
-uibeam_macros = { path = "../uibeam_macros", version = "=0.3.0" }
+uibeam_html   = { path = "../uibeam_html",   version = "=0.3.1" }
+uibeam_macros = { path = "../uibeam_macros", version = "=0.3.1" }
 
 # for islands
 serde              = { optional = true, version = "1.0" }
@@ -66,9 +68,15 @@ optional         = true
 default-features = false
 version          = "4.11.0"
 
-[dev-dependencies]
+[dependencies.ohkami]
+optional         = true
+default-features = false
+version          = "0.24"
+
+[dev-dependencies] # for doc tests (README)
 tokio      = { version = "1.45.0", features = ["rt-multi-thread", "net", "macros"] }
 axum       = { version = "0.8.4" }
 actix-web  = { version = "4.11.0", default-features = false, features = ["macros"] }
 tower-http = { version = "0.6.4", features = ["fs"] } # [2025-05-19] build fails without `default-features = false`
+ohkami     = { version = "0.24", features = ["rt_tokio"] }
 web-sys    = { version = "0.3", features = ["HtmlInputElement"] } # for doc tests around Lasers

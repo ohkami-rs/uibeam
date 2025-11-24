@@ -374,6 +374,10 @@ Enables `UI` to be returned as a HTML response.
 
 ### [Axum](https://github.com/tokio-rs/axum) - by "axum" feature
 
+```toml
+uibeam = { version = "0.3", features = ["axum"] }
+```
+
 ```rust,no_run
 use axum::{routing::get, Router};
 use uibeam::UI;
@@ -396,6 +400,10 @@ async fn main() {
 
 ### [Actix Web](https://actix.rs) - by "actix-web" feature
 
+```toml
+uibeam = { version = "0.3", features = ["actix-web"] }
+```
+
 ```rust,no_run
 use actix_web::{HttpServer, App, get};
 use uibeam::UI;
@@ -415,6 +423,39 @@ async fn main() -> std::io::Result<()> {
     )
     .bind(("127.0.0.1", 8080))?
     .run()
+    .await
+}
+```
+
+### [Ohkami](https://github.com/ohkami-rs/ohkami) - by "ohkami" feature
+
+- UIBeam *v0.3* is compatible with Ohkami *v0.24*.
+- Ohkami's `openapi` feature is supported via UIBeam's `openapi` feature flag.
+- UIBeam itself is runtime-agnostic and available with any async runtimes supported by Ohkami.
+
+```toml
+[dependencies]
+tokio = { version = "1.48", features = ["full"] }
+ohkami = { version = "0.24", features = ["rt_tokio"] }
+uibeam = { version = "0.3", features = ["ohkami" /* , "openapi" if needed */] }
+```
+
+```rust,no_run
+use ohkami::{Ohkami, Route};
+use uibeam::UI;
+
+async fn handler() -> UI {
+    UI! {
+        <h1>"Hello, Ohkami!"</h1>
+    }
+}
+
+#[tokio::main]
+async fn main() {
+    Ohkami::new((
+        "/".GET(handler),
+    ))
+    .howl("localhost:5000")
     .await
 }
 ```
