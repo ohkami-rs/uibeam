@@ -375,6 +375,7 @@ Enables `UI` to be returned as a HTML response.
 ### [Axum](https://github.com/tokio-rs/axum) - by "axum" feature
 
 ```toml
+axum = { version = "0.8" }
 uibeam = { version = "0.3", features = ["axum"] }
 ```
 
@@ -401,6 +402,7 @@ async fn main() {
 ### [Actix Web](https://actix.rs) - by "actix-web" feature
 
 ```toml
+actix-web = { version = "4.12" }
 uibeam = { version = "0.3", features = ["actix-web"] }
 ```
 
@@ -437,7 +439,9 @@ async fn main() -> std::io::Result<()> {
 [dependencies]
 tokio = { version = "1.48", features = ["full"] }
 ohkami = { version = "0.24", features = ["rt_tokio"] }
-uibeam = { version = "0.3", features = ["ohkami" /* , "openapi" if needed */] }
+uibeam = { version = "0.3", features = ["ohkami"] }
+# when using ohkami's "openapi" feature,
+# activate also uibeam's "openapi" feature.
 ```
 
 ```rust,no_run
