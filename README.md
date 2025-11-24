@@ -30,7 +30,7 @@ and HTML completions and hovers in `UI!` by VSCode extension ( search "uibeam" f
 
 ```toml
 [dependencies]
-uibeam = "0.3.0"
+uibeam = "0.3"
 ```
 
 ### `UI!` syntax
@@ -253,7 +253,7 @@ working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/mai
 
     ```toml
     [dependencies]
-    uibeam = { version = "0.3.0", features = ["laser"] }
+    uibeam = { version = "0.3", features = ["laser"] }
     serde  = { version = "1", features = ["derive"] }
     ```
 
