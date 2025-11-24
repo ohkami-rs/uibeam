@@ -55,18 +55,18 @@ web-sys            = { optional = true, version = "0.3", features = [
 ] }
 
 # for integrations
-http = { optional = true, version = "1.3.1" }
-mime = { optional = true, version = "0.3.17" }
+http = { optional = true, version = "1.3" }
+mime = { optional = true, version = "0.3" }
 
 [dependencies.axum-core]
 optional         = true
 default-features = false
-version          = "0.5.2"
+version          = "0.5"
 
 [dependencies.actix-web]
 optional         = true
 default-features = false
-version          = "4.11.0"
+version          = "4.12"
 
 [dependencies.ohkami]
 optional         = true
@@ -74,9 +74,9 @@ default-features = false
 version          = "0.24"
 
 [dev-dependencies] # for doc tests (README)
-tokio      = { version = "1.45.0", features = ["rt-multi-thread", "net", "macros"] }
-axum       = { version = "0.8.4" }
-actix-web  = { version = "4.11.0", default-features = false, features = ["macros"] }
-tower-http = { version = "0.6.4", features = ["fs"] } # [2025-05-19] build fails without `default-features = false`
+tokio      = { version = "1.48", features = ["rt-multi-thread", "net", "macros"] }
+axum       = { version = "0.8" }
+actix-web  = { version = "4.12", default-features = false, features = ["macros"] }
+tower-http = { version = "0.6", features = ["fs"] } # [2025-05-19] build fails without `default-features = false`
 ohkami     = { version = "0.24", features = ["rt_tokio"] }
 web-sys    = { version = "0.3", features = ["HtmlInputElement"] } # for doc tests around Lasers
