@@ -13,10 +13,22 @@ license    = "MIT"
 keywords   = ["jsx", "html", "template-engine", "web", "ui"]
 categories = ["template-engine", "web-programming", "wasm"]
 
+[workspace.lints.clippy]
+duplicated_attributes = "allow" # to keep readability with complex feature combinations
+
 [workspace.metadata.tasks]
 CI = """
-cargo metask \
-    test
+cargo metask check test
+"""
+
+check = """
+cargo metask check_fmt check_clippy
+"""
+check_fmt = """
+cargo fmt --all --check
+"""
+check_clippy = """
+cargo clippy --all-targets --all-features -- --deny warnings
 """
 
 test = """

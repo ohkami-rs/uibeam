@@ -1,10 +1,10 @@
-use quote::{quote, ToTokens};
+use quote::{ToTokens, quote};
 use syn::parse::{Parse, ParseStream};
 use syn::spanned::Spanned;
-use syn::{token, Expr, Ident, LitInt, LitStr, Token};
+use syn::{Expr, Ident, LitInt, LitStr, Token, token};
 
 /// Parsed representation of the UI macro input.
-/// 
+///
 /// This is almost HTML syntax, but with some Rust expressions embedded within `{}`.
 pub(super) struct UITokens {
     pub(super) nodes: Vec<NodeTokens>,
@@ -57,10 +57,9 @@ impl HtmlIdent {
 }
 impl PartialEq for HtmlIdent {
     fn eq(&self, other: &Self) -> bool {
-        self.head == other.head &&
-        self.rest.len() == other.rest.len() && Iterator::zip(
-            self.rest.iter(), other.rest.iter()
-        ).all(|((_, a), (_, b))| a == b)
+        self.head == other.head
+            && self.rest.len() == other.rest.len()
+            && Iterator::zip(self.rest.iter(), other.rest.iter()).all(|((_, a), (_, b))| a == b)
     }
 }
 impl std::fmt::Display for HtmlIdent {
@@ -160,15 +159,11 @@ impl Parse for NodeTokens {
                     _slash,
                     _end,
                 })
-
             } else if input.peek(Token![>]) {
                 let _start_close: Token![>] = input.parse()?;
 
                 // tolerantly accept some self-closing tags without a slash
-                if tag.head == "br"
-                || tag.head == "meta"
-                || tag.head == "link"
-                || tag.head == "hr"
+                if tag.head == "br" || tag.head == "meta" || tag.head == "link" || tag.head == "hr"
                 {
                     return Ok(NodeTokens::SelfClosingTag {
                         _open: _start_open,
@@ -180,6 +175,7 @@ impl Parse for NodeTokens {
                 }
 
                 let mut content = Vec::<ContentPieceTokens>::new();
+                #[allow(clippy::nonminimal_bool)]
                 while (!input.is_empty()) && !(input.peek(Token![<]) && input.peek2(Token![/])) {
                     content.push(input.parse()?);
                 }
@@ -189,7 +185,10 @@ impl Parse for NodeTokens {
 
                 let _tag: HtmlIdent = input.parse()?;
                 if _tag != tag {
-                    return Err(syn::Error::new(tag.span(), format!("Not closing tag: no corresponded `/>` or `</{tag}>` exists")))
+                    return Err(syn::Error::new(
+                        tag.span(),
+                        format!("Not closing tag: no corresponded `/>` or `</{tag}>` exists"),
+                    ));
                 }
 
                 let _end_close: Token![>] = input.parse()?;
@@ -205,7 +204,6 @@ impl Parse for NodeTokens {
                     _tag,
                     _end_close,
                 })
-
             } else {
                 Err(input.error("Expected '>' or '/>' at the end of a tag"))
             }
@@ -223,13 +221,10 @@ impl Parse for ContentPieceTokens {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         if input.peek(Token![unsafe]) || input.peek(token::Brace) {
             Ok(Self::Interpolation(input.parse()?))
-
         } else if input.peek(LitStr) {
             Ok(Self::StaticText(input.parse()?))
-
         } else if input.peek(Token![<]) {
             Ok(Self::Node(input.parse()?))
-
         } else {
             Err(input.error("Expected one of: start tag, string literal, {expression}"))
         }
@@ -238,7 +233,8 @@ impl Parse for ContentPieceTokens {
 
 impl Parse for InterpolationTokens {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let _unsafe = input.peek(Token![unsafe])
+        let _unsafe = input
+            .peek(Token![unsafe])
             .then(|| input.parse())
             .transpose()?;
 
@@ -261,10 +257,8 @@ impl Parse for InterpolationTokens {
 impl Parse for AttributeTokens {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let name: HtmlIdent = input.parse()?;
-        let value: Option<AttributeValueTokens> = input
-            .peek(Token![=])
-            .then(|| input.parse())
-            .transpose()?;
+        let value: Option<AttributeValueTokens> =
+            input.peek(Token![=]).then(|| input.parse()).transpose()?;
         Ok(AttributeTokens { name, value })
     }
 }
@@ -288,8 +282,9 @@ impl Parse for AttributeValueTokens {
         let value = if input.peek(LitStr) {
             AttributeValueToken::StringLiteral(input.parse()?)
         } else if input.peek(LitInt) {
-            AttributeValueToken::IntegerLiteral(input.parse()?) 
-        } else if input.peek(token::Brace) {// NOT expect `unsafe` here
+            AttributeValueToken::IntegerLiteral(input.parse()?)
+        } else if input.peek(token::Brace) {
+            // NOT expect `unsafe` here
             AttributeValueToken::Interpolation(input.parse()?)
         } else {
             return Err(input.error("Expected string literal or interpolation"));
@@ -312,8 +307,12 @@ impl ToTokens for ContentPieceTokens {
 
 impl ToTokens for InterpolationTokens {
     fn to_tokens(&self, t: &mut proc_macro2::TokenStream) {
-        self._unsafe.map(|unsafe_token| unsafe_token.to_tokens(t));
-        self._brace.surround(t, |inner| self.rust_expression.to_tokens(inner));
+        if let Some(_unsafe) = &self._unsafe {
+            _unsafe.to_tokens(t);
+        }
+        self._brace.surround(t, |inner| {
+            self.rust_expression.to_tokens(inner);
+        });
     }
 }
 
@@ -329,7 +328,8 @@ impl ToTokens for NodeTokens {
             } => {
                 (quote! {
                     #_open #_bang #_doctype #_html #_end
-                }).to_tokens(t);
+                })
+                .to_tokens(t);
             }
             NodeTokens::EnclosingTag {
                 _start_open,
@@ -348,7 +348,8 @@ impl ToTokens for NodeTokens {
                     #_start_open #tag #(#attributes)* #_start_close
                     #(#content)*
                     #_end_open #_slash #_tag #_end_close
-                }).to_tokens(t);
+                })
+                .to_tokens(t);
             }
             NodeTokens::SelfClosingTag {
                 _open,
@@ -360,13 +361,15 @@ impl ToTokens for NodeTokens {
                 let attributes = attributes.iter().map(AttributeTokens::to_token_stream);
                 (quote! {
                     #_open #tag #(#attributes)* #_slash #_end
-                }).to_tokens(t);
+                })
+                .to_tokens(t);
             }
             NodeTokens::TextNode(pieces) => {
                 let pieces = pieces.iter().map(ContentPieceTokens::to_token_stream);
                 (quote! {
                     #(#pieces)*
-                }).to_tokens(t);
+                })
+                .to_tokens(t);
             }
         }
     }
@@ -385,7 +388,9 @@ impl ToTokens for HtmlIdent {
 impl ToTokens for AttributeTokens {
     fn to_tokens(&self, t: &mut proc_macro2::TokenStream) {
         self.name.to_tokens(t);
-        self.value.as_ref().map(|value| value.to_tokens(t));
+        if let Some(value) = &self.value {
+            value.to_tokens(t);
+        }
     }
 }
 
@@ -402,12 +407,13 @@ impl ToTokens for AttributeValueToken {
                 lit_str.to_tokens(t);
             }
             AttributeValueToken::IntegerLiteral(lit_int) => {
-                LitStr::new(
-                    lit_int.base10_digits(),
-                    lit_int.span(),
-                ).to_tokens(t);
+                LitStr::new(lit_int.base10_digits(), lit_int.span()).to_tokens(t);
             }
-            AttributeValueToken::Interpolation(InterpolationTokens { _unsafe, _brace, rust_expression }) => {
+            AttributeValueToken::Interpolation(InterpolationTokens {
+                _unsafe,
+                _brace,
+                rust_expression,
+            }) => {
                 assert!(_unsafe.is_none());
                 _brace.surround(t, |inner| rust_expression.to_tokens(inner));
             }
