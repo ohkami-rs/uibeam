@@ -30,7 +30,7 @@ and HTML completions and hovers in `UI!` by VSCode extension ( search "uibeam" f
 
 ```toml
 [dependencies]
-uibeam = "0.3"
+uibeam = "0.4"
 ```
 
 ### `UI!` syntax
@@ -253,7 +253,7 @@ working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/mai
 
     ```toml
     [dependencies]
-    uibeam = { version = "0.3", features = ["laser"] }
+    uibeam = { version = "0.4", features = ["laser"] }
     serde  = { version = "1", features = ["derive"] }
     ```
 
@@ -376,7 +376,7 @@ Enables `UI` to be returned as a HTML response.
 
 ```toml
 axum = { version = "0.8" }
-uibeam = { version = "0.3", features = ["axum"] }
+uibeam = { version = "0.4", features = ["axum"] }
 ```
 
 ```rust,no_run
@@ -403,7 +403,7 @@ async fn main() {
 
 ```toml
 actix-web = { version = "4.12" }
-uibeam = { version = "0.3", features = ["actix-web"] }
+uibeam = { version = "0.4", features = ["actix-web"] }
 ```
 
 ```rust,no_run
@@ -439,7 +439,7 @@ async fn main() -> std::io::Result<()> {
 [dependencies]
 tokio = { version = "1.48", features = ["full"] }
 ohkami = { version = "0.24", features = ["rt_tokio"] }
-uibeam = { version = "0.3", features = ["ohkami"] }
+uibeam = { version = "0.4", features = ["ohkami"] }
 # when using ohkami's "openapi" feature,
 # activate also uibeam's "openapi" feature.
 ```
