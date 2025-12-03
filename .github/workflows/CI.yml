@@ -18,7 +18,10 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - run: rustup update && rustup default ${{ matrix.toolchain }}
+      - run: |
+          rustup update
+          rustup default ${{ matrix.toolchain }}
+          rustup component add rustfmt clippy
       
       - run: |
           sudo apt install mold clang
@@ -28,5 +31,5 @@ jobs:
       
       - run: cargo install cargo-metask
 
-      - run: cargo task CI
+      - run: cargo metask CI
   

@@ -2,23 +2,12 @@
 
 // TODO: support more events (update together with `uibeam_macros/src/ui/transform.rs`)
 pub use ::web_sys::{
-    Event,
-    AnimationEvent,
-    ClipboardEvent,
-    CompositionEvent,
-    FocusEvent,
-    InputEvent,
-    KeyboardEvent,
-    MouseEvent,
-    PointerEvent,
-    TouchEvent,
-    TransitionEvent,
-    UiEvent,
-    WheelEvent,
+    AnimationEvent, ClipboardEvent, CompositionEvent, Event, FocusEvent, InputEvent, KeyboardEvent,
+    MouseEvent, PointerEvent, TouchEvent, TransitionEvent, UiEvent, WheelEvent,
 };
 
 #[doc(hidden)]
-pub use {::wasm_bindgen, ::js_sys, ::web_sys, ::serde, ::serde_wasm_bindgen};
+pub use {::js_sys, ::serde, ::serde_wasm_bindgen, ::wasm_bindgen, ::web_sys};
 
 #[doc(hidden)]
 #[inline]
@@ -31,31 +20,31 @@ pub fn serialize_props<P: ::serde::Serialize>(props: &P) -> String {
 pub trait Laser_attribute {}
 
 /// Client Component working as WASM island (_experimental_)
-/// 
+///
 /// See [README](https://github.com/ohkami-rs/uibeam/blob/main/README.md) for detailed usage.
-/// 
+///
 /// ## Example
 /// ```
 /// use uibeam::{UI, Laser, Signal, callback};
-/// 
+///
 /// #[Laser]
 /// #[derive(serde::Serialize, serde::Deserialize)]
 /// pub struct Counter {
 ///     pub initial_count: i32,
 /// }
-/// 
+///
 /// impl Laser for Counter {
 ///     fn render(self) -> UI {
 ///         let count = Signal::new(self.initial_count);
-/// 
+///
 ///         let increment = callback!([count], |_| {
 ///             count.set(*count + 1);
 ///         });
-/// 
+///
 ///         let decrement = callback!([count], |_| {
 ///             count.set(*count - 1);
 ///         });
-/// 
+///
 ///         UI! {
 ///             <div class="w-[144px]">
 ///                 <p class="text-2xl font-bold text-center">
@@ -83,25 +72,17 @@ pub trait Laser: Laser_attribute {
 #[cfg(target_arch = "wasm32")]
 mod preact {
     use super::*;
-    
+
     #[wasm_bindgen(module = "preact")]
     unsafe extern "C" {
         #[wasm_bindgen(js_name = "hydrate")]
         pub(super) fn hydrate(vdom: JsValue, container: ::web_sys::Node);
 
         #[wasm_bindgen(js_name = "createElement")]
-        pub(super) fn create_element(
-            r#type: JsValue,
-            props: Object,
-            children: Array,
-        ) -> JsValue;
+        pub(super) fn create_element(r#type: JsValue, props: Object, children: Array) -> JsValue;
 
         #[wasm_bindgen(js_name = "cloneElement")]
-        pub(super) fn clone_element(
-            vdom: JsValue,
-            props: Object,
-            children: Array,
-        ) -> JsValue;
+        pub(super) fn clone_element(vdom: JsValue, props: Object, children: Array) -> JsValue;
 
         #[wasm_bindgen(js_name = "createRef")]
         pub(super) fn create_ref() -> JsValue;
@@ -131,15 +112,12 @@ mod preact {
 
 #[cfg(target_arch = "wasm32")]
 use {
+    ::js_sys::{Array, Function, Object, Reflect},
     ::wasm_bindgen::prelude::*,
-    ::js_sys::{Function, Array, Object, Reflect},
 };
 
 #[cfg(target_arch = "wasm32")]
-pub fn hydrate(
-    vdom: VNode,
-    container: ::web_sys::Node,
-) {
+pub fn hydrate(vdom: VNode, container: ::web_sys::Node) {
     preact::hydrate(vdom.0, container);
 }
 
@@ -159,10 +137,12 @@ impl NodeType {
     where
         L: Laser + for<'de> serde::Deserialize<'de>,
     {
-        let component_function: Function = Closure::<dyn Fn(JsValue)->JsValue>::new(|props| {
+        let component_function: Function = Closure::<dyn Fn(JsValue) -> JsValue>::new(|props| {
             let props: L = serde_wasm_bindgen::from_value(props).unwrap_throw();
             <L as Laser>::render(props).into_vdom().0
-        }).into_js_value().unchecked_into();
+        })
+        .into_js_value()
+        .unchecked_into();
 
         NodeType(component_function.unchecked_into())
     }
@@ -170,11 +150,7 @@ impl NodeType {
 
 #[cfg(target_arch = "wasm32")]
 impl VNode {
-    pub fn new(
-        r#type: NodeType,
-        props: Object,
-        children: Vec<VNode>,
-    ) -> VNode {
+    pub fn new(r#type: NodeType, props: Object, children: Vec<VNode>) -> VNode {
         VNode(preact::create_element(
             r#type.0,
             props,
@@ -182,15 +158,14 @@ impl VNode {
         ))
     }
 
-    pub fn fragment(
-        children: Vec<VNode>,
-    ) -> VNode {
+    pub fn fragment(children: Vec<VNode>) -> VNode {
         let props = Object::new();
         Reflect::set(
             &props,
             &"children".into(),
             &children.into_iter().map(|vdom| vdom.0).collect::<Array>(),
-        ).ok();
+        )
+        .ok();
         VNode(preact::fragment(props))
     }
 
@@ -202,7 +177,7 @@ impl VNode {
     }
 }
 
-pub struct Signal<T: serde::Serialize + for<'de>serde::Deserialize<'de>> {
+pub struct Signal<T: serde::Serialize + for<'de> serde::Deserialize<'de>> {
     #[cfg(target_arch = "wasm32")]
     preact_signal: Object,
     /// buffer for `Deref` impl on single-threaded wasm
@@ -210,7 +185,8 @@ pub struct Signal<T: serde::Serialize + for<'de>serde::Deserialize<'de>> {
     current_value: std::rc::Rc<std::cell::UnsafeCell<T>>,
 }
 
-impl<T: serde::Serialize + for<'de>serde::Deserialize<'de>> Clone for Signal<T> {// not require T: Clone
+impl<T: serde::Serialize + for<'de> serde::Deserialize<'de>> Clone for Signal<T> {
+    // not require T: Clone
     fn clone(&self) -> Self {
         Self {
             #[cfg(target_arch = "wasm32")]
@@ -220,25 +196,31 @@ impl<T: serde::Serialize + for<'de>serde::Deserialize<'de>> Clone for Signal<T> 
     }
 }
 
-impl<T: serde::Serialize + for<'de>serde::Deserialize<'de>> std::ops::Deref for Signal<T> {
+impl<T: serde::Serialize + for<'de> serde::Deserialize<'de>> std::ops::Deref for Signal<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        #[cfg(not(target_arch = "wasm32"))] {// for template rendering
-            unsafe {&*self.current_value.get()}
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            // for template rendering
+            unsafe { &*self.current_value.get() }
         }
-        #[cfg(target_arch = "wasm32")] {
+        #[cfg(target_arch = "wasm32")]
+        {
             let value = serde_wasm_bindgen::from_value(
-// TODO: skip deserialization if value is not changed 
-                Reflect::get(&self.preact_signal, &"value".into()).unwrap_throw()
-            ).unwrap_throw();
-            unsafe { *self.current_value.get() = value; }
-            unsafe {&*self.current_value.get()}
+                // TODO: skip deserialization if value is not changed
+                Reflect::get(&self.preact_signal, &"value".into()).unwrap_throw(),
+            )
+            .unwrap_throw();
+            unsafe {
+                *self.current_value.get() = value;
+            }
+            unsafe { &*self.current_value.get() }
         }
     }
 }
 
-impl<T: serde::Serialize + for<'de>serde::Deserialize<'de>> Signal<T> {
+impl<T: serde::Serialize + for<'de> serde::Deserialize<'de>> Signal<T> {
     pub fn new(value: T) -> Self {
         Self {
             #[cfg(target_arch = "wasm32")]
@@ -248,28 +230,34 @@ impl<T: serde::Serialize + for<'de>serde::Deserialize<'de>> Signal<T> {
     }
 
     pub fn set(&self, value: T) {
-        #[cfg(not(target_arch = "wasm32"))] {// for template rendering
-            unsafe { *self.current_value.get() = value; }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            // for template rendering
+            unsafe {
+                *self.current_value.get() = value;
+            }
         }
-        #[cfg(target_arch = "wasm32")] {
+        #[cfg(target_arch = "wasm32")]
+        {
             Reflect::set(
                 &self.preact_signal,
                 &"value".into(),
-                &serde_wasm_bindgen::to_value(&value).unwrap_throw()
-            ).unwrap_throw();
+                &serde_wasm_bindgen::to_value(&value).unwrap_throw(),
+            )
+            .unwrap_throw();
         }
     }
 }
 
-pub struct Computed<T: serde::Serialize + for<'de>serde::Deserialize<'de>>(Signal<T>);
+pub struct Computed<T: serde::Serialize + for<'de> serde::Deserialize<'de>>(Signal<T>);
 
-impl<T: serde::Serialize + for<'de>serde::Deserialize<'de>> Clone for Computed<T> {
+impl<T: serde::Serialize + for<'de> serde::Deserialize<'de>> Clone for Computed<T> {
     fn clone(&self) -> Self {
         Self(self.0.clone())
     }
 }
 
-impl<T: serde::Serialize + for<'de>serde::Deserialize<'de>> std::ops::Deref for Computed<T> {
+impl<T: serde::Serialize + for<'de> serde::Deserialize<'de>> std::ops::Deref for Computed<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -277,17 +265,24 @@ impl<T: serde::Serialize + for<'de>serde::Deserialize<'de>> std::ops::Deref for 
     }
 }
 
-impl<T: serde::Serialize + for<'de>serde::Deserialize<'de>> Computed<T> {
+impl<T: serde::Serialize + for<'de> serde::Deserialize<'de>> Computed<T> {
     pub fn new(getter: impl (Fn() -> T) + 'static) -> Self {
-        #[cfg(not(target_arch = "wasm32"))] {// for template rendering
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            // for template rendering
             Self(Signal::new(getter()))
         }
-        #[cfg(target_arch = "wasm32")] {
+        #[cfg(target_arch = "wasm32")]
+        {
             let init = getter();
 
-            let preact_computed = preact::computed(Closure::<dyn Fn() -> JsValue>::new(move || {
-                serde_wasm_bindgen::to_value(&getter()).unwrap_throw()
-            }).into_js_value().unchecked_into());
+            let preact_computed = preact::computed(
+                Closure::<dyn Fn() -> JsValue>::new(move || {
+                    serde_wasm_bindgen::to_value(&getter()).unwrap_throw()
+                })
+                .into_js_value()
+                .unchecked_into(),
+            );
 
             Self(Signal {
                 preact_signal: preact_computed,
@@ -298,54 +293,54 @@ impl<T: serde::Serialize + for<'de>serde::Deserialize<'de>> Computed<T> {
 }
 
 /// Shorthand for creating closures that capture variables by cloning them.
-/// 
+///
 /// This is useful when creating **event handlers or callbacks using signals**:
-/// 
+///
 /// ```
 /// use uibeam::{Signal, callback};
 /// use uibeam::laser::{InputEvent, PointerEvent};
 /// use wasm_bindgen::JsCast;
 /// use web_sys::HtmlInputElement;
-/// 
+///
 /// # fn usage() {
 /// let name = Signal::new("Alice".to_owned());
 /// let count = Signal::new(0);
-/// 
+///
 /// let handle_name_input = callback!([name], |e: InputEvent| {
 ///     let input_element: HtmlInputElement = e
 ///         .current_target().unwrap()
 ///         .dyn_into().unwrap();
 ///     name.set(input_element.value());
 /// });
-/// 
+///
 /// let handle_increment_click = callback!([count], |_: PointerEvent| {
 ///     count.set(*count + 1);
 /// });
 /// # }
 /// ```
-/// 
+///
 /// ## Example
 /// ```
 /// use uibeam::{UI, Laser, Signal, callback};
-/// 
+///
 /// #[Laser]
 /// #[derive(serde::Serialize, serde::Deserialize)]
 /// pub struct Counter {
 ///     pub initial_count: i32,
 /// }
-/// 
+///
 /// impl Laser for Counter {
 ///     fn render(self) -> UI {
 ///         let count = Signal::new(self.initial_count);
-/// 
+///
 ///         let increment = callback!([count], |_| {
 ///             count.set(*count + 1);
 ///         });
-/// 
+///
 ///         let decrement = callback!([count], |_| {
 ///             count.set(*count - 1);
 ///         });
-/// 
+///
 ///         UI! {
 ///             <div class="w-[144px]">
 ///                 <p class="text-2xl font-bold text-center">
@@ -388,37 +383,37 @@ macro_rules! callback {
     };
 }
 
-pub fn computed<T: serde::Serialize + for<'de>serde::Deserialize<'de> + 'static>(
-    getter: impl (Fn() -> T) + 'static
+pub fn computed<T: serde::Serialize + for<'de> serde::Deserialize<'de> + 'static>(
+    getter: impl (Fn() -> T) + 'static,
 ) -> Computed<T> {
     Computed::new(getter)
 }
 
 /// `computed!([deps, ...], || -> T { ... })` creates a `Computed<T>` signal
 /// that automatically updates when any of the `deps` signals change.
-/// 
+///
 /// This is shorthand for `computed(callback!(...))`.
-/// 
+///
 /// ## Example
 /// ```
 /// use uibeam::{UI, Laser, Signal, callback, computed};
-/// 
+///
 /// #[Laser]
 /// #[derive(serde::Serialize, serde::Deserialize)]
 /// pub struct ComputedExample;
-/// 
+///
 /// impl Laser for ComputedExample {
 ///     fn render(self) -> UI {
 ///         let count = Signal::new(0u32);
-/// 
+///
 ///         let count_squared = computed!([count], || {
 ///             (*count).pow(2)
 ///         });
-/// 
+///
 ///         let increment = callback!([count], |_| {
 ///             count.set(*count + 1);
 ///         });
-/// 
+///
 ///         UI! {
 ///             <div class="w-[144px]">
 ///                 <p class="text-2xl font-bold text-center">
@@ -446,20 +441,18 @@ macro_rules! computed {
 }
 
 pub fn effect(
-    #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
-    f: impl Fn() + 'static
+    #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))] f: impl Fn() + 'static,
 ) {
-    #[cfg(target_arch = "wasm32")] {
-        let f = Closure::<dyn Fn()>::new(f)
-            .into_js_value()
-            .unchecked_into();
+    #[cfg(target_arch = "wasm32")]
+    {
+        let f = Closure::<dyn Fn()>::new(f).into_js_value().unchecked_into();
         preact::effect(f);
     }
 }
 
 /// `effect!([deps, ...], || { ... })` creates a reactive effect that automatically
 /// re-runs whenever any of the `deps` signals change.
-/// 
+///
 /// This is shorthand for `effect(callback!(...))`.
 ///
 /// ## Example
@@ -470,19 +463,19 @@ pub fn effect(
 /// #[Laser]
 /// #[derive(serde::Serialize, serde::Deserialize)]
 /// pub struct EffectExample;
-/// 
+///
 /// impl Laser for EffectExample {
 ///     fn render(self) -> UI {
 ///         let count = Signal::new(0);
-/// 
+///
 ///         effect!([count], || {
 ///             console::log_1(&format!("Count changed: {}", *count).into());
 ///         });
-/// 
+///
 ///         let increment = callback!([count], |_| {
 ///             count.set(*count + 1);
 ///         });
-/// 
+///
 ///         UI! {
 ///             <div class="w-[144px]">
 ///                 <p class="text-2xl font-bold text-center">
@@ -507,25 +500,21 @@ macro_rules! effect {
 }
 
 pub fn batch(
-    #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
-    f: impl Fn() + 'static
+    #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))] f: impl Fn() + 'static,
 ) {
-    #[cfg(target_arch = "wasm32")] {
-        let f = Closure::<dyn Fn()>::new(f)
-            .into_js_value()
-            .unchecked_into();
+    #[cfg(target_arch = "wasm32")]
+    {
+        let f = Closure::<dyn Fn()>::new(f).into_js_value().unchecked_into();
         preact::batch(f);
     }
 }
 
 pub fn untracked(
-    #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))]
-    f: impl Fn() + 'static
+    #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))] f: impl Fn() + 'static,
 ) {
-    #[cfg(target_arch = "wasm32")] {
-        let f = Closure::<dyn Fn()>::new(f)
-            .into_js_value()
-            .unchecked_into();
+    #[cfg(target_arch = "wasm32")]
+    {
+        let f = Closure::<dyn Fn()>::new(f).into_js_value().unchecked_into();
         preact::untracked(f);
     }
 }
