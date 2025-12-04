@@ -41,7 +41,11 @@ wasm-bindgen       = { optional = true, version = "0.2.106" }
 serde-wasm-bindgen = { optional = true, version = "0.6" }
 js-sys             = { optional = true, version = "0.3" }
 web-sys            = { optional = true, version = "0.3", features = [
-    "console", "Window", "Document", "Element", "Text",
+    "console",
+    "Window",
+    "Document",
+    "Element",
+    "Text",
     "Event",
     "AnimationEvent",
     "ClipboardEvent",

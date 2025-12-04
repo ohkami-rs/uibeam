@@ -13,16 +13,15 @@
     <a href="https://crates.io/crates/uibeam"><img alt="crates.io" src="https://img.shields.io/crates/v/uibeam" /></a>
 </div>
 
+- `UI!` : JSX-style template syntax with compile-time checks
+- `Beam` : Component System based on Rust structs
+
 ## Features
 
-- `UI!` : JSX-style template syntax with compile-time checks
-- `Beam` : Component System
-- `Laser` : Client Component working as WASM island (_experimental_)
-
-With
-simply organized API and codebase,
-emitting efficient template rendering avoiding redundant memory allocations as smartly as possible,
-and HTML completions and hovers in `UI!` by VSCode extension ( search "uibeam" from extension marketplace )
+- Supports client component via island architecture in Wasm. (See *Client Component* section below)
+- Simply organized API and codebase.
+- Emits efficient template rendering avoiding redundant memory allocations as smartly as possible.
+- HTML completions and hovers in `UI!` by VSCode extension. ( search "uibeam" from extension marketplace )
 
 ![](https://github.com/ohkami-rs/uibeam/raw/HEAD/support/vscode/assets/completion.png)
 
@@ -150,7 +149,7 @@ fn main() {
 }
 ```
 
-## `Beam` - Component with struct and JSX-like syntax
+## `Beam` - Component with Rust struct and JSX-like syntax
 
 ```rust
 use uibeam::{Beam, UI};
@@ -227,77 +226,76 @@ fn main() {
 }
 ```
 
-## `Laser` - Client Component by WASM island (_experimental_)
+## Client Component - WASM islands
 
 ### overview
 
-`Laser` is experimental, [`Preact`](https://preactjs.com)-based client component system in WASM.
+**`#[client]`** makes `Beam` a _*WASM island*_ : initially rendered in server, sent with serialized props, and hydrated with deserialized props in client.
 
-`Laser`s work as _*WASM islands*_ : initially rendered in server, sent with serialized props, and hydrated with deserialized props in client.
-
-`Signal`, `computed`, `effect` are available in `Laser`s.
+`Signal`, `computed`, `effect` are available in them.
 
 ### note
 
-Currently `Laser` system is:
-
-- experimantal.
-- working with/based on [`Preact`](https://preactjs.com).
-- **NOT supported on WASM host** like Cloudflare Workers.
+Currently UIBeam's client component system is built upon [`Preact`](https://preactjs.com).
+This may be rewritten in pure Rust in the future, but may not because of potential reduction in the final .wasm size.
 
 ### usage
 
 working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/main/examples/counter)
 
-1. Activate `"laser"` feature and add `serde` to dependencies:
+1. Activate `"client"` feature, and add `serde` to your dependencies:
 
     ```toml
     [dependencies]
-    uibeam = { version = "0.4", features = ["laser"] }
+    uibeam = { version = "0.4", features = ["client"] }
     serde  = { version = "1", features = ["derive"] }
     ```
 
-2. Create an UIBeam-specific library crate (e.g. `lasers`) as a workspace member,
-   and have all `Laser`s in that crate.
+2. Create an client-component-specific lib crate (e.g. `islands`) as your workspace member,
+   where to place all client components.
    
-   (of cource, no problem if including all `Beam`s not only `Laser`s.
-   then the name of this crate may be `components` or something?)
+   (Actually, there's no problem if including ordinary `Beam`s, not only client ones, to the lib crate.)
 
-   Make sure to specify `crate-type = ["cdylib", "rlib"]`:
+   Additionally, specify `crate-type = ["cdylib", "rlib"]`:
 
     ```toml
     [lib]
     crate-type = ["cdylib", "rlib"]
     ```
    
-3. Build your `Laser`s:
+3. Define and use client components:
 
     ```rust
-    use uibeam::{UI, Laser, Signal, callback};
+    /* islands/src/lib.rs */
+    
+    use uibeam::{UI, Beam};
+    use uibeam::{client, Signal, callback};
     use serde::{Serialize, Deserialize};
     
-    #[Laser]
+    // Client component located at **server-client boundary**
+    // must be `Serialize + Deserialize`. (see NOTE below)
     #[derive(Serialize, Deserialize)]
-    struct Counter;
+    pub struct Counter;
     
-    impl Laser for Counter {
+    #[client] // `#[client]` makes Beam a Wasm island.
+    impl Beam for Counter {
         fn render(self) -> UI {
             let count = Signal::new(0);
     
-            // callback utility
+            // `callback!` - a thin utility for callbacks over signals.
             let increment = callback!(
-                // dependent signals
+                // [dependent_signals, ...]
                 [count],
-                // |args, ...| expression
+                // closure depending on the signals
                 |_| count.set(*count + 1)
             );
-    
-            /* expanded:
+            /* << expanded >>
     
             let increment = {
                 let count = count.clone();
                 move |_| count.set(*count + 1)
             };
+            
             */
     
             let decrement = callback!([count], |_| {
@@ -313,26 +311,43 @@ working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/mai
     }
     ```
 
-    `#[Laser(local)]` ebables to build _**local Lasers**_:
-    
-    - not require `Serialize` `Deserialize` and can have unserializable items in its fields such as `fn(web_sys::Event)`.
-    - only available as a `UI` element of a non-local `Laser` or other local `Laser`.\
-      otherwise: **not hydrated**. currently this is silent behavior. (maybe rejected by compile-time check in future version)
+   ```rust,ignore
+   /* server/src/main.rs */
+   
+   use islands::Counter;
+   use uibeam::UI;
+   
+   async fn index() -> UI {
+       UI! {
+           <Counter />
+       }
+   }
+   ```
+   
+    **NOTE**:
+    Non-`Serialize + Deserialize` client components,
+    e.g. taking `on_something: Box<dyn FnOnce(Event)>` as its prop,
+    can **only be a children of client component**.
+    In other words, they cannot be rendered directly on the server like `UI! { <Counter /> }` above.
 
-4. Compile to WASM by `wasm-pack build` with **`--target web --out-name lasers`**:
+5. Compile the lib crate into Wasm by `wasm-pack build` with **`--target web --out-name client`**:
 
     ```sh
-    # example when naming the crate `components`
+    # example when naming the lib crate `islands`
 
-    cd components
-    wasm-pack build --target web --out-name lasers
+    cd islands
+    wasm-pack build --target web --out-name client
 
     # or
 
-    wasm-pack build components --target web --out-name lasers
+    wasm-pack build islands --target web --out-name client
     ```
+  
+  **NOTE**:
+  Both `web` target and `client` outname are **required** here.
+  (only when the crate name is `client`, `--out-name client` option is not needed because it's automatically done.)
 
-   and set up to serve the output directly (default: `pkg`) at **`/.uibeam`**:
+  Then setup your server to serve the output directly (default: `pkg`) at **`/.uibeam`**:
  
     ```rust
     /* axum example */
@@ -344,33 +359,18 @@ working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/mai
         Router::new()
             .nest_service(
                 "/.uibeam",
-                ServeDir::new("./lasers/pkg")
+                ServeDir::new("./islands/pkg")
             )
             // ...
     }
     ```
 
-   (as a result, generated `lasers/pkg/lasers.js` is served at `/.uibeam/lasers.js`
-   and automatically loaded together with WASM by a Laser in the first hydration.)
-
-5. Use your `Laser`s in any `UI!` rendering:
-
-   ```rust,ignore
-   use lasers::Counter;
-   use uibeam::UI;
-   
-   async fn index() -> UI {
-       UI! {
-           <Counter />
-       }
-   }
-   ```
-   
-   This `UI` is initially rendered as a static template, and later hydrated with the `/.uibeam` directory.
+   (as a result, generated `{crate name}/pkg/client.js` is served at `/.uibeam/client.js`,
+   which is automatically loaded together with corresponding .wasm file in the hydration step on browser.)
 
 ## Integrations with web frameworks
 
-Enables `UI` to be returned as a HTML response.
+Enables `UI` to be returned directly as a HTML response.
 
 ### [Axum](https://github.com/tokio-rs/axum) - by "axum" feature
 
