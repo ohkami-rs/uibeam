@@ -142,7 +142,18 @@ pub struct UI(
 /// ```
 ///
 pub trait Beam {
+    #[doc(hidden)]
+    const KIND: private::BeamKind = private::BeamKind::Server;
+    
     fn render(self) -> UI;
+}
+
+#[doc(hidden)]
+mod private {
+    pub enum BeamClass {
+        Serializable,
+        ClientOnly,
+    }
 }
 
 #[cfg(not(all(feature = "laser", target_arch = "wasm32")))]

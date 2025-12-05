@@ -270,11 +270,11 @@ working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/mai
     
     use uibeam::{UI, Beam};
     use uibeam::{client, Signal, callback};
-    use serde::{Serialize, Deserialize};
+    use serde::{Serialize};
     
-    // Client component located at **server-client boundary**
-    // must be `Serialize + Deserialize`. (see NOTE below)
-    #[derive(Serialize, Deserialize)]
+    // Client component located at **island boundary**
+    // must be `Serialize`. (see NOTE below)
+    #[derive(Serialize)]
     pub struct Counter;
     
     #[client] // `#[client]` makes Beam a Wasm island.
@@ -325,10 +325,10 @@ working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/mai
    ```
    
     **NOTE**:
-    Non-`Serialize + Deserialize` client components,
-    e.g. taking `on_something: Box<dyn FnOnce(Event)>` as its prop,
-    can **only be a children of client component**.
-    In other words, they cannot be rendered directly on the server like `UI! { <Counter /> }` above.
+    Non-`Serialize` client components,
+    e.g. one having `children: UI` or `on_something: Box<dyn FnOnce(Event)>` as its props,
+    can **only be used internally in `UI!` of another client component**.
+    Especially note that client components at **island boundary can't have `children`**.
 
 5. Compile the lib crate into Wasm by `wasm-pack build` with **`--target web --out-name client`**:
 
@@ -345,7 +345,7 @@ working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/mai
   
   **NOTE**:
   Both `web` target and `client` outname are **required** here.
-  (only when the crate name is `client`, `--out-name client` option is not needed because it's automatically done.)
+  (only when the crate name itself is `client`, `--out-name client` is not needed.)
 
   Then setup your server to serve the output directly (default: `pkg`) at **`/.uibeam`**:
  
