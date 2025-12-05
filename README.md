@@ -291,7 +291,9 @@ working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/mai
     #[derive(Serialize)]
     pub struct Counter;
     
-    #[client] // `#[client]` makes Beam a Wasm island.
+    // `#[client]` makes Beam a Wasm island.
+    // `(island)` means this beam is **island boundary**.
+    #[client(island)]
     impl Beam for Counter {
         fn render(self) -> UI {
             let count = Signal::new(0);
@@ -339,31 +341,27 @@ working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/mai
    ```
    
     **NOTE**:
-    Non-`Serialize` client components,
+    Just `#[client]` components without `(island)`,
     e.g. one having `children: UI` or `on_something: Box<dyn FnOnce(Event)>` as its props,
     can **only be used internally in `UI!` of another client component**.
     Especially note that client components at **island boundary can't have `children`**.
 
-5. Compile the lib crate into Wasm by `wasm-pack build` with **`RUSTFLAGS='--cfg hydrate'`** and **`--target web --out-name hydrate`**:
+5. Compile the lib crate into Wasm by `wasm-pack build` with **`RUSTFLAGS='--cfg hydrate'`** and **`--out-name hydrate --target web`**:
 
     ```sh
     # example when naming the lib crate `islands`
 
     cd islands
-    RUSTFLAGS='--cfg hydrate' wasm-pack build --target web --out-name hydrate
-
-    # or
-
-    RUSTFLAGS='--cfg hydrate' wasm-pack build ./islands --target web --out-name hydrate
+    RUSTFLAGS='--cfg hydrate' wasm-pack build --out-name hydrate --target web
     ```
     ```sh
     # **`--release`** in relase build:
     
-    RUSTFLAGS='--cfg hydrate' wasm-pack build --target web --out-name hydrate --release
+    RUSTFLAGS='--cfg hydrate' wasm-pack build --out-name hydrate --target web --release
     ```
   
    **NOTE**:
-   All of `hydrate` cfg (not feature!), `web` target,  and `hydrate` out-name are **required** here.
+   All of `RUSTFLAGS='--cfg hydrate'`, `--out-name hydrate` and `--target web` are **required** here.
 
    Then, setup your server to serve the output directory (default: `pkg`) at **`/.uibeam`** route:
  

@@ -136,7 +136,8 @@ pub struct Signal<T: serde::Serialize + for<'de> serde::Deserialize<'de>> {
 }
 
 impl<T> ClientContext<T> for Signal<T>
-where T: serde::Serialize + for<'de> serde::Deserialize<'de>
+where
+    T: serde::Serialize + for<'de> serde::Deserialize<'de>,
 {
     fn new(value: T) -> Self {
         Self {
@@ -148,7 +149,8 @@ where T: serde::Serialize + for<'de> serde::Deserialize<'de>
 }
 
 impl<T> Signal<T>
-where T: serde::Serialize + for<'de> serde::Deserialize<'de>
+where
+    T: serde::Serialize + for<'de> serde::Deserialize<'de>,
 {
     pub fn set(&self, value: T) {
         #[cfg(not(hydrate))]
@@ -171,7 +173,8 @@ where T: serde::Serialize + for<'de> serde::Deserialize<'de>
 }
 
 impl<T> Clone for Signal<T>
-where T: serde::Serialize + for<'de> serde::Deserialize<'de>
+where
+    T: serde::Serialize + for<'de> serde::Deserialize<'de>,
 {
     // not require T: Clone
     fn clone(&self) -> Self {
@@ -184,7 +187,8 @@ where T: serde::Serialize + for<'de> serde::Deserialize<'de>
 }
 
 impl<T> std::ops::Deref for Signal<T>
-where T: serde::Serialize + for<'de> serde::Deserialize<'de>
+where
+    T: serde::Serialize + for<'de> serde::Deserialize<'de>,
 {
     type Target = T;
 
@@ -212,7 +216,8 @@ where T: serde::Serialize + for<'de> serde::Deserialize<'de>
 pub struct Computed<T: serde::Serialize + for<'de> serde::Deserialize<'de>>(Signal<T>);
 
 impl<T> Clone for Computed<T>
-where T: serde::Serialize + for<'de> serde::Deserialize<'de>
+where
+    T: serde::Serialize + for<'de> serde::Deserialize<'de>,
 {
     fn clone(&self) -> Self {
         Self(self.0.clone())
@@ -220,7 +225,8 @@ where T: serde::Serialize + for<'de> serde::Deserialize<'de>
 }
 
 impl<T> std::ops::Deref for Computed<T>
-where T: serde::Serialize + for<'de> serde::Deserialize<'de>
+where
+    T: serde::Serialize + for<'de> serde::Deserialize<'de>,
 {
     type Target = T;
 
@@ -406,7 +412,7 @@ impl<F> ClientContext<F> for Effect
 where
     F: Fn() + 'static,
 {
-    fn new(#[cfg_attr(not(hydrate), allow(unused))]f: F) -> Self {
+    fn new(#[cfg_attr(not(hydrate), allow(unused))] f: F) -> Self {
         #[cfg(hydrate)]
         {
             let f = Closure::<dyn Fn()>::new(f).into_js_value().unchecked_into();
@@ -469,7 +475,7 @@ impl<F> ClientContext<F> for Batch
 where
     F: Fn() + 'static,
 {
-    fn new(#[cfg_attr(not(hydrate), allow(unused))]f: F) -> Self {
+    fn new(#[cfg_attr(not(hydrate), allow(unused))] f: F) -> Self {
         #[cfg(hydrate)]
         {
             let f = Closure::<dyn Fn()>::new(f).into_js_value().unchecked_into();
@@ -492,7 +498,7 @@ impl<F> ClientContext<F> for Untracked
 where
     F: Fn() + 'static,
 {
-    fn new(#[cfg_attr(not(hydrate), allow(unused))]f: F) -> Self {
+    fn new(#[cfg_attr(not(hydrate), allow(unused))] f: F) -> Self {
         #[cfg(hydrate)]
         {
             let f = Closure::<dyn Fn()>::new(f).into_js_value().unchecked_into();

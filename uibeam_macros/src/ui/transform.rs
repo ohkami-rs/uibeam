@@ -1,4 +1,4 @@
-pub(super) mod browser;
+pub(super) mod hydrate;
 pub(super) mod server;
 
 use super::parse::{AttributeTokens, ContentPieceTokens, HtmlIdent, NodeTokens};

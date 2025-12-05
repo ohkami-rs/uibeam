@@ -12,11 +12,11 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
 
     #[cfg(hydrate)]
     return {
-        let ui_parts = nodes
+        let uis = nodes
             .clone()
             .into_iter()
             .map(|node| {
-                let vdom_tokens = transform::browser::transform(&directives, node)?;
+                let vdom_tokens = transform::hydrate::transform(&directives, node)?;
                 Ok(quote! {
                     ::uibeam::UI::new_unchecked(#vdom_tokens)
                 })
@@ -24,7 +24,7 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
             .collect::<syn::Result<Vec<_>>>()?;
 
         Ok(quote! {
-            <::uibeam::UI>::from_iter([#(#ui_parts),*])
+            <::uibeam::UI>::from_iter([#(#uis),*])
         })
     };
 
@@ -47,7 +47,7 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
             _ => false,
         });
 
-        let ui_parts = nodes
+        let uis = nodes
             .into_iter()
             .map(|node| {
                 let (mut literals, expressions, ehannotations) =
@@ -79,7 +79,7 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
             .collect::<syn::Result<Vec<_>>>()?;
 
         Ok(quote! {
-            <::uibeam::UI>::concat([#(#ui_parts),*])
+            <::uibeam::UI>::concat([#(#uis),*])
         })
     };
 }

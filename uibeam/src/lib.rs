@@ -29,6 +29,9 @@
 //!
 //! ![](https://github.com/ohkami-rs/uibeam/raw/HEAD/support/vscode/assets/completion.png)
 
+#[cfg(all(hydrate, not(target_arch = "wasm32")))]
+compile_error!("`hydrate` cfg must be specified only when compiling to Wasm");
+
 /* for `UI!` use in this crate itself */
 extern crate self as uibeam;
 
@@ -37,7 +40,7 @@ pub mod client;
 #[cfg(feature = "__integration__")]
 mod integration;
 
-pub use client::{Signal, callback, computed, effect, batch, untracked};
+pub use client::{Signal, batch, callback, computed, effect, untracked};
 pub use uibeam_html::escape;
 #[doc(hidden)]
 pub use uibeam_macros::consume;
@@ -146,7 +149,7 @@ pub trait Beam<Kind: bound::BeamKind = Server> {
 }
 
 #[doc(hidden)]
-pub use bound::{Client, Server, render_in_island, render_on_server};
+pub use bound::{Client, IslandBoundary, Server, render_in_island, render_on_server};
 #[doc(hidden)]
 mod bound {
     #[doc(hidden)]
@@ -159,6 +162,9 @@ mod bound {
     impl BeamKind for Server {}
     #[doc(hidden)]
     impl BeamKind for Client {}
+
+    #[doc(hidden)]
+    pub trait IslandBoundary: serde::Serialize {}
 
     #[doc(hidden)]
     pub struct Serialize<K: BeamKind>(std::marker::PhantomData<K>);
@@ -182,7 +188,7 @@ mod bound {
     #[doc(hidden)]
     impl<T> super::Beam<Serialize<Client>> for T
     where
-        T: super::Beam<Client> + serde::Serialize,
+        T: super::Beam<Client> + IslandBoundary,
     {
         #[inline(always)]
         fn render(self) -> super::UI {

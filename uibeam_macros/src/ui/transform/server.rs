@@ -107,10 +107,6 @@ pub(crate) fn transform(
     directives: &[Directive],
     tokens: NodeTokens,
 ) -> syn::Result<(Vec<Piece>, Vec<Interpolation>, Vec<EventHandlerAnnotation>)> {
-    let (mut pieces, mut interpolations, mut ehannotations) = (Vec::new(), Vec::new(), Vec::new());
-
-    let mut piece = Piece::none();
-
     fn handle_node_tokens(
         directives: &[Directive],
         node: NodeTokens,
@@ -259,6 +255,10 @@ pub(crate) fn transform(
         Ok(())
     }
 
+    let (mut pieces, mut interpolations, mut ehannotations) = (Vec::new(), Vec::new(), Vec::new());
+
+    let mut piece = Piece::none();
+
     if let Some(Component {
         name,
         attributes,
@@ -295,6 +295,7 @@ pub(crate) fn transform(
                     }
                 }
             });
+
             let children = match content {
                 None => None,
                 Some(c) => Some({
@@ -311,8 +312,15 @@ pub(crate) fn transform(
                     }
                 }),
             };
+
+            let render_method = if directives.iter().any(|d| d.client()) {
+                quote! { render_in_island }
+            } else {
+                quote! { render_on_server }
+            };
+
             syn::parse2(quote! {
-                ::uibeam::render_on_server(#name {
+                ::uibeam::#render_method(#name {
                     #(#attributes)*
                     #children
                 })
