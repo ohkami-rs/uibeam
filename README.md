@@ -251,19 +251,19 @@ working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/mai
     serde  = { version = "1", features = ["derive"] }
     ```
 
-2. Create an client-component-specific lib crate (e.g. `islands`) as your workspace member,
-   where to place all client components.
+2. Configure to export all your client components from a specific library crate.
+   (e.g. `lib.rs` entrypoint, or another member crate of a workspace)
    
-   (Actually, there's no problem if including ordinary `Beam`s, not only client ones, to the lib crate.)
+   (There's no problem if including ordinary `Beam`s, not only client ones, in the lib crate.)
 
-   Additionally, specify `crate-type = ["cdylib", "rlib"]`:
+   Additionally, specify `crate-type = ["cdylib", "rlib"]` for the crate:
 
     ```toml
     [lib]
     crate-type = ["cdylib", "rlib"]
     ```
    
-3. Define and use client components:
+3. Define and use your client components:
 
     ```rust
     /* islands/src/lib.rs */
@@ -330,24 +330,24 @@ working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/mai
     can **only be used internally in `UI!` of another client component**.
     Especially note that client components at **island boundary can't have `children`**.
 
-5. Compile the lib crate into Wasm by `wasm-pack build` with **`--target web --out-name client`**:
+5. Compile the lib crate into Wasm by `wasm-pack build` with **`RUSTFLAGS='--cfg client'`** and **`--target web --out-name client`**:
 
     ```sh
     # example when naming the lib crate `islands`
 
     cd islands
-    wasm-pack build --target web --out-name client
+    RUSTFLAGS='--cfg client' wasm-pack build --target web --out-name client
 
     # or
 
-    wasm-pack build islands --target web --out-name client
+    RUSTFLAGS='--cfg client' wasm-pack build ./islands --target web --out-name client
     ```
   
   **NOTE**:
-  Both `web` target and `client` outname are **required** here.
+  All of `client` cfg (not feature!), `web` target,  and `client` out-name are **required** here.
   (only when the crate name itself is `client`, `--out-name client` is not needed.)
 
-  Then setup your server to serve the output directly (default: `pkg`) at **`/.uibeam`**:
+  Then, setup your server to serve the output directory (default: `pkg`) at **`/.uibeam`** route:
  
     ```rust
     /* axum example */
