@@ -9,7 +9,7 @@ pub use {::js_sys, ::serde, ::serde_wasm_bindgen, ::wasm_bindgen, ::web_sys};
 
 #[doc(hidden)]
 #[inline]
-pub fn serialize_props<P: ::serde::Serialize>(props: &P) -> String {
+pub fn serialize_props<P: super::IslandBoundary>(props: &P) -> String {
     ::serde_json::to_string(props).unwrap()
 }
 

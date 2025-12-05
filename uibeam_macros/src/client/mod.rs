@@ -4,36 +4,99 @@ use syn::{ItemImpl, ItemStruct, LitStr};
 
 pub(super) fn expand(args: TokenStream, input: TokenStream) -> syn::Result<TokenStream> {
     let is_island_boundary = args.parse::<Ident>().is_ok_and(|i| i == "island");
-    let mut impl_beam = syn::parse2::<ItemImpl>(input)?;
+    let impl_beam = syn::parse2::<ItemImpl>(input)?;
 
-    let Some(ImplItem::Fn(fn_render)) = impl_beam.first_mut() else {
-        return Err(syn::Error::new(
-            impl_beam.span(),
-            "wrong impl block for `Beam`",
-        ));
+    let self_ty = impl_beam.self_ty.as_ref();
+    let self_name = match self_ty {
+        syn::Type::Path(p) => &p.path.segments.last().unwrap().ident,
+        _ => {
+            return Err(syn::Error::new(
+                self_ty.span(),
+                "unsupported type for `Beam` impl block",
+            ));
+        }
     };
+    let hydrater_name = format_ident!("__uibeam_hydrate_{self_name}__");
+    let hydrater_name_str = LitStr::new(&hydrater_name.to_string(), hydrater_name.span());
 
-    // Avoid generating code with `#[cfg(hydrate)]` that emits warning on crate user's side.
-    //
-    // You may know it can be resolved by, e.g., setting `[lints.rust] unexpected_cfgs = { level = "warn", check-cfg = ["cfg(hydrate)"] }`,
-    // but it requires crate user's cooperation.
-    fn_render.block =
-        if option_env!("RUSTFLAGS").is_some_and(|flags| flags.contains("--cfg hydrate")) {
-            let mut stmts = &fn_render.block.stmts;
+    let impl_beam = {
+        let mut impl_beam = impl_beam;
+
+        let Some(ImplItem::Fn(fn_render)) = impl_beam.first_mut() else {
+            return Err(syn::Error::new(
+                impl_beam.span(),
+                "wrong impl block for `Beam`",
+            ));
+        };
+
+        let mut stmts = fn_render.block.stmts.clone();
+        insert_client_directive_to_ui_macros(&mut stmts);
+
+        fn_render.block = if island_boundary {
             parse_quote! ({
                 use ::uibeam::client::ClientContext as _;
-                #(#stmts)*
+
+                #[cfg(hydrate)]
+                return {
+                    #(#stmts)*
+                };
+
+                #[cfg(not(hydrate))]
+                return {
+                    let props = ::uibeam::client::serialize_props(&self);
+                    ::uibeam::UI! {
+                        <div
+                            data-uibeam-hydrater=#hydrater_name_str
+                            data-uibeam-props={props}
+                        ></div>
+                    }
+                }
             })
         } else {
             parse_quote!({
                 use ::uibeam::client::ClientContext as _;
-                ::uibeam::UI! {
-                    <div></div>
-                }
+                #(#stmts)*
             })
         };
 
-    Ok(impl_beam.into_token_stream())
+        impl_beam
+    };
+
+    let hydrater = is_island_boundary.then(|| {
+        quote! {
+            #[cfg(hydrate)]
+            #[doc(hidden)]
+            #[allow(unused, non_snake_case)]
+            pub mod #hydrater_name {
+                use super::#self_name;
+                use ::uibeam::client::wasm_bindgen;
+                use ::uibeam::client::wasm_bindgen::{JsCast, UnwrapThrowExt};
+
+                #[cfg(hydrate)]
+                #[doc(hidden)]
+                #[allow(unused, non_snake_case)]
+                #[wasm_bindgen::prelude::wasm_bindgen]
+                pub fn #hydrater_name(
+                    props: ::uibeam::client::js_sys::Object,
+                    container: ::uibeam::client::web_sys::Node,
+                ) {
+                    ::uibeam::client::hydrate(
+                        ::uibeam::client::VNode::new(
+                            ::uibeam::client::NodeType::component::<#self_name>(),
+                            props,
+                            vec![],
+                        ),
+                        container,
+                    )
+                }
+            }
+        }
+    });
+
+    Ok(quote! {
+        #impl_beam
+        #hydrater
+    })
 }
 
 fn insert_client_directive_to_ui_macros(stmts: &mut [Stmt]) {
