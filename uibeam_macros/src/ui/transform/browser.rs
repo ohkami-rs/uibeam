@@ -1,5 +1,5 @@
-// just allow unused when not(client), instead of applying `#![cfg(client)]`, for DX.
-#![cfg_attr(not(client), allow(unused))]
+// just allow unused when not(hydrate), instead of applying `#![cfg(hydrate)]`, for DX.
+#![cfg_attr(not(hydrate), allow(unused))]
 
 use super::super::parse::{
     AttributeTokens, AttributeValueToken, AttributeValueTokens, ContentPieceTokens, Directive,
@@ -16,7 +16,7 @@ fn as_event_handler(name: &str, expression: &Expr) -> Option<syn::Result<(LitStr
             (
                 LitStr::new(&prop.to_string(), prop.span()),
                 quote! {
-                    ::uibeam::laser::wasm_bindgen::closure::Closure::<dyn Fn(#event)>::new(
+                    ::uibeam::client::wasm_bindgen::closure::Closure::<dyn Fn(#event)>::new(
                         #expression
                     ).into_js_value()
                 },
@@ -25,7 +25,7 @@ fn as_event_handler(name: &str, expression: &Expr) -> Option<syn::Result<(LitStr
     })
 }
 
-/// Derives Rust codes that builds an `uibeam::laser::VNode` expression
+/// Derives Rust codes that builds an `uibeam::client::VNode` expression
 /// corresponded to the `UI!` input
 pub(crate) fn transform(directives: &[Directive], tokens: NodeTokens) -> syn::Result<TokenStream> {
     let mut t = TokenStream::new();
@@ -40,7 +40,7 @@ pub(crate) fn transform(directives: &[Directive], tokens: NodeTokens) -> syn::Re
         fn into_props(attributes: Vec<AttributeTokens>) -> syn::Result<TokenStream> {
             if attributes.is_empty() {
                 return Ok(quote! {
-                    ::uibeam::laser::js_sys::Object::new()
+                    ::uibeam::client::js_sys::Object::new()
                 });
             }
 
@@ -50,16 +50,16 @@ pub(crate) fn transform(directives: &[Directive], tokens: NodeTokens) -> syn::Re
                     let name = name.to_string();
                     match value {
                         None => Ok(quote! {
-                            (#name, ::uibeam::laser::wasm_bindgen::JsValue::TRUE)
+                            (#name, ::uibeam::client::wasm_bindgen::JsValue::TRUE)
                         }),
                         Some(AttributeValueTokens { _eq, value }) => match value {
                             AttributeValueToken::IntegerLiteral(i) => Ok(quote! {
-                                (#name, ::uibeam::laser::wasm_bindgen::JsValue::from(#i))
+                                (#name, ::uibeam::client::wasm_bindgen::JsValue::from(#i))
                             }),
                             AttributeValueToken::StringLiteral(s) => {
                                 let s = LitStr::new(&uibeam_html::escape(&s.value()), s.span());
                                 Ok(quote! {
-                                    (#name, ::uibeam::laser::wasm_bindgen::JsValue::from(#s))
+                                    (#name, ::uibeam::client::wasm_bindgen::JsValue::from(#s))
                                 })
                             }
                             AttributeValueToken::Interpolation(InterpolationTokens {
@@ -74,7 +74,7 @@ pub(crate) fn transform(directives: &[Directive], tokens: NodeTokens) -> syn::Re
                                     })
                                 }
                                 None => Ok(quote! {
-                                    (#name, ::uibeam::laser::wasm_bindgen::JsValue::from(
+                                    (#name, ::uibeam::client::wasm_bindgen::JsValue::from(
                                         ::uibeam::AttributeValue::from(#rust_expression)
                                     ))
                                 }),
@@ -86,9 +86,9 @@ pub(crate) fn transform(directives: &[Directive], tokens: NodeTokens) -> syn::Re
 
             Ok(quote! {
                 {
-                    let props = ::uibeam::laser::js_sys::Object::new();
+                    let props = ::uibeam::client::js_sys::Object::new();
                     for (k, v) in [#(#kvs),*] {
-                        ::uibeam::laser::js_sys::Reflect::set(&props, &k.into(), &v).unwrap();
+                        ::uibeam::client::js_sys::Reflect::set(&props, &k.into(), &v).unwrap();
                     }
                     props
                 }
@@ -109,7 +109,7 @@ pub(crate) fn transform(directives: &[Directive], tokens: NodeTokens) -> syn::Re
                             LitStr::new(&uibeam_html::escape(&text.value()), text.span())
                         };
                         Ok(quote! {
-                            ::uibeam::laser::VNode::text(#text)
+                            ::uibeam::client::VNode::text(#text)
                         })
                     }
                     ContentPieceTokens::Interpolation(InterpolationTokens {
@@ -147,8 +147,8 @@ pub(crate) fn transform(directives: &[Directive], tokens: NodeTokens) -> syn::Re
             )?;
 
             (quote! {
-                ::uibeam::laser::VNode::new(
-                    ::uibeam::laser::NodeType::component::<#name>(),
+                ::uibeam::client::VNode::new(
+                    ::uibeam::client::NodeType::component::<#name>(),
                     #props,
                     #children
                 )
@@ -176,8 +176,8 @@ pub(crate) fn transform(directives: &[Directive], tokens: NodeTokens) -> syn::Re
                     let children = into_children(directives, content)?;
 
                     (quote! {
-                        ::uibeam::laser::VNode::new(
-                            ::uibeam::laser::NodeType::tag(#tag),
+                        ::uibeam::client::VNode::new(
+                            ::uibeam::client::NodeType::tag(#tag),
                             #props,
                             #children
                         )
@@ -197,8 +197,8 @@ pub(crate) fn transform(directives: &[Directive], tokens: NodeTokens) -> syn::Re
                     let props = into_props(attributes)?;
 
                     (quote! {
-                        ::uibeam::laser::VNode::new(
-                            ::uibeam::laser::NodeType::tag(#tag),
+                        ::uibeam::client::VNode::new(
+                            ::uibeam::client::NodeType::tag(#tag),
                             #props,
                             const {Vec::new()}
                         )

@@ -344,27 +344,26 @@ working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/mai
     can **only be used internally in `UI!` of another client component**.
     Especially note that client components at **island boundary can't have `children`**.
 
-5. Compile the lib crate into Wasm by `wasm-pack build` with **`RUSTFLAGS='--cfg client'`** and **`--target web --out-name client`**:
+5. Compile the lib crate into Wasm by `wasm-pack build` with **`RUSTFLAGS='--cfg hydrate'`** and **`--target web --out-name hydrate`**:
 
     ```sh
     # example when naming the lib crate `islands`
 
     cd islands
-    RUSTFLAGS='--cfg client' wasm-pack build --target web --out-name client
+    RUSTFLAGS='--cfg hydrate' wasm-pack build --target web --out-name hydrate
 
     # or
 
-    RUSTFLAGS='--cfg client' wasm-pack build ./islands --target web --out-name client
+    RUSTFLAGS='--cfg hydrate' wasm-pack build ./islands --target web --out-name hydrate
     ```
     ```sh
     # **`--release`** in relase build:
     
-    RUSTFLAGS='--cfg client' wasm-pack build --target web --out-name client --release
+    RUSTFLAGS='--cfg hydrate' wasm-pack build --target web --out-name hydrate --release
     ```
   
    **NOTE**:
-   All of `client` cfg (not feature!), `web` target,  and `client` out-name are **required** here.
-   (only when the crate name itself is `client`, `--out-name client` is not needed.)
+   All of `hydrate` cfg (not feature!), `web` target,  and `hydrate` out-name are **required** here.
 
    Then, setup your server to serve the output directory (default: `pkg`) at **`/.uibeam`** route:
  
@@ -384,7 +383,7 @@ working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/mai
     }
     ```
 
-   (as a result, generated `{crate name}/pkg/client.js` is served at `/.uibeam/client.js`,
+   (as a result, generated `{crate name}/pkg/hydrate.js` is served at `/.uibeam/hydrate.js` route,
    which is automatically loaded together with corresponding .wasm file in the hydration step on browser.)
 
 ## Integrations with web frameworks

@@ -1,4 +1,4 @@
-pub(super) mod client;
+pub(super) mod browser;
 pub(super) mod server;
 
 use super::parse::{AttributeTokens, ContentPieceTokens, HtmlIdent, NodeTokens};
@@ -53,7 +53,7 @@ fn prop_for_event(event: &str) -> syn::Result<(Ident, Type)> {
                 $(
                     $eventname => Ok((
                         Ident::new(stringify!($propName), proc_macro2::Span::call_site()),
-                        syn::parse_quote! {::uibeam::laser::web_sys::$Event}
+                        syn::parse_quote! {::uibeam::client::web_sys::$Event}
                     )),
                 )*
                 _ => Err(syn::Error::new(Span::call_site(), format!(

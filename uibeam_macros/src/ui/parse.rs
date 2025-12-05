@@ -16,6 +16,11 @@ pub(super) struct Directive {
     pub(super) name: Ident,
     pub(super) _semi: Token![;],
 }
+impl Directive {
+    pub(super) fn client(&self) -> bool {
+        self.name == "client"
+    }
+}
 
 #[derive(Clone)]
 pub(super) enum NodeTokens {

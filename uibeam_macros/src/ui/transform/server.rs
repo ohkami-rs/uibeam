@@ -305,16 +305,14 @@ pub(crate) fn transform(
                     // Explicitly using `expand()`, instead of just returning
                     // `children: UI! { #children_tokens }`,
                     // to avoid recursive macro expansions.
-                    let children_tokens = crate::ui::expand(quote! {
-                        UI! { #children_tokens }
-                    })?;
+                    let children_tokens = crate::ui::expand(quote![UI! { #children_tokens }])?;
                     quote! {
                         children: #children_tokens,
                     }
                 }),
             };
             syn::parse2(quote! {
-                <#name as ::uibeam::Beam>::render(#name {
+                ::uibeam::render_on_server(#name {
                     #(#attributes)*
                     #children
                 })

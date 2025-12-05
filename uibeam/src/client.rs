@@ -13,7 +13,7 @@ pub fn serialize_props<P: ::serde::Serialize>(props: &P) -> String {
     ::serde_json::to_string(props).unwrap()
 }
 
-#[cfg(client)]
+#[cfg(hydrate)]
 mod preact {
     use super::*;
 
@@ -54,24 +54,24 @@ mod preact {
     }
 }
 
-#[cfg(client)]
+#[cfg(hydrate)]
 use {
     ::js_sys::{Array, Function, Object, Reflect},
     ::wasm_bindgen::prelude::*,
 };
 
-#[cfg(client)]
+#[cfg(hydrate)]
 pub fn hydrate(vdom: VNode, container: ::web_sys::Node) {
     preact::hydrate(vdom.0, container);
 }
 
-#[cfg(client)]
+#[cfg(hydrate)]
 pub struct VNode(JsValue);
 
-#[cfg(client)]
+#[cfg(hydrate)]
 pub struct NodeType(JsValue);
 
-#[cfg(client)]
+#[cfg(hydrate)]
 impl NodeType {
     pub fn tag(tag: &'static str) -> NodeType {
         NodeType(tag.into())
@@ -92,7 +92,7 @@ impl NodeType {
     }
 }
 
-#[cfg(client)]
+#[cfg(hydrate)]
 impl VNode {
     pub fn new(r#type: NodeType, props: Object, children: Vec<VNode>) -> VNode {
         VNode(preact::create_element(
@@ -121,35 +121,80 @@ impl VNode {
     }
 }
 
+/// automatically introduced by `#[client]`
+#[doc(hidden)]
+pub trait ClientContext<T> {
+    fn new(value: T) -> Self;
+}
+
 pub struct Signal<T: serde::Serialize + for<'de> serde::Deserialize<'de>> {
-    #[cfg(client)]
+    #[cfg(hydrate)]
     preact_signal: Object,
     /// buffer for `Deref` impl on single-threaded wasm
     /// (and also used for template rendering)
     current_value: std::rc::Rc<std::cell::UnsafeCell<T>>,
 }
 
-impl<T: serde::Serialize + for<'de> serde::Deserialize<'de>> Clone for Signal<T> {
+impl<T> ClientContext<T> for Signal<T>
+where T: serde::Serialize + for<'de> serde::Deserialize<'de>
+{
+    fn new(value: T) -> Self {
+        Self {
+            #[cfg(hydrate)]
+            preact_signal: preact::signal(serde_wasm_bindgen::to_value(&value).unwrap_throw()),
+            current_value: std::rc::Rc::new(std::cell::UnsafeCell::new(value)),
+        }
+    }
+}
+
+impl<T> Signal<T>
+where T: serde::Serialize + for<'de> serde::Deserialize<'de>
+{
+    pub fn set(&self, value: T) {
+        #[cfg(not(hydrate))]
+        {
+            // for template rendering
+            unsafe {
+                *self.current_value.get() = value;
+            }
+        }
+        #[cfg(hydrate)]
+        {
+            Reflect::set(
+                &self.preact_signal,
+                &"value".into(),
+                &serde_wasm_bindgen::to_value(&value).unwrap_throw(),
+            )
+            .unwrap_throw();
+        }
+    }
+}
+
+impl<T> Clone for Signal<T>
+where T: serde::Serialize + for<'de> serde::Deserialize<'de>
+{
     // not require T: Clone
     fn clone(&self) -> Self {
         Self {
-            #[cfg(client)]
+            #[cfg(hydrate)]
             preact_signal: self.preact_signal.clone(),
             current_value: self.current_value.clone(),
         }
     }
 }
 
-impl<T: serde::Serialize + for<'de> serde::Deserialize<'de>> std::ops::Deref for Signal<T> {
+impl<T> std::ops::Deref for Signal<T>
+where T: serde::Serialize + for<'de> serde::Deserialize<'de>
+{
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        #[cfg(not(client))]
+        #[cfg(not(hydrate))]
         {
             // for template rendering
             unsafe { &*self.current_value.get() }
         }
-        #[cfg(client)]
+        #[cfg(hydrate)]
         {
             let value = serde_wasm_bindgen::from_value(
                 // TODO: skip deserialization if value is not changed
@@ -164,44 +209,19 @@ impl<T: serde::Serialize + for<'de> serde::Deserialize<'de>> std::ops::Deref for
     }
 }
 
-impl<T: serde::Serialize + for<'de> serde::Deserialize<'de>> Signal<T> {
-    pub fn new(value: T) -> Self {
-        Self {
-            #[cfg(client)]
-            preact_signal: preact::signal(serde_wasm_bindgen::to_value(&value).unwrap_throw()),
-            current_value: std::rc::Rc::new(std::cell::UnsafeCell::new(value)),
-        }
-    }
-
-    pub fn set(&self, value: T) {
-        #[cfg(not(client))]
-        {
-            // for template rendering
-            unsafe {
-                *self.current_value.get() = value;
-            }
-        }
-        #[cfg(client)]
-        {
-            Reflect::set(
-                &self.preact_signal,
-                &"value".into(),
-                &serde_wasm_bindgen::to_value(&value).unwrap_throw(),
-            )
-            .unwrap_throw();
-        }
-    }
-}
-
 pub struct Computed<T: serde::Serialize + for<'de> serde::Deserialize<'de>>(Signal<T>);
 
-impl<T: serde::Serialize + for<'de> serde::Deserialize<'de>> Clone for Computed<T> {
+impl<T> Clone for Computed<T>
+where T: serde::Serialize + for<'de> serde::Deserialize<'de>
+{
     fn clone(&self) -> Self {
         Self(self.0.clone())
     }
 }
 
-impl<T: serde::Serialize + for<'de> serde::Deserialize<'de>> std::ops::Deref for Computed<T> {
+impl<T> std::ops::Deref for Computed<T>
+where T: serde::Serialize + for<'de> serde::Deserialize<'de>
+{
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -209,14 +229,18 @@ impl<T: serde::Serialize + for<'de> serde::Deserialize<'de>> std::ops::Deref for
     }
 }
 
-impl<T: serde::Serialize + for<'de> serde::Deserialize<'de>> Computed<T> {
-    pub fn new(getter: impl (Fn() -> T) + 'static) -> Self {
-        #[cfg(not(client))]
+impl<T, F> ClientContext<F> for Computed<T>
+where
+    T: serde::Serialize + for<'de> serde::Deserialize<'de>,
+    F: Fn() -> T + 'static,
+{
+    pub fn new(getter: F) -> Self {
+        #[cfg(not(hydrate))]
         {
             // for template rendering
             Self(Signal::new(getter()))
         }
-        #[cfg(client)]
+        #[cfg(hydrate)]
         {
             let init = getter();
 
@@ -242,7 +266,7 @@ impl<T: serde::Serialize + for<'de> serde::Deserialize<'de>> Computed<T> {
 ///
 /// ```
 /// use uibeam::{Signal, callback};
-/// use uibeam::laser::{InputEvent, PointerEvent};
+/// use uibeam::client::{InputEvent, PointerEvent};
 /// use wasm_bindgen::JsCast;
 /// use web_sys::HtmlInputElement;
 ///
@@ -327,16 +351,8 @@ macro_rules! callback {
     };
 }
 
-pub fn computed<T: serde::Serialize + for<'de> serde::Deserialize<'de> + 'static>(
-    getter: impl (Fn() -> T) + 'static,
-) -> Computed<T> {
-    Computed::new(getter)
-}
-
 /// `computed!([deps, ...], || -> T { ... })` creates a `Computed<T>` signal
 /// that automatically updates when any of the `deps` signals change.
-///
-/// This is shorthand for `computed(callback!(...))`.
 ///
 /// ## Example
 /// ```
@@ -380,22 +396,28 @@ pub fn computed<T: serde::Serialize + for<'de> serde::Deserialize<'de> + 'static
 #[macro_export]
 macro_rules! computed {
     ($($t:tt)*) => {
-        $crate::laser::computed($crate::callback!($($t)*))
+        $crate::client::Computed::new($crate::callback!($($t)*))
     };
 }
 
-pub fn effect(#[cfg_attr(not(client), allow(unused_variables))] f: impl Fn() + 'static) {
-    #[cfg(client)]
-    {
-        let f = Closure::<dyn Fn()>::new(f).into_js_value().unchecked_into();
-        preact::effect(f);
+pub struct Effect;
+
+impl<F> ClientContext<F> for Effect
+where
+    F: Fn() + 'static,
+{
+    fn new(#[cfg_attr(not(hydrate), allow(unused))]f: F) -> Self {
+        #[cfg(hydrate)]
+        {
+            let f = Closure::<dyn Fn()>::new(f).into_js_value().unchecked_into();
+            preact::effect(f);
+        }
+        Self
     }
 }
 
 /// `effect!([deps, ...], || { ... })` creates a reactive effect that automatically
 /// re-runs whenever any of the `deps` signals change.
-///
-/// This is shorthand for `effect(callback!(...))`.
 ///
 /// ## Example
 /// ```
@@ -437,22 +459,52 @@ pub fn effect(#[cfg_attr(not(client), allow(unused_variables))] f: impl Fn() + '
 #[macro_export]
 macro_rules! effect {
     ($($t:tt)*) => {
-        $crate::laser::effect($crate::callback!($($t)*))
+        $crate::client::Effect::new($crate::callback!($($t)*))
     };
 }
 
-pub fn batch(#[cfg_attr(not(client), allow(unused_variables))] f: impl Fn() + 'static) {
-    #[cfg(client)]
-    {
-        let f = Closure::<dyn Fn()>::new(f).into_js_value().unchecked_into();
-        preact::batch(f);
+pub struct Batch;
+
+impl<F> ClientContext<F> for Batch
+where
+    F: Fn() + 'static,
+{
+    fn new(#[cfg_attr(not(hydrate), allow(unused))]f: F) -> Self {
+        #[cfg(hydrate)]
+        {
+            let f = Closure::<dyn Fn()>::new(f).into_js_value().unchecked_into();
+            preact::effect(f);
+        }
+        Self
     }
 }
 
-pub fn untracked(#[cfg_attr(not(client), allow(unused_variables))] f: impl Fn() + 'static) {
-    #[cfg(client)]
-    {
-        let f = Closure::<dyn Fn()>::new(f).into_js_value().unchecked_into();
-        preact::untracked(f);
+#[macro_export]
+macro_rules! batch {
+    ($($t:tt)*) => {
+        $crate::client::Batch::new($crate::callback!($($t)*))
+    };
+}
+
+pub struct Untracked;
+
+impl<F> ClientContext<F> for Untracked
+where
+    F: Fn() + 'static,
+{
+    fn new(#[cfg_attr(not(hydrate), allow(unused))]f: F) -> Self {
+        #[cfg(hydrate)]
+        {
+            let f = Closure::<dyn Fn()>::new(f).into_js_value().unchecked_into();
+            preact::effect(f);
+        }
+        Self
     }
+}
+
+#[macro_export]
+macro_rules! untracked {
+    ($($t:tt)*) => {
+        $crate::client::Untracked::new($crate::callback!($($t)*))
+    };
 }

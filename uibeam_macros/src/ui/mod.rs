@@ -10,13 +10,13 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
         mut nodes,
     } = syn::parse2(input)?;
 
-    #[cfg(client)]
+    #[cfg(hydrate)]
     return {
-        let client_nodes = nodes
+        let ui_parts = nodes
             .clone()
             .into_iter()
             .map(|node| {
-                let vdom_tokens = transform::client::transform(&directives, node)?;
+                let vdom_tokens = transform::browser::transform(&directives, node)?;
                 Ok(quote! {
                     ::uibeam::UI::new_unchecked(#vdom_tokens)
                 })
@@ -24,11 +24,11 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
             .collect::<syn::Result<Vec<_>>>()?;
 
         Ok(quote! {
-            <::uibeam::UI>::from_iter([#(#client_nodes),*])
+            <::uibeam::UI>::from_iter([#(#ui_parts),*])
         })
     };
 
-    #[cfg(not(client))]
+    #[cfg(not(hydrate))]
     return {
         if nodes
             .first()

@@ -19,7 +19,7 @@ pub(super) fn expand(args: TokenStream, input: TokenStream) -> syn::Result<Token
 
     let attribute_marker_impl = {
         quote! {
-            impl ::uibeam::laser::Laser_attribute for #name where Self: ::uibeam::Laser {}
+            impl ::uibeam::client::Laser_attribute for #name where Self: ::uibeam::Laser {}
         }
     };
 
@@ -30,20 +30,20 @@ pub(super) fn expand(args: TokenStream, input: TokenStream) -> syn::Result<Token
             #[allow(unused)]
             pub mod #hydrater_name {
                 use super::#name;
-                use ::uibeam::laser::wasm_bindgen;
-                use ::uibeam::laser::wasm_bindgen::{JsCast, UnwrapThrowExt};
+                use ::uibeam::client::wasm_bindgen;
+                use ::uibeam::client::wasm_bindgen::{JsCast, UnwrapThrowExt};
 
                 #[cfg(target_arch = "wasm32")]
                 #[doc(hidden)]
                 #[allow(non_snake_case)]
                 #[wasm_bindgen::prelude::wasm_bindgen]
                 pub fn #hydrater_name(
-                    props: ::uibeam::laser::js_sys::Object,
-                    container: ::uibeam::laser::web_sys::Node
+                    props: ::uibeam::client::js_sys::Object,
+                    container: ::uibeam::client::web_sys::Node
                 ) {
-                    ::uibeam::laser::hydrate(
-                        ::uibeam::laser::VNode::new(
-                            ::uibeam::laser::NodeType::component::<#name>(),
+                    ::uibeam::client::hydrate(
+                        ::uibeam::client::VNode::new(
+                            ::uibeam::client::NodeType::component::<#name>(),
                             props,
                             vec![]
                         ),
@@ -73,7 +73,7 @@ pub(super) fn expand(args: TokenStream, input: TokenStream) -> syn::Result<Token
         quote! {
                     impl ::uibeam::Beam for #name
                     where
-                        Self: ::uibeam::laser::serde::Serialize + for<'de> ::uibeam::laser::serde::Deserialize<'de>,
+                        Self: ::uibeam::client::serde::Serialize + for<'de> ::uibeam::client::serde::Deserialize<'de>,
                     {
                         fn render(self) -> ::uibeam::UI {
                             #[cfg(target_arch = "wasm32")] {
@@ -81,7 +81,7 @@ pub(super) fn expand(args: TokenStream, input: TokenStream) -> syn::Result<Token
                             }
 
                             #[cfg(not(target_arch = "wasm32"))] {
-                                let props: String = ::uibeam::laser::serialize_props(&self);
+                                let props: String = ::uibeam::client::serialize_props(&self);
                                 let template: ::std::borrow::Cow<'static, str> = ::uibeam::shoot(<Self as Laser>::render(self));
 
         // TODO: control hydration flow based on visibility on screen (e.g. by `IntersectionObserver`)
