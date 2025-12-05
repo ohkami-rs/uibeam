@@ -275,7 +275,7 @@ working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/mai
     codegen-unit = 1
     ```
 
-  See [https://rustwasm.github.io/docs/book/game-of-life/code-size.html] or other specific documents for more details.
+  See https://rustwasm.github.io/docs/book/game-of-life/code-size.html or other specific documents for more details.
    
 3. Define and use your client components:
 
