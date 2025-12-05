@@ -1,9 +1,6 @@
-#[cfg(feature = "laser")]
-mod laser;
 mod ui;
+mod client;
 
-#[proc_macro]
-#[allow(non_snake_case)]
 /// # `UI!` - JSX-style template syntax
 ///
 /// > HTML completions and hovers are available by VSCode extension.\
@@ -115,74 +112,98 @@ mod ui;
 ///     println!("{}", uibeam::shoot(ui));
 /// }
 /// ```
+#[proc_macro]
+#[allow(non_snake_case)]
 pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     ui::expand(input.into())
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
 }
 
-#[cfg(feature = "laser")]
-#[proc_macro_attribute]
-#[allow(non_snake_case)]
-/// # `Laser` - Client component by WASM island
-///
-/// ## architecture
-///
-/// `Laser` trait provides a way to build client components in WASM. They works as _*islands*_ : initially rendered in server, sent with serialized props, and hydrated with deserialized props in client.
-///
-/// `Signal`, `computed`, `effect` are available in `Laser`s.
-///
-/// At current version (v0.3), `Laser` system is built up on [Preact](https://preactjs.com).
-///
-/// This is experimental design choice and maybe fully/partially replaced into some Rust implementaion in future. <i>(But this may be kind of better choice, for example, at avoiding huge size of WASM output.)</i>
-///
-/// ## Usage
-///
-/// 1. Activate `"laser"` feature, and add `serde`:
-///
+/// ## Client Component - WASM islands
+/// 
+/// ### overview
+/// 
+/// **`#[client]`** makes `Beam` a _*WASM island*_ : initially rendered in server, sent with serialized props, and hydrated with deserialized props in client.
+/// 
+/// `Signal`, `computed`, `effect` are available in them.
+/// 
+/// ### note
+/// 
+/// Currently UIBeam's client component system is built upon [`Preact`](https://preactjs.com).
+/// This may be rewritten in pure Rust in the future, but may not because of potential reduction in the final .wasm size.
+/// 
+/// ### usage
+/// 
+/// working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/main/examples/counter)
+/// 
+/// 1. Activate `"client"` feature, and add `serde` to your dependencies:
+/// 
 ///     ```toml
 ///     [dependencies]
-///     uibeam = { version = "0.3.0", features = ["laser"] }
+///     uibeam = { version = "0.4", features = ["client"] }
 ///     serde  = { version = "1", features = ["derive"] }
 ///     ```
-///
-/// 2. Create an UIBeam-specific library crate (e.g. `lasers`) as a workspace member, and have all `Laser`s in that crate. (of cource, no problem if including all `Beam`s not only `Laser`s. Then the name of this crate should be `components` or something.)
-///
-///    Make sure to specify `crate-type = ["cdylib", "rlib"]`:
-///
+/// 
+/// 2. Configure to export all your client components from a specific library crate.
+///    (e.g. `lib.rs` entrypoint, or another member crate of a workspace)
+///    
+///    (There's no problem if including ordinary `Beam`s, not only client ones, in the lib crate.)
+/// 
+///    Additionally, specify `crate-type = ["cdylib", "rlib"]` for the crate:
+/// 
 ///     ```toml
 ///     [lib]
 ///     crate-type = ["cdylib", "rlib"]
 ///     ```
+///     
+///   For size optimization, following configuration is recommended:
+///   
+///     ```toml
+///     [package.metadata.wasm-pack.release]
+///     wasm-opt = ["-Oz"]  # or "-Os"
+///     
+///     [profile.release]
+///     opt-level = 'z'  # or 's'
+///     lto = true
+///     codegen-unit = 1
+///     ```
+/// 
+///   See [https://rustwasm.github.io/docs/book/game-of-life/code-size.html] or other specific documents for more details.
 ///    
-/// 3. Build your `Laser`s:
-///
+/// 3. Define and use your client components:
+/// 
 ///     ```rust
-///     use uibeam::{UI, Laser, Signal, callback};
-///     use serde::{Serialize, Deserialize};
+///     /* islands/src/lib.rs */
 ///     
-///     #[Laser]
-///     #[derive(Serialize, Deserialize)]
-///     struct Counter;
+///     use uibeam::{UI, Beam};
+///     use uibeam::{client, Signal, callback};
+///     use serde::{Serialize};
 ///     
-///     impl Laser for Counter {
+///     // Client component located at **island boundary**
+///     // must be `Serialize`. (see NOTE below)
+///     #[derive(Serialize)]
+///     pub struct Counter;
+///     
+///     #[client] // `#[client]` makes Beam a Wasm island.
+///     impl Beam for Counter {
 ///         fn render(self) -> UI {
 ///             let count = Signal::new(0);
 ///     
-///             // callback utility
+///             // `callback!` - a thin utility for callbacks over signals.
 ///             let increment = callback!(
-///                 // dependent signals
+///                 // [dependent_signals, ...]
 ///                 [count],
-///                 // |args, ...| expression
+///                 // closure depending on the signals
 ///                 |_| count.set(*count + 1)
 ///             );
-///     
-///             /* expanded:
+///             /* << expanded >>
 ///     
 ///             let increment = {
 ///                 let count = count.clone();
 ///                 move |_| count.set(*count + 1)
 ///             };
+///             
 ///             */
 ///     
 ///             let decrement = callback!([count], |_| {
@@ -197,30 +218,52 @@ pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///         }
 ///     }
 ///     ```
-///
-///     `#[Laser(local)]` ebables to build _**local Lasers**_:
-///     
-///     - not require `Serialize` `Deserialize` and can have unserializable items in its fields such as `fn(web_sys::Event)`.
-///     - only available as a `UI` element of a non-local `Laser` or other local `Laser`.\
-///       otherwise: **not hydrated**. currently this is silent behavior. (maybe rejected by compile-time check in future version)
-///
-/// 4. Compile to WASM by `wasm-pack build` with **`--target web --out-name lasers`**:
-///
+/// 
+///    ```rust,ignore
+///    /* server/src/main.rs */
+///    
+///    use islands::Counter;
+///    use uibeam::UI;
+///    
+///    async fn index() -> UI {
+///        UI! {
+///            <Counter />
+///        }
+///    }
+///    ```
+///    
+///     **NOTE**:
+///     Non-`Serialize` client components,
+///     e.g. one having `children: UI` or `on_something: Box<dyn FnOnce(Event)>` as its props,
+///     can **only be used internally in `UI!` of another client component**.
+///     Especially note that client components at **island boundary can't have `children`**.
+/// 
+/// 5. Compile the lib crate into Wasm by `wasm-pack build` with **`RUSTFLAGS='--cfg client'`** and **`--target web --out-name client`**:
+/// 
 ///     ```sh
-///     # example when naming the crate `components`
-///
-///     cd components
-///     wasm-pack build --target web --out-name lasers
-///
+///     # example when naming the lib crate `islands`
+/// 
+///     cd islands
+///     RUSTFLAGS='--cfg client' wasm-pack build --target web --out-name client
+/// 
 ///     # or
-///
-///     wasm-pack build components --target web --out-name lasers
+/// 
+///     RUSTFLAGS='--cfg client' wasm-pack build ./islands --target web --out-name client
 ///     ```
-///
-///    and set up to serve the output directly (default: `pkg`) at **`/.uibeam`**:
+///     ```sh
+///     # **`--release`** in relase build:
+///     
+///     RUSTFLAGS='--cfg client' wasm-pack build --target web --out-name client --release
+///     ```
+///   
+///   **NOTE**:
+///   All of `client` cfg (not feature!), `web` target,  and `client` out-name are **required** here.
+///   (only when the crate name itself is `client`, `--out-name client` is not needed.)
+/// 
+///   Then, setup your server to serve the output directory (default: `pkg`) at **`/.uibeam`** route:
 ///  
 ///     ```rust
-///     // axum example
+///     /* axum example */
 ///  
 ///     use axum::Router;
 ///     use tower_http::services::ServeDir;
@@ -229,18 +272,20 @@ pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///         Router::new()
 ///             .nest_service(
 ///                 "/.uibeam",
-///                 ServeDir::new("./components/pkg")
+///                 ServeDir::new("./islands/pkg")
 ///             )
 ///             // ...
 ///     }
 ///     ```
-///
-///    As a result, `components/pkg/lasers.js` is served at `/.uibeam/lasers.js` and automatically loaded together with WASM by a Laser in the first hydration.
-pub fn Laser(
+/// 
+///    (as a result, generated `{crate name}/pkg/client.js` is served at `/.uibeam/client.js`,
+///    which is automatically loaded together with corresponding .wasm file in the hydration step on browser.)
+#[proc_macro_attribute]
+pub fn client(
     args: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
-    laser::expand(args.into(), input.into())
+    client::expand(args.into(), input.into())
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
 }

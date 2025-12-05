@@ -19,11 +19,6 @@ all-features = true
 workspace = true
 
 [features]
-laser = [
-    "uibeam_macros/laser",
-    "dep:serde", "dep:serde_json", "dep:serde-wasm-bindgen",
-    "dep:wasm-bindgen", "dep:js-sys", "dep:web-sys"
-]
 __integration__ = []
 axum      = ["__integration__", "dep:axum-core", "dep:http", "dep:mime"]
 actix-web = ["__integration__", "dep:actix-web"]
@@ -34,13 +29,17 @@ openapi   = ["__integration__", "ohkami?/openapi"] # activate some frameworks' b
 uibeam_html   = { path = "../uibeam_html",   version = "=0.4.0" }
 uibeam_macros = { path = "../uibeam_macros", version = "=0.4.0" }
 
+# for integrations
+http = { optional = true, version = "1.4" }
+mime = { optional = true, version = "0.3" }
+
 # for islands
-serde              = { optional = true, version = "1.0" }
-serde_json         = { optional = true, version = "1.0" }
-wasm-bindgen       = { optional = true, version = "0.2.106" }
-serde-wasm-bindgen = { optional = true, version = "0.6" }
-js-sys             = { optional = true, version = "0.3" }
-web-sys            = { optional = true, version = "0.3", features = [
+serde              = { version = "1.0" }
+serde_json         = { version = "1.0" }
+wasm-bindgen       = { version = "0.2.106" }
+serde-wasm-bindgen = { version = "0.6" }
+js-sys             = { version = "0.3" }
+web-sys            = { version = "0.3", features = [
     "console",
     "Window",
     "Document",
@@ -61,10 +60,6 @@ web-sys            = { optional = true, version = "0.3", features = [
     "WheelEvent",
 ] }
 
-# for integrations
-http = { optional = true, version = "1.4" }
-mime = { optional = true, version = "0.3" }
-
 [dependencies.axum-core]
 optional         = true
 default-features = false
@@ -80,7 +75,7 @@ optional         = true
 default-features = false
 version          = "0.24"
 
-[dev-dependencies] # for doc tests (README)
+[dev-dependencies]  # for doc tests (README)
 tokio      = { version = "1.48", features = ["rt-multi-thread", "net", "macros"] }
 axum       = { version = "0.8" }
 actix-web  = { version = "4.12", default-features = false, features = ["macros"] }

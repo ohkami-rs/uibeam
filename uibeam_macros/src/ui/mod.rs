@@ -47,7 +47,7 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
             .into_iter()
             .map(|node| {
                 let (mut literals, expressions, ehannotations) =
-                    transform::native::transform(node)?;
+                    transform::server::transform(node)?;
                 if should_insert_doctype {
                     literals
                         .first_mut()

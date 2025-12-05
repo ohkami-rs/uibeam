@@ -15,6 +15,8 @@ categories = ["template-engine", "web-programming", "wasm"]
 
 [workspace.lints.clippy]
 duplicated_attributes = "allow" # to keep readability with complex feature combinations
+[workspace.lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(client)"] } # for `client` cfg (this can't be realized via feature flag to support wasm32 server environment like Cloudflare Workers)
 
 [workspace.metadata.tasks]
 CI = """

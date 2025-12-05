@@ -1,4 +1,4 @@
-pub(super) mod native;
+pub(super) mod server;
 
 #[cfg(feature = "laser")]
 pub(super) mod wasm32;

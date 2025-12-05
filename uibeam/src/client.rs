@@ -1,5 +1,3 @@
-#![cfg(feature = "laser")]
-
 // TODO: support more events (update together with `uibeam_macros/src/ui/transform.rs`)
 pub use ::web_sys::{
     AnimationEvent, ClipboardEvent, CompositionEvent, Event, FocusEvent, InputEvent, KeyboardEvent,
@@ -15,61 +13,7 @@ pub fn serialize_props<P: ::serde::Serialize>(props: &P) -> String {
     ::serde_json::to_string(props).unwrap()
 }
 
-#[doc(hidden)]
-#[allow(non_camel_case_types)]
-pub trait Laser_attribute {}
-
-/// Client Component working as WASM island (_experimental_)
-///
-/// See [README](https://github.com/ohkami-rs/uibeam/blob/main/README.md) for detailed usage.
-///
-/// ## Example
-/// ```
-/// use uibeam::{UI, Laser, Signal, callback};
-///
-/// #[Laser]
-/// #[derive(serde::Serialize, serde::Deserialize)]
-/// pub struct Counter {
-///     pub initial_count: i32,
-/// }
-///
-/// impl Laser for Counter {
-///     fn render(self) -> UI {
-///         let count = Signal::new(self.initial_count);
-///
-///         let increment = callback!([count], |_| {
-///             count.set(*count + 1);
-///         });
-///
-///         let decrement = callback!([count], |_| {
-///             count.set(*count - 1);
-///         });
-///
-///         UI! {
-///             <div class="w-[144px]">
-///                 <p class="text-2xl font-bold text-center">
-///                     "Count: "{*count}
-///                 </p>
-///                 <div class="text-center">
-///                     <button
-///                         class="cursor-pointer bg-red-500  w-[32px] py-1 text-white rounded-md"
-///                         onclick={decrement}
-///                     >"-"</button>
-///                     <button
-///                         class="cursor-pointer bg-blue-500 w-[32px] py-1 text-white rounded-md"
-///                         onclick={increment}
-///                     >"+"</button>
-///                 </div>
-///             </div>
-///         }
-///     }
-/// }
-/// ```
-pub trait Laser: Laser_attribute {
-    fn render(self) -> crate::UI;
-}
-
-#[cfg(target_arch = "wasm32")]
+#[cfg(client)]
 mod preact {
     use super::*;
 
@@ -110,24 +54,24 @@ mod preact {
     }
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(client)]
 use {
     ::js_sys::{Array, Function, Object, Reflect},
     ::wasm_bindgen::prelude::*,
 };
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(client)]
 pub fn hydrate(vdom: VNode, container: ::web_sys::Node) {
     preact::hydrate(vdom.0, container);
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(client)]
 pub struct VNode(JsValue);
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(client)]
 pub struct NodeType(JsValue);
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(client)]
 impl NodeType {
     pub fn tag(tag: &'static str) -> NodeType {
         NodeType(tag.into())
@@ -148,7 +92,7 @@ impl NodeType {
     }
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(client)]
 impl VNode {
     pub fn new(r#type: NodeType, props: Object, children: Vec<VNode>) -> VNode {
         VNode(preact::create_element(
@@ -178,7 +122,7 @@ impl VNode {
 }
 
 pub struct Signal<T: serde::Serialize + for<'de> serde::Deserialize<'de>> {
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(client)]
     preact_signal: Object,
     /// buffer for `Deref` impl on single-threaded wasm
     /// (and also used for template rendering)
@@ -189,7 +133,7 @@ impl<T: serde::Serialize + for<'de> serde::Deserialize<'de>> Clone for Signal<T>
     // not require T: Clone
     fn clone(&self) -> Self {
         Self {
-            #[cfg(target_arch = "wasm32")]
+            #[cfg(client)]
             preact_signal: self.preact_signal.clone(),
             current_value: self.current_value.clone(),
         }
@@ -200,12 +144,12 @@ impl<T: serde::Serialize + for<'de> serde::Deserialize<'de>> std::ops::Deref for
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(client))]
         {
             // for template rendering
             unsafe { &*self.current_value.get() }
         }
-        #[cfg(target_arch = "wasm32")]
+        #[cfg(client)]
         {
             let value = serde_wasm_bindgen::from_value(
                 // TODO: skip deserialization if value is not changed
@@ -223,21 +167,21 @@ impl<T: serde::Serialize + for<'de> serde::Deserialize<'de>> std::ops::Deref for
 impl<T: serde::Serialize + for<'de> serde::Deserialize<'de>> Signal<T> {
     pub fn new(value: T) -> Self {
         Self {
-            #[cfg(target_arch = "wasm32")]
+            #[cfg(client)]
             preact_signal: preact::signal(serde_wasm_bindgen::to_value(&value).unwrap_throw()),
             current_value: std::rc::Rc::new(std::cell::UnsafeCell::new(value)),
         }
     }
 
     pub fn set(&self, value: T) {
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(client))]
         {
             // for template rendering
             unsafe {
                 *self.current_value.get() = value;
             }
         }
-        #[cfg(target_arch = "wasm32")]
+        #[cfg(client)]
         {
             Reflect::set(
                 &self.preact_signal,
@@ -267,12 +211,12 @@ impl<T: serde::Serialize + for<'de> serde::Deserialize<'de>> std::ops::Deref for
 
 impl<T: serde::Serialize + for<'de> serde::Deserialize<'de>> Computed<T> {
     pub fn new(getter: impl (Fn() -> T) + 'static) -> Self {
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(client))]
         {
             // for template rendering
             Self(Signal::new(getter()))
         }
-        #[cfg(target_arch = "wasm32")]
+        #[cfg(client)]
         {
             let init = getter();
 
@@ -440,10 +384,8 @@ macro_rules! computed {
     };
 }
 
-pub fn effect(
-    #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))] f: impl Fn() + 'static,
-) {
-    #[cfg(target_arch = "wasm32")]
+pub fn effect(#[cfg_attr(not(client), allow(unused_variables))] f: impl Fn() + 'static) {
+    #[cfg(client)]
     {
         let f = Closure::<dyn Fn()>::new(f).into_js_value().unchecked_into();
         preact::effect(f);
@@ -499,20 +441,16 @@ macro_rules! effect {
     };
 }
 
-pub fn batch(
-    #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))] f: impl Fn() + 'static,
-) {
-    #[cfg(target_arch = "wasm32")]
+pub fn batch(#[cfg_attr(not(client), allow(unused_variables))] f: impl Fn() + 'static) {
+    #[cfg(client)]
     {
         let f = Closure::<dyn Fn()>::new(f).into_js_value().unchecked_into();
         preact::batch(f);
     }
 }
 
-pub fn untracked(
-    #[cfg_attr(not(target_arch = "wasm32"), allow(unused_variables))] f: impl Fn() + 'static,
-) {
-    #[cfg(target_arch = "wasm32")]
+pub fn untracked(#[cfg_attr(not(client), allow(unused_variables))] f: impl Fn() + 'static) {
+    #[cfg(client)]
     {
         let f = Closure::<dyn Fn()>::new(f).into_js_value().unchecked_into();
         preact::untracked(f);
