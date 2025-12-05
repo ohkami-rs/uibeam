@@ -5,27 +5,31 @@ use proc_macro2::TokenStream;
 use quote::quote;
 
 pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
-    let parse::UITokens { mut nodes } = syn::parse2(input)?;
+    let parse::UITokens {
+        directives,
+        mut nodes,
+    } = syn::parse2(input)?;
 
-    #[cfg(feature = "laser")]
-    let wasm32_ui = {
-        let wasm32_nodes = nodes
+    #[cfg(client)]
+    return {
+        let client_nodes = nodes
             .clone()
             .into_iter()
             .map(|node| {
-                let vdom_tokens = transform::wasm32::transform(node)?;
+                let vdom_tokens = transform::client::transform(&directives, node)?;
                 Ok(quote! {
                     ::uibeam::UI::new_unchecked(#vdom_tokens)
                 })
             })
             .collect::<syn::Result<Vec<_>>>()?;
 
-        quote! {
-            <::uibeam::UI>::from_iter([#(#wasm32_nodes),*])
-        }
+        Ok(quote! {
+            <::uibeam::UI>::from_iter([#(#client_nodes),*])
+        })
     };
 
-    let native_ui = {
+    #[cfg(not(client))]
+    return {
         if nodes
             .first()
             .is_some_and(|node| matches!(node, parse::NodeTokens::Doctype { .. }))
@@ -43,11 +47,11 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
             _ => false,
         });
 
-        let native_nodes = nodes
+        let ui_parts = nodes
             .into_iter()
             .map(|node| {
                 let (mut literals, expressions, ehannotations) =
-                    transform::server::transform(node)?;
+                    transform::server::transform(&directives, node)?;
                 if should_insert_doctype {
                     literals
                         .first_mut()
@@ -74,19 +78,8 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
             })
             .collect::<syn::Result<Vec<_>>>()?;
 
-        quote! {
-            <::uibeam::UI>::concat([#(#native_nodes),*])
-        }
+        Ok(quote! {
+            <::uibeam::UI>::concat([#(#ui_parts),*])
+        })
     };
-
-    #[cfg(not(feature = "laser"))]
-    return Ok(native_ui);
-
-    #[cfg(feature = "laser")]
-    return Ok(quote! {
-        {
-            #[cfg(target_arch = "wasm32")] {#wasm32_ui}
-            #[cfg(not(target_arch = "wasm32"))] {#native_ui}
-        }
-    });
 }

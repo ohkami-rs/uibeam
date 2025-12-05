@@ -1,5 +1,5 @@
 use super::super::parse::{
-    AttributeTokens, AttributeValueToken, AttributeValueTokens, ContentPieceTokens,
+    AttributeTokens, AttributeValueToken, AttributeValueTokens, ContentPieceTokens, Directive,
     InterpolationTokens, NodeTokens,
 };
 use super::{Component, prop_for_event};
@@ -104,6 +104,7 @@ impl ToTokens for EventHandlerAnnotation {
 /// Derives `({HTML-escaped literal pieces}, {interpolating expressions})`
 /// from the `NodeTokens`
 pub(crate) fn transform(
+    directives: &[Directive],
     tokens: NodeTokens,
 ) -> syn::Result<(Vec<Piece>, Vec<Interpolation>, Vec<EventHandlerAnnotation>)> {
     let (mut pieces, mut interpolations, mut ehannotations) = (Vec::new(), Vec::new(), Vec::new());
@@ -111,13 +112,14 @@ pub(crate) fn transform(
     let mut piece = Piece::none();
 
     fn handle_node_tokens(
+        directives: &[Directive],
         node: NodeTokens,
         current_piece: &mut Piece,
         pieces: &mut Vec<Piece>,
         interpolations: &mut Vec<Interpolation>,
         ehannotations: &mut Vec<EventHandlerAnnotation>,
     ) -> syn::Result<()> {
-        let (child_pieces, child_interpolations, child_ehannotation) = transform(node)?;
+        let (child_pieces, child_interpolations, child_ehannotation) = transform(directives, node)?;
 
         let mut child_pieces = child_pieces.into_iter();
 
@@ -141,6 +143,7 @@ pub(crate) fn transform(
     }
 
     fn handle_attributes(
+        _directives: &[Directive],
         attributes: Vec<AttributeTokens>,
         current_piece: &mut Piece,
         pieces: &mut Vec<Piece>,
@@ -185,6 +188,7 @@ pub(crate) fn transform(
     }
 
     fn handle_content_pieces(
+        directives: &[Directive],
         content: Vec<ContentPieceTokens>,
         current_piece: &mut Piece,
         pieces: &mut Vec<Piece>,
@@ -242,9 +246,14 @@ pub(crate) fn transform(
                         *current_piece = Piece::new_empty();
                     }
                 }
-                ContentPieceTokens::Node(node) => {
-                    handle_node_tokens(node, current_piece, pieces, interpolations, ehannotations)?
-                }
+                ContentPieceTokens::Node(node) => handle_node_tokens(
+                    directives,
+                    node,
+                    current_piece,
+                    pieces,
+                    interpolations,
+                    ehannotations,
+                )?,
             }
         }
         Ok(())
@@ -286,15 +295,24 @@ pub(crate) fn transform(
                     }
                 }
             });
-            let children = content.map(|c| {
-                let children_tokens = c
-                    .iter()
-                    .map(ToTokens::to_token_stream)
-                    .collect::<TokenStream>();
-                quote! {
-                    children: ::uibeam::UI! { #children_tokens },
-                }
-            });
+            let children = match content {
+                None => None,
+                Some(c) => Some({
+                    let children_tokens = c
+                        .iter()
+                        .map(ToTokens::to_token_stream)
+                        .collect::<TokenStream>();
+                    // Explicitly using `expand()`, instead of just returning
+                    // `children: UI! { #children_tokens }`,
+                    // to avoid recursive macro expansions.
+                    let children_tokens = crate::ui::expand(quote! {
+                        UI! { #children_tokens }
+                    })?;
+                    quote! {
+                        children: #children_tokens,
+                    }
+                }),
+            };
             syn::parse2(quote! {
                 <#name as ::uibeam::Beam>::render(#name {
                     #(#attributes)*
@@ -333,6 +351,7 @@ pub(crate) fn transform(
             } => {
                 piece.join(Piece::new(format!("<{tag}")));
                 handle_attributes(
+                    directives,
                     attributes,
                     &mut piece,
                     &mut pieces,
@@ -341,6 +360,7 @@ pub(crate) fn transform(
                 )?;
                 piece.join(Piece::new(">"));
                 handle_content_pieces(
+                    directives,
                     content,
                     &mut piece,
                     &mut pieces,
@@ -359,6 +379,7 @@ pub(crate) fn transform(
             } => {
                 piece.join(Piece::new(format!("<{tag}")));
                 handle_attributes(
+                    directives,
                     attributes,
                     &mut piece,
                     &mut pieces,
@@ -370,6 +391,7 @@ pub(crate) fn transform(
 
             NodeTokens::TextNode(node_pieces) => {
                 handle_content_pieces(
+                    directives,
                     node_pieces,
                     &mut piece,
                     &mut pieces,

@@ -40,9 +40,9 @@ mod integration;
 pub use client::{Signal, computed, effect};
 /* macro_export: `callback`, `computed`, `effect` */
 pub use uibeam_html::escape;
-pub use uibeam_macros::{UI, client};
 #[doc(hidden)]
 pub use uibeam_macros::consume;
+pub use uibeam_macros::{UI, client};
 
 use std::borrow::Cow;
 
@@ -142,19 +142,73 @@ pub struct UI(
 /// let html = uibeam::shoot(ui);
 /// println!("{}", html);
 /// ```
-pub trait Beam {
-    #[doc(hidden)]
-    const CLASS: BeamClass = BeamClass::Serializable;
-
+pub trait Beam<Kind: bound::BeamKind = Server> {
     fn render(self) -> UI;
 }
 
 #[doc(hidden)]
-pub enum BeamClass {
-    /// Normal Beam for server-side, or `Serialize`-able client Beam
-    Serializable,
-    /// Any Beam including non-`Serialize`-able client Beam available internally in another client Beam
-    Any,
+pub use bound::{Client, Server, render_in_island, render_on_server};
+#[doc(hidden)]
+mod bound {
+    #[doc(hidden)]
+    pub trait BeamKind {}
+    #[doc(hidden)]
+    pub struct Server;
+    #[doc(hidden)]
+    pub struct Client;
+    #[doc(hidden)]
+    impl BeamKind for Server {}
+    #[doc(hidden)]
+    impl BeamKind for Client {}
+
+    #[doc(hidden)]
+    pub struct Serialize<K: BeamKind>(std::marker::PhantomData<K>);
+    #[doc(hidden)]
+    pub struct NoSerialize;
+    #[doc(hidden)]
+    impl<K: BeamKind> BeamKind for Serialize<K> {}
+    #[doc(hidden)]
+    impl BeamKind for NoSerialize {}
+
+    #[doc(hidden)]
+    impl<T> super::Beam<Serialize<Server>> for T
+    where
+        T: super::Beam<Server>,
+    {
+        #[inline(always)]
+        fn render(self) -> super::UI {
+            super::Beam::<Server>::render(self)
+        }
+    }
+    #[doc(hidden)]
+    impl<T> super::Beam<Serialize<Client>> for T
+    where
+        T: super::Beam<Client> + serde::Serialize,
+    {
+        #[inline(always)]
+        fn render(self) -> super::UI {
+            super::Beam::<Client>::render(self)
+        }
+    }
+    #[doc(hidden)]
+    impl<T> super::Beam<NoSerialize> for T
+    where
+        T: super::Beam<Client>,
+    {
+        #[inline(always)]
+        fn render(self) -> super::UI {
+            super::Beam::<Client>::render(self)
+        }
+    }
+
+    #[doc(hidden)]
+    pub fn render_on_server<K: BeamKind>(beam: impl super::Beam<Serialize<K>>) -> super::UI {
+        super::Beam::<Serialize<K>>::render(beam)
+    }
+    #[doc(hidden)]
+    pub fn render_in_island<K: BeamKind>(beam: impl super::Beam<K>) -> super::UI {
+        super::Beam::<K>::render(beam)
+    }
 }
 
 #[cfg(not(client))]

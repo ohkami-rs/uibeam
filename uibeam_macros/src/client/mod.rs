@@ -1,7 +1,14 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use syn::{ItemStruct, LitStr};
+use syn::{ItemImpl, ItemStruct, LitStr};
 
+pub(super) fn expand(_args: TokenStream, input: TokenStream) -> syn::Result<TokenStream> {
+    let beam_impl = syn::parse2::<ItemImpl>(input)?;
+
+    Ok(quote! {})
+}
+
+/*
 pub(super) fn expand(args: TokenStream, input: TokenStream) -> syn::Result<TokenStream> {
     let local = syn::parse2::<syn::Ident>(args).is_ok_and(|i| i == "local");
     let input: ItemStruct = syn::parse2(input)?;
@@ -133,3 +140,4 @@ container.setAttribute('data-uibeam-hydration-status', 'DONE');
         #beam_impl
     })
 }
+*/

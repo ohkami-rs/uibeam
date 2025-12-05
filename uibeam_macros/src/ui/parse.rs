@@ -5,9 +5,16 @@ use syn::{Expr, Ident, LitInt, LitStr, Token, token};
 
 /// Parsed representation of the UI macro input.
 ///
-/// This is almost HTML syntax, but with some Rust expressions embedded within `{}`.
+/// This is almost HTML syntax, but with optional `@directive;`s and some Rust expressions embedded within `{}`.
 pub(super) struct UITokens {
+    pub(super) directives: Vec<Directive>,
     pub(super) nodes: Vec<NodeTokens>,
+}
+
+pub(super) struct Directive {
+    pub(super) _at: Token![@],
+    pub(super) name: Ident,
+    pub(super) _semi: Token![;],
 }
 
 #[derive(Clone)]
@@ -108,11 +115,26 @@ pub(super) enum AttributeValueToken {
 
 impl Parse for UITokens {
     fn parse(input: ParseStream) -> syn::Result<Self> {
+        let mut directives = Vec::new();
+        while input.peek(Token![@]) {
+            directives.push(input.parse()?);
+        }
+
         let mut nodes = Vec::new();
         while !input.is_empty() {
             nodes.push(input.parse()?);
         }
-        Ok(UITokens { nodes })
+
+        Ok(UITokens { directives, nodes })
+    }
+}
+
+impl Parse for Directive {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let _at: Token![@] = input.parse()?;
+        let name: Ident = input.parse()?;
+        let _semi: Token![;] = input.parse()?;
+        Ok(Directive { _at, name, _semi })
     }
 }
 

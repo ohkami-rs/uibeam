@@ -1,7 +1,8 @@
-#![cfg(feature = "laser")]
+// just allow unused when not(client), instead of applying `#![cfg(client)]`, for DX.
+#![cfg_attr(not(client), allow(unused))]
 
 use super::super::parse::{
-    AttributeTokens, AttributeValueToken, AttributeValueTokens, ContentPieceTokens,
+    AttributeTokens, AttributeValueToken, AttributeValueTokens, ContentPieceTokens, Directive,
     InterpolationTokens, NodeTokens,
 };
 use super::{Component, prop_for_event};
@@ -26,12 +27,16 @@ fn as_event_handler(name: &str, expression: &Expr) -> Option<syn::Result<(LitStr
 
 /// Derives Rust codes that builds an `uibeam::laser::VNode` expression
 /// corresponded to the `UI!` input
-pub(crate) fn transform(tokens: NodeTokens) -> syn::Result<TokenStream> {
+pub(crate) fn transform(directives: &[Directive], tokens: NodeTokens) -> syn::Result<TokenStream> {
     let mut t = TokenStream::new();
-    encode(&mut t, tokens)?;
+    encode(&mut t, directives, tokens)?;
     return Ok(t);
 
-    fn encode(t: &mut TokenStream, tokens: NodeTokens) -> syn::Result<()> {
+    fn encode(
+        t: &mut TokenStream,
+        directives: &[Directive],
+        tokens: NodeTokens,
+    ) -> syn::Result<()> {
         fn into_props(attributes: Vec<AttributeTokens>) -> syn::Result<TokenStream> {
             if attributes.is_empty() {
                 return Ok(quote! {
@@ -90,7 +95,10 @@ pub(crate) fn transform(tokens: NodeTokens) -> syn::Result<TokenStream> {
             })
         }
 
-        fn into_children(content: Vec<ContentPieceTokens>) -> syn::Result<TokenStream> {
+        fn into_children(
+            directives: &[Directive],
+            content: Vec<ContentPieceTokens>,
+        ) -> syn::Result<TokenStream> {
             let children = content
                 .into_iter()
                 .map(|piece| match piece {
@@ -116,7 +124,7 @@ pub(crate) fn transform(tokens: NodeTokens) -> syn::Result<TokenStream> {
                             ).into_vdom()
                         })
                     }
-                    ContentPieceTokens::Node(n) => transform(n),
+                    ContentPieceTokens::Node(n) => transform(directives, n),
                 })
                 .collect::<syn::Result<Vec<_>>>()?;
 
@@ -133,7 +141,10 @@ pub(crate) fn transform(tokens: NodeTokens) -> syn::Result<TokenStream> {
         {
             let props = into_props(attributes.to_vec())?;
 
-            let children = into_children(content.map(<[_]>::to_vec).unwrap_or_else(Vec::new))?;
+            let children = into_children(
+                directives,
+                content.map(<[_]>::to_vec).unwrap_or_else(Vec::new),
+            )?;
 
             (quote! {
                 ::uibeam::laser::VNode::new(
@@ -162,7 +173,7 @@ pub(crate) fn transform(tokens: NodeTokens) -> syn::Result<TokenStream> {
 
                     let props = into_props(attributes)?;
 
-                    let children = into_children(content)?;
+                    let children = into_children(directives, content)?;
 
                     (quote! {
                         ::uibeam::laser::VNode::new(
@@ -196,7 +207,7 @@ pub(crate) fn transform(tokens: NodeTokens) -> syn::Result<TokenStream> {
                 }
 
                 NodeTokens::TextNode(node_pieces) => {
-                    into_children(node_pieces)?.to_tokens(t);
+                    into_children(directives, node_pieces)?.to_tokens(t);
                 }
             }
         }

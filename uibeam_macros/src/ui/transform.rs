@@ -1,7 +1,5 @@
+pub(super) mod client;
 pub(super) mod server;
-
-#[cfg(feature = "laser")]
-pub(super) mod wasm32;
 
 use super::parse::{AttributeTokens, ContentPieceTokens, HtmlIdent, NodeTokens};
 use proc_macro2::Span;
