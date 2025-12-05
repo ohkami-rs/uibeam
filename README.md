@@ -247,7 +247,7 @@ working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/mai
 
     ```toml
     [dependencies]
-    uibeam = { version = "0.4", features = ["client"] }
+    uibeam = { version = "0.4" }
     serde  = { version = "1", features = ["derive"] }
     ```
 
