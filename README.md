@@ -346,7 +346,7 @@ working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/mai
     can **only be used internally in `UI!` of another client component**.
     Especially note that client components at **island boundary can't have `children`**.
 
-5. Compile the lib crate into Wasm by `wasm-pack build` with **`RUSTFLAGS='--cfg hydrate'`** and **`--out-name hydrate --target web`**:
+4. Compile the lib crate into Wasm by `wasm-pack build` with **`RUSTFLAGS='--cfg hydrate'`** and **`--out-name hydrate --target web`**:
 
     ```sh
     # example when naming the lib crate `islands`
@@ -363,6 +363,8 @@ working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/mai
    **NOTE**:
    All of `RUSTFLAGS='--cfg hydrate'`, `--out-name hydrate` and `--target web` are **required** here.
 
+5. Make sure that your server responds with **a complete HTML consist of one <html></html> containing your page contents**.
+   
    Then, setup your server to serve the output directory (default: `pkg`) at **`/.uibeam`** route:
  
     ```rust

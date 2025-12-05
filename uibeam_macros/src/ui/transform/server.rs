@@ -314,13 +314,13 @@ pub(crate) fn transform(
             };
 
             let render_method = if directives.iter().any(|d| d.client()) {
-                quote! { render_in_island }
+                quote! { ::uibeam::render_in_island }
             } else {
-                quote! { render_on_server }
+                quote! { ::uibeam::render_on_server }
             };
 
             syn::parse2(quote! {
-                ::uibeam::#render_method(#name {
+                #render_method(#name {
                     #(#attributes)*
                     #children
                 })

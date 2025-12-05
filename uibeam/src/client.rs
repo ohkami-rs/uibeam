@@ -14,6 +14,10 @@ pub fn serialize_props<P: super::IslandBoundary>(props: &P) -> String {
 }
 
 #[cfg(hydrate)]
+#[wasm_bindgen(module = "/src/hydrate.js")]
+extern "C" {}
+
+#[cfg(hydrate)]
 mod preact {
     use super::*;
 
