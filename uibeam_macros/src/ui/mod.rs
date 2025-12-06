@@ -8,6 +8,7 @@ use quote::quote;
 
 pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
     let parse::UITokens {
+        #[cfg_attr(hydrate, unused)]
         directives,
         mut nodes,
     } = syn::parse2(input)?;
@@ -18,7 +19,7 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
             .clone()
             .into_iter()
             .map(|node| {
-                let vdom_tokens = transform::hydrate::transform(&directives, node)?;
+                let vdom_tokens = transform::hydrate::transform(&node)?;
                 Ok(quote! {
                     ::uibeam::UI::new_unchecked(#vdom_tokens)
                 })

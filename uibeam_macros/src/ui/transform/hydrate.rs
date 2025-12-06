@@ -27,14 +27,13 @@ fn as_event_handler(name: &str, expression: &Expr) -> Option<syn::Result<(LitStr
 
 /// Derives Rust codes that builds an `uibeam::client::VNode` expression
 /// corresponded to the `UI!` input
-pub(crate) fn transform(directives: &[Directive], tokens: NodeTokens) -> syn::Result<TokenStream> {
+pub(crate) fn transform(tokens: NodeTokens) -> syn::Result<TokenStream> {
     let mut t = TokenStream::new();
-    encode(&mut t, directives, tokens)?;
+    encode(&mut t, tokens)?;
     return Ok(t);
 
     fn encode(
         t: &mut TokenStream,
-        directives: &[Directive],
         tokens: NodeTokens,
     ) -> syn::Result<()> {
         fn into_props(attributes: Vec<AttributeTokens>) -> syn::Result<TokenStream> {
@@ -96,7 +95,6 @@ pub(crate) fn transform(directives: &[Directive], tokens: NodeTokens) -> syn::Re
         }
 
         fn into_children(
-            directives: &[Directive],
             content: Vec<ContentPieceTokens>,
         ) -> syn::Result<TokenStream> {
             let children = content
@@ -124,7 +122,7 @@ pub(crate) fn transform(directives: &[Directive], tokens: NodeTokens) -> syn::Re
                             ).into_vdom()
                         })
                     }
-                    ContentPieceTokens::Node(n) => transform(directives, n),
+                    ContentPieceTokens::Node(n) => transform(n),
                 })
                 .collect::<syn::Result<Vec<_>>>()?;
 
@@ -142,7 +140,6 @@ pub(crate) fn transform(directives: &[Directive], tokens: NodeTokens) -> syn::Re
             let props = into_props(attributes.to_vec())?;
 
             let children = into_children(
-                directives,
                 content.map(<[_]>::to_vec).unwrap_or_else(Vec::new),
             )?;
 
@@ -173,7 +170,7 @@ pub(crate) fn transform(directives: &[Directive], tokens: NodeTokens) -> syn::Re
 
                     let props = into_props(attributes)?;
 
-                    let children = into_children(directives, content)?;
+                    let children = into_children(content)?;
 
                     (quote! {
                         ::uibeam::client::VNode::new(
@@ -207,7 +204,7 @@ pub(crate) fn transform(directives: &[Directive], tokens: NodeTokens) -> syn::Re
                 }
 
                 NodeTokens::TextNode(node_pieces) => {
-                    into_children(directives, node_pieces)?.to_tokens(t);
+                    into_children(node_pieces)?.to_tokens(t);
                 }
             }
         }

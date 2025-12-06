@@ -322,6 +322,14 @@ impl Parse for AttributeValueTokens {
 
 //////////////////////////////////////////////////////////////////////////////////////////
 
+impl ToTokens for Directive {
+    fn to_tokens(&self, t: &mut proc_macro2::TokenStream) {
+        self._at.to_tokens(t);
+        self.name.to_tokens(t);
+        self._semi.to_tokens(t);
+    }
+}
+
 impl ToTokens for ContentPieceTokens {
     fn to_tokens(&self, t: &mut proc_macro2::TokenStream) {
         match self {

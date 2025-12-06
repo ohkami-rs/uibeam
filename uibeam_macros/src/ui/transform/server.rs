@@ -304,9 +304,12 @@ pub(crate) fn transform(
                         .map(ToTokens::to_token_stream)
                         .collect::<TokenStream>();
                     // Explicitly using `expand()`, instead of just returning
-                    // `children: UI! { #children_tokens }`,
+                    // `children: UI! { #(#directives)* #children_tokens }`,
                     // to avoid recursive macro expansions.
-                    let children_tokens = crate::ui::expand(quote![UI! { #children_tokens }])?;
+                    let children_tokens = crate::ui::expand(quote![
+                        #(#directives)*
+                        #children_tokens
+                    ])?;
                     quote! {
                         children: #children_tokens,
                     }
