@@ -354,6 +354,12 @@ working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/mai
     cd islands
     RUSTFLAGS='--cfg hydrate' wasm-pack build --out-name hydrate --target web
     ```
+    ```sh
+    # in hot-reloading loop, `--dev` flag is recommended:
+
+    cd islands
+    RUSTFLAGS='--cfg hydrate' wasm-pack build --out-name hydrate --target web --dev
+    ```
   
    **NOTE**:
    All of `hydrate` cfg (not feature!), `hydrate` out-name and `web` target are **required** here.
