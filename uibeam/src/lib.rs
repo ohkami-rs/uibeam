@@ -173,7 +173,10 @@ mod bound {
     impl BeamKind for Client {}
 
     #[doc(hidden)]
-    pub trait IslandBoundary: Beam<Client> + serde::Serialize + for<'de> serde::Deserialize<'de> {}
+    pub trait IslandBoundary:
+        Beam<Client> + serde::Serialize + for<'de> serde::Deserialize<'de>
+    {
+    }
 
     #[doc(hidden)]
     pub struct ServerOrIslandBoundary<K: BeamKind>(std::marker::PhantomData<K>);
@@ -241,6 +244,11 @@ mod bound {
 #[cfg(not(hydrate))]
 #[inline(always)]
 pub fn shoot(ui: UI) -> Cow<'static, str> {
+    ui.0
+}
+#[cfg(hydrate)]
+#[inline(always)]
+pub fn shoot(ui: UI) -> client::VNode {
     ui.0
 }
 

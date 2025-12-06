@@ -1,8 +1,8 @@
 use super::super::parse::{
-    AttributeTokens, AttributeValueToken, AttributeValueTokens, ContentPieceTokens, Directive,
-    InterpolationTokens, NodeTokens,
+    AttributeTokens, AttributeValueToken, ContentPieceTokens, Directive, InterpolationTokens,
+    NodeTokens,
 };
-use super::{Component, prop_for_event};
+use super::prop_for_event;
 use proc_macro2::{Span, TokenStream};
 use quote::{ToTokens, quote};
 use syn::{Expr, ExprLit, Lit, LitStr, Type, spanned::Spanned};
@@ -268,85 +268,12 @@ pub(crate) fn transform(
 
     let mut piece = Piece::none();
 
-    if let Some(Component {
-        name,
-        attributes,
-        content,
-    }) = tokens.as_beam()
-    {
+    if let Some(beam) = tokens.as_beam() {
         piece.join(Piece::new_empty());
         piece.commit(&mut pieces);
-        interpolations.push(Interpolation::Children({
-            let attributes = attributes.iter().map(|a| {
-                let name = a
-                    .name
-                    .as_ident()
-                    .expect("Component attribute name must be a valid Rust identifier");
-                let (value, is_literal) = match &a.value {
-                    None => (quote! {true}, true),
-                    Some(AttributeValueTokens { value, .. }) => match value {
-                        AttributeValueToken::StringLiteral(lit) => (lit.into_token_stream(), true),
-                        AttributeValueToken::IntegerLiteral(lit) => (lit.into_token_stream(), true),
-                        AttributeValueToken::Interpolation(InterpolationTokens {
-                            rust_expression,
-                            ..
-                        }) => (rust_expression.into_token_stream(), false),
-                    },
-                };
-                if is_literal {
-                    quote! {
-                        #[allow(unused_braces)]
-                        #name: (#value).into(),
-                    }
-                } else {
-                    quote! {
-                        #name: #value,
-                    }
-                }
-            });
-
-            let children = match content {
-                None => None,
-                Some(c) => Some({
-                    let children_tokens = c
-                        .iter()
-                        .map(ToTokens::to_token_stream)
-                        .collect::<TokenStream>();
-                    // Explicitly using `expand()`, instead of just returning
-                    // `children: UI! { #(#directives)* #children_tokens }`,
-                    // to avoid recursive macro expansions.
-                    let children_tokens = crate::ui::expand(quote![
-                        #(#directives)*
-                        #children_tokens
-                    ])?;
-                    quote! {
-                        children: #children_tokens,
-                    }
-                }),
-            };
-
-            let render_method = if directives.iter().any(|d| d.client()) {
-                quote! { ::uibeam::render_in_island }
-            } else {
-                quote! { ::uibeam::render_on_server }
-            };
-let stringified_for_error = {
-    let attributes = attributes.clone();
-    quote! {
-        #render_method(#name {
-            #(#attributes)*
-            #children
-        })
-    }
-}.to_string();
-            syn::parse2(quote! {
-                #render_method(#name {
-                    #(#attributes)*
-                    #children
-                })
-            })
-            .unwrap_or_else(|_| panic!("failed to parse component instantiation: {stringified_for_error}"))
-        }));
+        interpolations.push(Interpolation::Children(
+            beam.into_instanciation_expr_with(directives)?,
+        ));
         piece.join(Piece::new_empty());
         piece.commit(&mut pieces);
     } else {

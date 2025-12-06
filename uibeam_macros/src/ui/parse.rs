@@ -20,6 +20,13 @@ impl Directive {
     pub(super) fn client(&self) -> bool {
         self.name == "client"
     }
+    pub(super) fn new(name: &str) -> Self {
+        Directive {
+            _at: Default::default(),
+            name: quote::format_ident!("{name}"),
+            _semi: Default::default(),
+        }
+    }
 }
 
 #[derive(Clone)]

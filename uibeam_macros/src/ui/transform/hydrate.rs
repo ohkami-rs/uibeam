@@ -126,24 +126,9 @@ pub(crate) fn transform(tokens: NodeTokens) -> syn::Result<TokenStream> {
             })
         }
 
-        if let Some(Component {
-            name,
-            attributes,
-            content,
-        }) = tokens.as_beam()
-        {
-            let props = into_props(attributes.to_vec(), true)?;
-
-            let children = into_children(content.map(<[_]>::to_vec).unwrap_or_else(Vec::new))?;
-
-            (quote! {
-                ::uibeam::client::VNode::new(
-                    ::uibeam::client::NodeType::component::<#name, _>(),
-                    #props,
-                    #children
-                )
-            })
-            .to_tokens(t);
+        if let Some(beam) = tokens.as_beam() {
+            beam.into_instanciation_expr_with(&[super::super::parse::Directive::new("client")])?
+                .to_tokens(t);
         } else {
             match tokens {
                 NodeTokens::Doctype { .. } => (/* ignore */),
