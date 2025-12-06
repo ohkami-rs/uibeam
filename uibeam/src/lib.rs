@@ -160,6 +160,8 @@ pub trait Beam<Kind: bound::BeamKind = Server> {
 pub use bound::{Client, IslandBoundary, Server, render_in_island, render_on_server};
 #[doc(hidden)]
 mod bound {
+    use crate::Beam;
+    
     #[doc(hidden)]
     pub trait BeamKind {}
     #[doc(hidden)]
@@ -172,57 +174,55 @@ mod bound {
     impl BeamKind for Client {}
 
     #[doc(hidden)]
-    pub trait IslandBoundary: super::Beam<Client> + serde::Serialize {}
-    #[doc(hidden)]
-    impl<T: super::Beam<Client> + serde::Serialize> IslandBoundary for T {}
+    pub trait IslandBoundary: Beam<Client> + serde::Serialize {}
 
     #[doc(hidden)]
-    pub struct Serialize<K: BeamKind>(std::marker::PhantomData<K>);
+    pub struct ServerOrIslandBoundary<K: BeamKind>(std::marker::PhantomData<K>);
     #[doc(hidden)]
-    pub struct NoSerialize;
+    pub struct IslandInternal;
     #[doc(hidden)]
-    impl<K: BeamKind> BeamKind for Serialize<K> {}
+    impl<K: BeamKind> BeamKind for ServerOrIslandBoundary<K> {}
     #[doc(hidden)]
-    impl BeamKind for NoSerialize {}
+    impl BeamKind for IslandInternal {}
 
     #[doc(hidden)]
-    impl<T> super::Beam<Serialize<Server>> for T
+    impl<T> Beam<ServerOrIslandBoundary<Server>> for T
     where
-        T: super::Beam<Server>,
+        T: Beam<Server>,
     {
         #[inline(always)]
         fn render(self) -> super::UI {
-            super::Beam::<Server>::render(self)
+            Beam::<Server>::render(self)
         }
     }
     #[doc(hidden)]
-    impl<T> super::Beam<Serialize<Client>> for T
+    impl<T> Beam<ServerOrIslandBoundary<Client>> for T
     where
         T: IslandBoundary,
     {
         #[inline(always)]
         fn render(self) -> super::UI {
-            super::Beam::<Client>::render(self)
+            Beam::<Client>::render(self)
         }
     }
     #[doc(hidden)]
-    impl<T> super::Beam<NoSerialize> for T
+    impl<T> Beam<IslandInternal> for T
     where
-        T: super::Beam<Client>,
+        T: Beam<Client>,
     {
         #[inline(always)]
         fn render(self) -> super::UI {
-            super::Beam::<Client>::render(self)
+            Beam::<Client>::render(self)
         }
     }
 
     #[doc(hidden)]
-    pub fn render_on_server<K: BeamKind>(beam: impl super::Beam<Serialize<K>>) -> super::UI {
-        super::Beam::<Serialize<K>>::render(beam)
+    pub fn render_on_server<K: BeamKind>(beam: impl Beam<ServerOrIslandBoundary<K>>) -> super::UI {
+        Beam::<ServerOrIslandBoundary<K>>::render(beam)
     }
     #[doc(hidden)]
-    pub fn render_in_island<K: BeamKind>(beam: impl super::Beam<K>) -> super::UI {
-        super::Beam::<K>::render(beam)
+    pub fn render_in_island<K: BeamKind>(beam: impl Beam<K>) -> super::UI {
+        Beam::<K>::render(beam)
     }
 }
 

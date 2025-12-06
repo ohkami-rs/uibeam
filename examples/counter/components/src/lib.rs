@@ -49,7 +49,7 @@ pub struct Counter {
     pub initial_count: i32,
 }
 
-#[uibeam::client]
+#[uibeam::client(island)]
 impl Beam for Counter {
     fn render(self) -> UI {
         let count = Signal::new(self.initial_count);

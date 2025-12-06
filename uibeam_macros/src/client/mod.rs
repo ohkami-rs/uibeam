@@ -19,6 +19,13 @@ pub(super) fn expand(args: TokenStream, input: TokenStream) -> syn::Result<Token
     let hydrater_name = format_ident!("__uibeam_hydrate_{self_name}__");
     let hydrater_name_str = syn::LitStr::new(&hydrater_name.to_string(), hydrater_name.span());
 
+    let impl_island_boundary = is_island_boundary.then(|| {
+        let (impl_generics, ty_generics, where_clause) = impl_beam.generics.split_for_impl();
+        quote! {
+            impl #impl_generics ::uibeam::IslandBoundary for #self_ty #ty_generics #where_clause {}
+        }
+    });
+    
     let impl_beam = {
         let mut impl_beam = impl_beam;
 
@@ -64,11 +71,14 @@ pub(super) fn expand(args: TokenStream, input: TokenStream) -> syn::Result<Token
                 #[cfg(not(hydrate))]
                 return {
                     let props = ::uibeam::client::serialize_props(&self);
+                    let dry_ui = { #(#stmts)* };
                     ::uibeam::UI! {
                         <div
                             data-uibeam-hydrater=#hydrater_name_str
                             data-uibeam-props={props}
-                        ></div>
+                        >
+                            {dry_ui}
+                        </div>
                     }
                 }
             })
@@ -114,6 +124,7 @@ pub(super) fn expand(args: TokenStream, input: TokenStream) -> syn::Result<Token
     });
 
     Ok(quote! {
+        #impl_island_boundary
         #impl_beam
         #hydrater
     })
