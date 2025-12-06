@@ -327,24 +327,24 @@ working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/mai
     }
     ```
 
-   ```rust,ignore
-   /* server/src/main.rs */
+    ```rust,ignore
+    /* server/src/main.rs */
+    
+    use islands::Counter;
+    use uibeam::UI;
+    
+    async fn index() -> UI {
+        UI! {
+            <Counter />
+        }
+    }
+    ```
    
-   use islands::Counter;
-   use uibeam::UI;
-   
-   async fn index() -> UI {
-       UI! {
-           <Counter />
-       }
-   }
-   ```
-   
-    **NOTE**:
-    Just `#[client]` components without `(island)`,
-    e.g. one having `children: UI` or `on_something: Box<dyn FnOnce(Event)>` as its props,
-    can **only be used internally in `UI!` of another client component**.
-    Especially note that client components at **island boundary can't have `children`**.
+   **NOTE**:
+   Just `#[client]` components without `(island)`,
+   e.g. one having `children: UI` or `on_something: Box<dyn FnOnce(Event)>` as its props,
+   can **only be used internally in `UI!` of another client component**.
+   Especially note that client components at **island boundary can't have `children`**.
 
 4. Compile the lib crate into Wasm by `wasm-pack build` with **`RUSTFLAGS='--cfg hydrate'`** and **`--out-name hydrate --target web`**:
 

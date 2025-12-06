@@ -121,43 +121,43 @@ pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 }
 
 /// ## Client Component - WASM islands
-///
+/// 
 /// ### overview
-///
+/// 
 /// **`#[client]`** makes `Beam` a _*WASM island*_ : initially rendered in server, sent with serialized props, and hydrated with deserialized props in client.
-///
+/// 
 /// `Signal`, `computed`, `effect` are available in them.
-///
+/// 
 /// ### note
-///
+/// 
 /// Currently UIBeam's client component system is built upon [`Preact`](https://preactjs.com).
 /// This may be rewritten in pure Rust in the future, but may not because of potential reduction in the final .wasm size.
-///
+/// 
 /// ### usage
-///
+/// 
 /// working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/main/examples/counter)
-///
+/// 
 /// 1. Activate `"client"` feature, and add `serde` to your dependencies:
-///
+/// 
 ///     ```toml
 ///     [dependencies]
-///     uibeam = { version = "0.4", features = ["client"] }
+///     uibeam = { version = "0.4" }
 ///     serde  = { version = "1", features = ["derive"] }
 ///     ```
-///
+/// 
 /// 2. Configure to export all your client components from a specific library crate.
 ///    (e.g. `lib.rs` entrypoint, or another member crate of a workspace)
 ///    
 ///    (There's no problem if including ordinary `Beam`s, not only client ones, in the lib crate.)
-///
+/// 
 ///    Additionally, specify `crate-type = ["cdylib", "rlib"]` for the crate:
-///
+/// 
 ///     ```toml
 ///     [lib]
 ///     crate-type = ["cdylib", "rlib"]
 ///     ```
 ///     
-///   For size optimization, following configuration is recommended:
+///    For size optimization, following configuration is recommended:
 ///   
 ///     ```toml
 ///     [package.metadata.wasm-pack.release]
@@ -168,11 +168,11 @@ pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///     lto = true
 ///     codegen-unit = 1
 ///     ```
-///
-///   See [https://rustwasm.github.io/docs/book/game-of-life/code-size.html] or other specific documents for more details.
+/// 
+///    See https://rustwasm.github.io/docs/book/game-of-life/code-size.html or other specific documents for more details.
 ///    
 /// 3. Define and use your client components:
-///
+/// 
 ///     ```rust
 ///     /* islands/src/lib.rs */
 ///     
@@ -185,7 +185,9 @@ pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///     #[derive(Serialize)]
 ///     pub struct Counter;
 ///     
-///     #[client] // `#[client]` makes Beam a Wasm island.
+///     // `#[client]` makes Beam a Wasm island.
+///     // `(island)` means this beam is **island boundary**.
+///     #[client(island)]
 ///     impl Beam for Counter {
 ///         fn render(self) -> UI {
 ///             let count = Signal::new(0);
@@ -218,49 +220,46 @@ pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///         }
 ///     }
 ///     ```
-///
-///    ```rust,ignore
-///    /* server/src/main.rs */
+/// 
+///     ```rust,ignore
+///     /* server/src/main.rs */
+///     
+///     use islands::Counter;
+///     use uibeam::UI;
+///     
+///     async fn index() -> UI {
+///         UI! {
+///             <Counter />
+///         }
+///     }
+///     ```
 ///    
-///    use islands::Counter;
-///    use uibeam::UI;
-///    
-///    async fn index() -> UI {
-///        UI! {
-///            <Counter />
-///        }
-///    }
-///    ```
-///    
-///     **NOTE**:
-///     Non-`Serialize` client components,
-///     e.g. one having `children: UI` or `on_something: Box<dyn FnOnce(Event)>` as its props,
-///     can **only be used internally in `UI!` of another client component**.
-///     Especially note that client components at **island boundary can't have `children`**.
-///
-/// 5. Compile the lib crate into Wasm by `wasm-pack build` with **`RUSTFLAGS='--cfg client'`** and **`--target web --out-name client`**:
-///
+///    **NOTE**:
+///    Just `#[client]` components without `(island)`,
+///    e.g. one having `children: UI` or `on_something: Box<dyn FnOnce(Event)>` as its props,
+///    can **only be used internally in `UI!` of another client component**.
+///    Especially note that client components at **island boundary can't have `children`**.
+/// 
+/// 4. Compile the lib crate into Wasm by `wasm-pack build` with **`RUSTFLAGS='--cfg hydrate'`** and **`--out-name hydrate --target web`**:
+/// 
 ///     ```sh
 ///     # example when naming the lib crate `islands`
-///
+/// 
 ///     cd islands
-///     RUSTFLAGS='--cfg client' wasm-pack build --target web --out-name client
-///
-///     # or
-///
-///     RUSTFLAGS='--cfg client' wasm-pack build ./islands --target web --out-name client
+///     RUSTFLAGS='--cfg hydrate' wasm-pack build --out-name hydrate --target web
 ///     ```
 ///     ```sh
 ///     # **`--release`** in relase build:
 ///     
-///     RUSTFLAGS='--cfg client' wasm-pack build --target web --out-name client --release
+///     RUSTFLAGS='--cfg hydrate' wasm-pack build --out-name hydrate --target web --release
 ///     ```
 ///   
-///   **NOTE**:
-///   All of `client` cfg (not feature!), `web` target,  and `client` out-name are **required** here.
-///   (only when the crate name itself is `client`, `--out-name client` is not needed.)
-///
-///   Then, setup your server to serve the output directory (default: `pkg`) at **`/.uibeam`** route:
+///    **NOTE**:
+///    All of `RUSTFLAGS='--cfg hydrate'`, `--out-name hydrate` and `--target web` are **required** here.
+/// 
+/// 5. Make sure that your server responds with **a complete HTML consist of one <html></html> containing your page contents**.
+///    
+///    Then, setup your server to serve the output directory (default: `pkg`) at **`/.uibeam`** route:
 ///  
 ///     ```rust
 ///     /* axum example */
@@ -277,8 +276,8 @@ pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///             // ...
 ///     }
 ///     ```
-///
-///    (as a result, generated `{crate name}/pkg/client.js` is served at `/.uibeam/client.js`,
+/// 
+///    (as a result, generated `{crate name}/pkg/hydrate.js` is served at `/.uibeam/hydrate.js` route,
 ///    which is automatically loaded together with corresponding .wasm file in the hydration step on browser.)
 #[proc_macro_attribute]
 pub fn client(

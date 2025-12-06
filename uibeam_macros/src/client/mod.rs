@@ -127,7 +127,7 @@ fn insert_client_directive_to_ui_macros(stmts: &mut [syn::Stmt]) {
             .path
             .segments
             .last()
-            .map_or(false, |seg| seg.ident == "UI")
+            .is_some_and(|seg| seg.ident == "UI")
         {
             mac.tokens = {
                 let mut new_tokens = TokenStream::new();

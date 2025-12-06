@@ -25,6 +25,7 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
             })
             .collect::<syn::Result<Vec<_>>>()?;
 
+        #[allow(clippy::needless_return)]
         return Ok(quote! {
             <::uibeam::UI>::from_iter([#(#uis),*])
         });
@@ -113,6 +114,7 @@ r#"{"imports": {
             })
             .collect::<syn::Result<Vec<_>>>()?;
 
+        #[allow(clippy::needless_return)]
         return Ok(quote! {
             <::uibeam::UI>::concat([#(#uis),*])
         });
