@@ -58,6 +58,29 @@ pub(super) enum NodeTokens {
     },
     TextNode(Vec<ContentPieceTokens>),
 }
+impl NodeTokens {
+    pub(super) fn enclosing_tag_children(&self, tag_name: &str) -> Option<&Vec<ContentPieceTokens>> {
+        match self {
+            NodeTokens::EnclosingTag { tag, content, .. }
+                if tag.to_string().eq_ignore_ascii_case(tag_name) =>
+            {
+                Some(content)
+            }
+            _ => None,
+        }
+    }
+    
+    pub(super) fn enclosing_tag_children_mut(&mut self, tag_name: &str) -> Option<&mut Vec<ContentPieceTokens>> {
+        match self {
+            NodeTokens::EnclosingTag { tag, content, .. }
+                if tag.to_string().eq_ignore_ascii_case(tag_name) =>
+            {
+                Some(content)
+            }
+            _ => None,
+        }
+    }
+}
 
 mod keyword {
     syn::custom_keyword!(DOCTYPE);
@@ -152,101 +175,139 @@ impl Parse for Directive {
 
 impl Parse for NodeTokens {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        if input.peek(Token![<]) {
-            if input.peek2(Token![!]) {
-                let _open: Token![<] = input.parse()?;
-                let _bang: Token![!] = input.parse()?;
-                let _doctype: keyword::DOCTYPE = input.parse()?;
-                let _html: keyword::html = input.parse()?;
-                let _end: Token![>] = input.parse()?;
+        let mut node = parse_internal(input)?;
+        inject_hydration_hooks(&mut node);
+        return Ok(node);
 
-                return Ok(NodeTokens::Doctype {
-                    _open,
-                    _bang,
-                    _doctype,
-                    _html,
-                    _end,
-                });
-            }
+        fn parse_internal(input: ParseStream) -> syn::Result<NodeTokens> {
+            if input.peek(Token![<]) {
+                if input.peek2(Token![!]) {
+                    let _open: Token![<] = input.parse()?;
+                    let _bang: Token![!] = input.parse()?;
+                    let _doctype: keyword::DOCTYPE = input.parse()?;
+                    let _html: keyword::html = input.parse()?;
+                    let _end: Token![>] = input.parse()?;
 
-            // reject empty tags (`<>`) or end tags (`</name>`)
-            if !input.peek2(Ident) {
-                return Err(input.error("Expected a tag name after '<' for a start tag"));
-            }
-
-            let _start_open: Token![<] = input.parse()?;
-            let tag: HtmlIdent = input.parse()?;
-
-            let mut attributes = Vec::new();
-            while let Ok(attribute) = input.parse::<AttributeTokens>() {
-                attributes.push(attribute);
-            }
-
-            if input.peek(Token![/]) {
-                let _slash: Token![/] = input.parse()?;
-                let _end: Token![>] = input.parse()?;
-
-                Ok(NodeTokens::SelfClosingTag {
-                    _open: _start_open,
-                    tag,
-                    attributes,
-                    _slash,
-                    _end,
-                })
-            } else if input.peek(Token![>]) {
-                let _start_close: Token![>] = input.parse()?;
-
-                // tolerantly accept some self-closing tags without a slash
-                if tag.head == "br" || tag.head == "meta" || tag.head == "link" || tag.head == "hr"
-                {
-                    return Ok(NodeTokens::SelfClosingTag {
-                        _open: _start_open,
-                        tag,
-                        attributes,
-                        _slash: Token![/](input.span()),
-                        _end: _start_close,
+                    return Ok(NodeTokens::Doctype {
+                        _open,
+                        _bang,
+                        _doctype,
+                        _html,
+                        _end,
                     });
                 }
 
-                let mut content = Vec::<ContentPieceTokens>::new();
-                #[allow(clippy::nonminimal_bool)]
-                while (!input.is_empty()) && !(input.peek(Token![<]) && input.peek2(Token![/])) {
-                    content.push(input.parse()?);
+                // reject empty tags (`<>`) or end tags (`</name>`)
+                if !input.peek2(Ident) {
+                    return Err(input.error("Expected a tag name after '<' for a start tag"));
                 }
 
-                let _end_open: Token![<] = input.parse()?;
-                let _slash: Token![/] = input.parse()?;
+                let _start_open: Token![<] = input.parse()?;
+                let tag: HtmlIdent = input.parse()?;
 
-                let _tag: HtmlIdent = input.parse()?;
-                if _tag != tag {
-                    return Err(syn::Error::new(
-                        tag.span(),
-                        format!("Not closing tag: no corresponded `/>` or `</{tag}>` exists"),
-                    ));
+                let mut attributes = Vec::new();
+                while let Ok(attribute) = input.parse::<AttributeTokens>() {
+                    attributes.push(attribute);
                 }
 
-                let _end_close: Token![>] = input.parse()?;
+                if input.peek(Token![/]) {
+                    let _slash: Token![/] = input.parse()?;
+                    let _end: Token![>] = input.parse()?;
 
-                Ok(NodeTokens::EnclosingTag {
-                    _start_open,
-                    tag,
-                    attributes,
-                    _start_close,
-                    content,
-                    _end_open,
-                    _slash,
-                    _tag,
-                    _end_close,
-                })
+                    Ok(NodeTokens::SelfClosingTag {
+                        _open: _start_open,
+                        tag,
+                        attributes,
+                        _slash,
+                        _end,
+                    })
+                } else if input.peek(Token![>]) {
+                    let _start_close: Token![>] = input.parse()?;
+
+                    // tolerantly accept some self-closing tags without a slash
+                    if tag.head == "br"
+                        || tag.head == "meta"
+                        || tag.head == "link"
+                        || tag.head == "hr"
+                    {
+                        return Ok(NodeTokens::SelfClosingTag {
+                            _open: _start_open,
+                            tag,
+                            attributes,
+                            _slash: Token![/](input.span()),
+                            _end: _start_close,
+                        });
+                    }
+
+                    let mut content = Vec::<ContentPieceTokens>::new();
+                    #[allow(clippy::nonminimal_bool)]
+                    while (!input.is_empty()) && !(input.peek(Token![<]) && input.peek2(Token![/]))
+                    {
+                        content.push(input.parse()?);
+                    }
+
+                    let _end_open: Token![<] = input.parse()?;
+                    let _slash: Token![/] = input.parse()?;
+
+                    let _tag: HtmlIdent = input.parse()?;
+                    if _tag != tag {
+                        return Err(syn::Error::new(
+                            tag.span(),
+                            format!("Not closing tag: no corresponded `/>` or `</{tag}>` exists"),
+                        ));
+                    }
+
+                    let _end_close: Token![>] = input.parse()?;
+
+                    Ok(NodeTokens::EnclosingTag {
+                        _start_open,
+                        tag,
+                        attributes,
+                        _start_close,
+                        content,
+                        _end_open,
+                        _slash,
+                        _tag,
+                        _end_close,
+                    })
+                } else {
+                    Err(input.error("Expected '>' or '/>' at the end of a tag"))
+                }
             } else {
-                Err(input.error("Expected '>' or '/>' at the end of a tag"))
+                let mut pieces = Vec::new();
+                while let Ok(content_piece_tokens) = input.parse::<ContentPieceTokens>() {
+                    pieces.push(content_piece_tokens);
+                }
+                Ok(NodeTokens::TextNode(pieces))
             }
-        } else {
-            let mut pieces = Vec::new();
-            while let Ok(content_piece_tokens) = input.parse::<ContentPieceTokens>() {
-                pieces.push(content_piece_tokens);
+        }
+
+        fn inject_hydration_hooks(node: &mut NodeTokens) {
+            if let Some(head_children) = node.enclosing_tag_children_mut("head") {
+                head_children.extend([
+                        ContentPieceTokens::Node(syn::parse_quote! {
+                            <script type="importmap">
+r#"{"imports": {
+"preact": "https://esm.sh/preact@10.28.0",
+"preact/": "https://esm.sh/preact@10.28.0/",
+"@preact/signals": "https://esm.sh/@preact/signals@2.5.1?external=preact"
+}}"#
+                            </script>
+                        }),
+                        ContentPieceTokens::Node(syn::parse_quote! {
+                            <link rel="modulepreload" href="https://esm.sh/preact@10.28.0" />
+                        }),
+                        ContentPieceTokens::Node(syn::parse_quote! {
+                            <link rel="modulepreload" href="https://esm.sh/@preact/signals@2.5.1?external=preact" />
+                        }),
+                    ]);
             }
-            Ok(NodeTokens::TextNode(pieces))
+
+            if let Some(body_children) = node.enclosing_tag_children_mut("body") {
+                body_children.push(ContentPieceTokens::Node(syn::parse_quote! {
+                    <script type="module" src="/.uibeam/hydrate.js"></script>
+                }));
+            }
         }
     }
 }

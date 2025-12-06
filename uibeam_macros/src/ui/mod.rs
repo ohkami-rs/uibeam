@@ -30,23 +30,9 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
     };
 
     let server_ui = {
-        use self::parse::{ContentPieceTokens, NodeTokens};
-
-        fn is_enclosing_tag(node: &NodeTokens, tag_name: &str) -> bool {
-            match node {
-                /* starting with <html>..., without <!DOCTYPE html> */
-                NodeTokens::EnclosingTag { tag, .. }
-                    if tag.to_string().eq_ignore_ascii_case(tag_name) =>
-                {
-                    true
-                }
-                _ => false,
-            }
-        }
-
         if nodes
             .first()
-            .is_some_and(|node| matches!(node, NodeTokens::Doctype { .. }))
+            .is_some_and(|node| matches!(node, self::parse::NodeTokens::Doctype { .. }))
         {
             // removing existing doctype declaration to insert our own later
             // as a part of static string literal (for performance optimization)
@@ -55,40 +41,8 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
 
         let uis = nodes
             .into_iter()
-            .map(|mut node| {
-                if is_enclosing_tag(&node, "head") {
-                    let NodeTokens::EnclosingTag { content, .. } = &mut node else {
-                        unreachable!();
-                    };
-                    content.extend([
-                        ContentPieceTokens::Node(syn::parse_quote! {
-                            <script type="importmap">
-r#"{"imports": {
-    "preact": "https://esm.sh/preact@10.28.0",
-    "preact/": "https://esm.sh/preact@10.28.0/",
-    "@preact/signals": "https://esm.sh/@preact/signals@2.5.1?external=preact"
-}}"#
-                            </script>
-                        }),
-                        ContentPieceTokens::Node(syn::parse_quote! {
-                            <link rel="modulepreload" href="https://esm.sh/preact@10.28.0" />
-                        }),
-                        ContentPieceTokens::Node(syn::parse_quote! {
-                            <link rel="modulepreload" href="https://esm.sh/@preact/signals@2.5.1?external=preact" />
-                        }),
-                    ]);
-                }
-
-                if is_enclosing_tag(&node, "body") {
-                    let NodeTokens::EnclosingTag { content, .. } = &mut node else {
-                        unreachable!();
-                    };
-                    content.push(ContentPieceTokens::Node(syn::parse_quote! {
-                        <script type="module" src="/.uibeam/hydrate.js"></script>
-                    }));
-                }
-
-                let is_html_tag = is_enclosing_tag(&node, "html");
+            .map(|node| {
+                let is_html_tag = node.enclosing_tag_children("html").is_some();
 
                 let (mut literals, expressions, ehannotations) =
                     transform::server::transform(&directives, node)?;
