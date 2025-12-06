@@ -60,10 +60,6 @@ mod preact {
 
 #[cfg(hydrate)]
 use {
-    crate::{
-        Beam,
-        bound::{BeamKind, IslandInternal},
-    },
     ::js_sys::{Array, Function, Object, Reflect},
     ::wasm_bindgen::prelude::*,
 };
@@ -85,10 +81,7 @@ impl NodeType {
         NodeType(tag.into())
     }
 
-    pub fn component<B, K: BeamKind>() -> NodeType
-    where
-        B: Beam<IslandInternal<K>> + for<'de> serde::Deserialize<'de>,
-    {
+    pub fn component<B: crate::bound::IslandBoundary>() -> NodeType {
         let component_function: Function = Closure::<dyn Fn(JsValue) -> JsValue>::new(|props| {
             let props: B = serde_wasm_bindgen::from_value(props).unwrap_throw();
             crate::render_in_island(props).into_vdom().0

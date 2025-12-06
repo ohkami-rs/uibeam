@@ -284,11 +284,11 @@ working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/mai
     
     use uibeam::{UI, Beam};
     use uibeam::{client, Signal, callback};
-    use serde::{Serialize};
+    use serde::{Serialize, Deserialize};
     
     // Client component located at **island boundary**
-    // must be `Serialize`. (see NOTE below)
-    #[derive(Serialize)]
+    // must be `Serialize + for<'de> Deserialize<'de>`. (see NOTE below)
+    #[derive(Serialize, Deserialize)]
     pub struct Counter;
     
     // `#[client]` makes Beam a Wasm island.
@@ -341,9 +341,9 @@ working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/mai
     ```
    
    **NOTE**:
-   Just `#[client]` components without `(island)`,
-   e.g. one having `children: UI` or `on_something: Box<dyn FnOnce(Event)>` as its props,
-   can **only be used internally in `UI!` of another client component**.
+   Client Beam at island boundary must be `Serialize + for<'de> Deserialize<'de>` in order to the Wasm island architecture.
+   In contrast, `#[client]` components without `(island)`, e.g. having `children: UI` or `on_something: Box<dyn FnOnce(Event)>`
+   as props, can NOT implement `Serialize` nor `Deserialize` and can **only be used internally in `UI!` of another client component**.
    Especially note that client components at **island boundary can't have `children`**.
 
 4. Compile the lib crate into Wasm by `wasm-pack build` with **`RUSTFLAGS='--cfg hydrate'`** and **`--out-name hydrate --target web`**:
@@ -361,7 +361,7 @@ working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/mai
     ```
   
    **NOTE**:
-   All of `RUSTFLAGS='--cfg hydrate'`, `--out-name hydrate` and `--target web` are **required** here.
+   All of `hydrate` cfg (not feature!), `hydrate` out-name and `web` target are **required** here.
 
 5. Make sure that your server responds with **a complete HTML consist of one <html></html> containing your page contents**.
    

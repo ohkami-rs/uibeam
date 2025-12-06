@@ -181,11 +181,11 @@ mod bound {
     #[doc(hidden)]
     pub struct ServerOrIslandBoundary<K: BeamKind>(std::marker::PhantomData<K>);
     #[doc(hidden)]
-    pub struct IslandInternal<K: BeamKind>(std::marker::PhantomData<K>);
+    pub struct Anywhere<K: BeamKind>(std::marker::PhantomData<K>);
     #[doc(hidden)]
     impl<K: BeamKind> BeamKind for ServerOrIslandBoundary<K> {}
     #[doc(hidden)]
-    impl<K: BeamKind> BeamKind for IslandInternal<K> {}
+    impl<K: BeamKind> BeamKind for Anywhere<K> {}
 
     // `ServerOrIslandBoundary` means either server Beam or island-boundary client Beam that is Serialize-able.
     #[doc(hidden)]
@@ -209,9 +209,8 @@ mod bound {
         }
     }
 
-    // `IslandInternal` is ability to be rendered inside an island i.e. any Beams.
     #[doc(hidden)]
-    impl<T> Beam<IslandInternal<Server>> for T
+    impl<T> Beam<Anywhere<Server>> for T
     where
         T: Beam<Server>,
     {
@@ -221,7 +220,7 @@ mod bound {
         }
     }
     #[doc(hidden)]
-    impl<T> Beam<IslandInternal<Client>> for T
+    impl<T> Beam<Anywhere<Client>> for T
     where
         T: Beam<Client>,
     {
@@ -236,8 +235,8 @@ mod bound {
         Beam::<ServerOrIslandBoundary<K>>::render(beam)
     }
     #[doc(hidden)]
-    pub fn render_in_island<K: BeamKind>(beam: impl Beam<IslandInternal<K>>) -> super::UI {
-        Beam::<IslandInternal<K>>::render(beam)
+    pub fn render_in_island<K: BeamKind>(beam: impl Beam<Anywhere<K>>) -> super::UI {
+        Beam::<Anywhere<K>>::render(beam)
     }
 }
 
