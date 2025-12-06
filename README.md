@@ -32,6 +32,14 @@
 uibeam = "0.4"
 ```
 
+When using `uibeam` just as a template engine, disabling `client` default feature is recommended
+to eliminate useless dependencies:
+
+```toml
+[dependencies]
+uibeam = { version = "0.4", default-features = false }
+```
+
 ### `UI!` syntax
 
 ```rust

@@ -1,3 +1,5 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
+
 mod ui;
 #[cfg(feature = "client")]
 mod client;
@@ -280,6 +282,7 @@ pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///
 ///    (as a result, generated `{crate name}/pkg/hydrate.js` is served at `/.uibeam/hydrate.js` route,
 ///    which is automatically loaded together with corresponding .wasm file in the hydration step on browser.)
+#[cfg_attr(docsrs, doc(cfg(feature = "client")))]
 #[cfg(feature = "client")]
 #[proc_macro_attribute]
 pub fn client(

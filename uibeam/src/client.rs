@@ -132,6 +132,99 @@ impl VNode {
     }
 }
 
+/// A thin shorthand for creating closures of clone-and-move pattern.
+///
+/// This is useful when creating **event handlers or callbacks using signals**:
+///
+/// ```
+/// use uibeam::{Signal, callback};
+/// use uibeam::client::{InputEvent, PointerEvent};
+/// use wasm_bindgen::JsCast;
+/// use web_sys::HtmlInputElement;
+///
+/// # fn usage() {
+/// let name = Signal::new("Alice".to_owned());
+/// let count = Signal::new(0);
+///
+/// let handle_name_input = callback!([name], |e: InputEvent| {
+///     let input_element: HtmlInputElement = e
+///         .current_target().unwrap()
+///         .dyn_into().unwrap();
+///     name.set(input_element.value());
+/// });
+///
+/// let handle_increment_click = callback!([count], |_: PointerEvent| {
+///     count.set(*count + 1);
+/// });
+/// # }
+/// ```
+///
+/// ## Example
+/// ```
+/// use uibeam::{UI, Laser, Signal, callback};
+///
+/// #[Laser]
+/// #[derive(serde::Serialize, serde::Deserialize)]
+/// pub struct Counter {
+///     pub initial_count: i32,
+/// }
+///
+/// impl Laser for Counter {
+///     fn render(self) -> UI {
+///         let count = Signal::new(self.initial_count);
+///
+///         let increment = callback!([count], |_| {
+///             count.set(*count + 1);
+///         });
+///
+///         let decrement = callback!([count], |_| {
+///             count.set(*count - 1);
+///         });
+///
+///         UI! {
+///             <div class="w-[144px]">
+///                 <p class="text-2xl font-bold text-center">
+///                     "Count: "{*count}
+///                 </p>
+///                 <div class="text-center">
+///                     <button
+///                         class="cursor-pointer bg-red-500  w-[32px] py-1 text-white rounded-md"
+///                         onclick={decrement}
+///                     >"-"</button>
+///                     <button
+///                         class="cursor-pointer bg-blue-500 w-[32px] py-1 text-white rounded-md"
+///                         onclick={increment}
+///                     >"+"</button>
+///                 </div>
+///             </div>
+///         }
+///     }
+/// }
+/// ```
+#[cfg_attr(docsrs, doc(cfg(feature = "client")))]
+#[macro_export]
+macro_rules! callback {
+    ([$($dep:ident),*], || $result:expr) => {
+        {
+            $(let $dep = $dep.clone();)+
+            move || $result
+        }
+    };
+    ([$($dep:ident),*], |_ $(: $Type:ty)?| $result:expr) => {
+        {
+            $(let $dep = $dep.clone();)*
+            move |_ $(: $Type)?| $result
+        }
+    };
+    ([$($dep:ident),*], |$($arg:ident $(: $Type:ty)?),+| $result:expr) => {
+        {
+            $(let $dep = $dep.clone();)+
+            move |$($arg $(: $Type)?),+| $result
+        }
+    };
+}
+
+#[cfg_attr(docsrs, doc(cfg(feature = "client")))]
 pub struct Signal<T: serde::Serialize + for<'de> serde::Deserialize<'de>> {
     #[cfg(hydrate)]
     preact_signal: Object,
@@ -218,6 +311,7 @@ where
     }
 }
 
+#[doc(hidden)]
 pub struct Computed<T: serde::Serialize + for<'de> serde::Deserialize<'de>>(Signal<T>);
 
 impl<T> Clone for Computed<T>
@@ -271,97 +365,6 @@ where
     }
 }
 
-/// Shorthand for creating closures that capture variables by cloning them.
-///
-/// This is useful when creating **event handlers or callbacks using signals**:
-///
-/// ```
-/// use uibeam::{Signal, callback};
-/// use uibeam::client::{InputEvent, PointerEvent};
-/// use wasm_bindgen::JsCast;
-/// use web_sys::HtmlInputElement;
-///
-/// # fn usage() {
-/// let name = Signal::new("Alice".to_owned());
-/// let count = Signal::new(0);
-///
-/// let handle_name_input = callback!([name], |e: InputEvent| {
-///     let input_element: HtmlInputElement = e
-///         .current_target().unwrap()
-///         .dyn_into().unwrap();
-///     name.set(input_element.value());
-/// });
-///
-/// let handle_increment_click = callback!([count], |_: PointerEvent| {
-///     count.set(*count + 1);
-/// });
-/// # }
-/// ```
-///
-/// ## Example
-/// ```
-/// use uibeam::{UI, Laser, Signal, callback};
-///
-/// #[Laser]
-/// #[derive(serde::Serialize, serde::Deserialize)]
-/// pub struct Counter {
-///     pub initial_count: i32,
-/// }
-///
-/// impl Laser for Counter {
-///     fn render(self) -> UI {
-///         let count = Signal::new(self.initial_count);
-///
-///         let increment = callback!([count], |_| {
-///             count.set(*count + 1);
-///         });
-///
-///         let decrement = callback!([count], |_| {
-///             count.set(*count - 1);
-///         });
-///
-///         UI! {
-///             <div class="w-[144px]">
-///                 <p class="text-2xl font-bold text-center">
-///                     "Count: "{*count}
-///                 </p>
-///                 <div class="text-center">
-///                     <button
-///                         class="cursor-pointer bg-red-500  w-[32px] py-1 text-white rounded-md"
-///                         onclick={decrement}
-///                     >"-"</button>
-///                     <button
-///                         class="cursor-pointer bg-blue-500 w-[32px] py-1 text-white rounded-md"
-///                         onclick={increment}
-///                     >"+"</button>
-///                 </div>
-///             </div>
-///         }
-///     }
-/// }
-/// ```
-#[macro_export]
-macro_rules! callback {
-    ([$($dep:ident),*], || $result:expr) => {
-        {
-            $(let $dep = $dep.clone();)+
-            move || $result
-        }
-    };
-    ([$($dep:ident),*], |_ $(: $Type:ty)?| $result:expr) => {
-        {
-            $(let $dep = $dep.clone();)*
-            move |_ $(: $Type)?| $result
-        }
-    };
-    ([$($dep:ident),*], |$($arg:ident $(: $Type:ty)?),+| $result:expr) => {
-        {
-            $(let $dep = $dep.clone();)+
-            move |$($arg $(: $Type)?),+| $result
-        }
-    };
-}
-
 /// `computed!([deps, ...], || -> T { ... })` creates a `Computed<T>` signal
 /// that automatically updates when any of the `deps` signals change.
 ///
@@ -404,6 +407,7 @@ macro_rules! callback {
 ///     }
 /// }
 /// ```
+#[cfg_attr(docsrs, doc(cfg(feature = "client")))]
 #[macro_export]
 macro_rules! computed {
     ($($t:tt)*) => {
@@ -411,6 +415,7 @@ macro_rules! computed {
     };
 }
 
+#[doc(hidden)]
 pub struct Effect;
 
 impl<F> super::client_attribute<F> for Effect
@@ -467,6 +472,7 @@ where
 ///     }
 /// }
 /// ```
+#[cfg_attr(docsrs, doc(cfg(feature = "client")))]
 #[macro_export]
 macro_rules! effect {
     ($($t:tt)*) => {
@@ -474,6 +480,7 @@ macro_rules! effect {
     };
 }
 
+#[doc(hidden)]
 pub struct Batch;
 
 impl<F> super::client_attribute<F> for Batch
@@ -490,6 +497,7 @@ where
     }
 }
 
+#[cfg_attr(docsrs, doc(cfg(feature = "client")))]
 #[macro_export]
 macro_rules! batch {
     ($($t:tt)*) => {
@@ -497,6 +505,7 @@ macro_rules! batch {
     };
 }
 
+#[doc(hidden)]
 pub struct Untracked;
 
 impl<F> super::client_attribute<F> for Untracked
@@ -513,6 +522,7 @@ where
     }
 }
 
+#[cfg_attr(docsrs, doc(cfg(feature = "client")))]
 #[macro_export]
 macro_rules! untracked {
     ($($t:tt)*) => {

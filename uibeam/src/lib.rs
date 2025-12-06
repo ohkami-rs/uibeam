@@ -37,16 +37,19 @@ compile_error!("`hydrate` cfg must be specified only when compiling to Wasm");
 /* for `UI!` use in this crate itself */
 extern crate self as uibeam;
 
+#[cfg_attr(docsrs, doc(cfg(feature = "client")))]
 #[cfg(feature = "client")]
 pub mod client;
 #[cfg(feature = "__integration__")]
 mod integration;
 
+#[cfg_attr(docsrs, doc(cfg(feature = "client")))]
 #[cfg(feature = "client")]
 pub use client::Signal;
 /* macro_export client::{batch, callback, computed, effect, untracked}; */
 pub use uibeam_html::escape;
 pub use uibeam_macros::UI;
+#[cfg_attr(docsrs, doc(cfg(feature = "client")))]
 #[cfg(feature = "client")]
 pub use uibeam_macros::client;
 
