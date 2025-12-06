@@ -354,11 +354,6 @@ working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/mai
     cd islands
     RUSTFLAGS='--cfg hydrate' wasm-pack build --out-name hydrate --target web
     ```
-    ```sh
-    # **`--release`** in relase build:
-    
-    RUSTFLAGS='--cfg hydrate' wasm-pack build --out-name hydrate --target web --release
-    ```
   
    **NOTE**:
    All of `hydrate` cfg (not feature!), `hydrate` out-name and `web` target are **required** here.
