@@ -1,4 +1,4 @@
-use uibeam::{UI, Beam, Laser, Signal, callback};
+use uibeam::{UI, Beam, Signal, callback};
 
 pub struct Layout {
     pub title: String,
@@ -44,13 +44,13 @@ impl Beam for Layout {
 //     }
 // }
 
-#[Laser]
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize)]
 pub struct Counter {
     pub initial_count: i32,
 }
 
-impl Laser for Counter {
+#[uibeam::client]
+impl Beam for Counter {
     fn render(self) -> UI {
         let count = Signal::new(self.initial_count);
 

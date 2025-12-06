@@ -3,7 +3,7 @@ resolver = "3"
 members  = [".", "components"]
 
 [workspace.dependencies]
-uibeam = { path = "../../uibeam", features = ["laser"] }
+uibeam = { path = "../../uibeam" }
 serde  = { version = "1", features = ["derive"] }
 
 [workspace.metadata.tasks]

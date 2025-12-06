@@ -54,7 +54,7 @@ pub(super) fn expand(args: TokenStream, input: TokenStream) -> syn::Result<Token
 
         fn_render.block = if is_island_boundary {
             parse_quote! ({
-                use ::uibeam::client::ClientContext as _;
+                use ::uibeam::client_attribute as _;
 
                 #[cfg(hydrate)]
                 return {
@@ -74,7 +74,7 @@ pub(super) fn expand(args: TokenStream, input: TokenStream) -> syn::Result<Token
             })
         } else {
             parse_quote!({
-                use ::uibeam::client::ClientContext as _;
+                use ::uibeam::client_attribute as _;
                 #(#stmts)*
             })
         };

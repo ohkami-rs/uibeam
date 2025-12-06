@@ -125,12 +125,6 @@ impl VNode {
     }
 }
 
-/// automatically introduced by `#[client]`
-#[doc(hidden)]
-pub trait ClientContext<T> {
-    fn new(value: T) -> Self;
-}
-
 pub struct Signal<T: serde::Serialize + for<'de> serde::Deserialize<'de>> {
     #[cfg(hydrate)]
     preact_signal: Object,
@@ -139,7 +133,7 @@ pub struct Signal<T: serde::Serialize + for<'de> serde::Deserialize<'de>> {
     current_value: std::rc::Rc<std::cell::UnsafeCell<T>>,
 }
 
-impl<T> ClientContext<T> for Signal<T>
+impl<T> super::client_attribute<T> for Signal<T>
 where
     T: serde::Serialize + for<'de> serde::Deserialize<'de>,
 {
@@ -239,7 +233,7 @@ where
     }
 }
 
-impl<T, F> ClientContext<F> for Computed<T>
+impl<T, F> super::client_attribute<F> for Computed<T>
 where
     T: serde::Serialize + for<'de> serde::Deserialize<'de>,
     F: Fn() -> T + 'static,
@@ -412,7 +406,7 @@ macro_rules! computed {
 
 pub struct Effect;
 
-impl<F> ClientContext<F> for Effect
+impl<F> super::client_attribute<F> for Effect
 where
     F: Fn() + 'static,
 {
@@ -475,7 +469,7 @@ macro_rules! effect {
 
 pub struct Batch;
 
-impl<F> ClientContext<F> for Batch
+impl<F> super::client_attribute<F> for Batch
 where
     F: Fn() + 'static,
 {
@@ -498,7 +492,7 @@ macro_rules! batch {
 
 pub struct Untracked;
 
-impl<F> ClientContext<F> for Untracked
+impl<F> super::client_attribute<F> for Untracked
 where
     F: Fn() + 'static,
 {
