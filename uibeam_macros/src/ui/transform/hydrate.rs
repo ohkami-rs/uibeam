@@ -185,13 +185,14 @@ pub(crate) fn transform(tokens: NodeTokens) -> syn::Result<TokenStream> {
                     let vnodes_vec = into_children(node_pieces)?;
                     (quote! {
                         ::uibeam::client::VNode::fragment(#vnodes_vec)
-                    }).to_tokens(t);
+                    })
+                    .to_tokens(t);
                 }
             }
         }
         Ok(())
     }
-    
+
     let mut t = TokenStream::new();
     encode(&mut t, tokens)?;
     Ok(t)

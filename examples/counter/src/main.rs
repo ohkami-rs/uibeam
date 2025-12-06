@@ -1,8 +1,7 @@
 use components::{Layout, Counter};
 use uibeam::UI;
 use ohkami::{Ohkami, Route, FangAction, Request, Response};
-use ohkami::serde::Deserialize;
-use ohkami::claw::{param::Query, content::Html};
+use ohkami::claw::param::Query;
 
 #[derive(Clone)]
 struct LayoutFang {
@@ -34,15 +33,15 @@ impl FangAction for Logger {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 struct CounterMeta {
     init: Option<i32>,
 }
 
-async fn index(Query(q): Query<CounterMeta>) -> Html<std::borrow::Cow<'static, str>> {
+async fn index(Query(q): Query<CounterMeta>) -> UI {
     let initial_count = q.init.unwrap_or(0);
 
-    Html(uibeam::shoot(UI! {
+    UI! {
         <main>
             <h1 class="text-4xl font-bold mb-8 text-center">"Counter Example"</h1>
             <div class="space-y-8">
@@ -60,7 +59,7 @@ async fn index(Query(q): Query<CounterMeta>) -> Html<std::borrow::Cow<'static, s
                 })}
             </div>
         </main>
-    }))
+    }
 }
 
 fn main() {

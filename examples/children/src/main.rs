@@ -91,4 +91,3 @@ fn test_html() {
 
     assert_eq!(output, include_str!("../expected.html"));
 }
-

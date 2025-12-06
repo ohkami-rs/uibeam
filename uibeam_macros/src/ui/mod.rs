@@ -71,10 +71,10 @@ r#"{"imports": {
                             </script>
                         }),
                         ContentPieceTokens::Node(syn::parse_quote! {
-<link rel="modulepreload" href="https://esm.sh/preact@10.28.0" />
+                            <link rel="modulepreload" href="https://esm.sh/preact@10.28.0" />
                         }),
                         ContentPieceTokens::Node(syn::parse_quote! {
-<link rel="modulepreload" href="https://esm.sh/@preact/signals@2.5.1?external=preact" />
+                            <link rel="modulepreload" href="https://esm.sh/@preact/signals@2.5.1?external=preact" />
                         }),
                     ]);
                 }
