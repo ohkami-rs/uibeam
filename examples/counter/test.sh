@@ -4,6 +4,7 @@ set -euo pipefail
 cargo install -q wasm-pack wasm-bindgen-cli
 
 cd components
+cargo test
 if [ -d "./pkg" ]; then
     rm -rf ./pkg
 fi

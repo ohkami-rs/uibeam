@@ -10,7 +10,6 @@ impl Beam for Layout {
         UI! {
             <html>
                 <head>
-                    <link rel="stylesheet" href="/.uibeam/tailwind.css" />
                     <title>{&*self.title}</title>
                 </head>
                 <body>
@@ -76,4 +75,23 @@ impl Beam for Counter {
             </div>
         }
     }
+}
+
+#[cfg(test)]
+#[test]
+fn test_html() {
+    let html = uibeam::shoot(UI! {
+        <Layout title="Test Counter">
+            <Counter initial_count={5} />
+        </Layout>
+    });
+
+    let expected_html = include_str!("../expected.pretty.html")
+        .split('\n')
+        .map(str::trim)
+        .collect::<Vec<_>>()
+        .join("")
+        .replace("\",\"", "\", \""); // for importmap format
+
+    assert_eq!(html, expected_html);
 }
