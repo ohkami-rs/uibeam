@@ -18,7 +18,7 @@ pub fn serialize_props<P: super::IslandBoundary>(props: &P) -> String {
 #[cfg(hydrate)]
 mod src_hydrate_js {
     use super::*;
-    
+
     #[wasm_bindgen(module = "/src/hydrate.js")]
     extern "C" {
         #[wasm_bindgen]
@@ -137,39 +137,46 @@ impl VNode {
 /// This is useful when creating **event handlers or callbacks using signals**:
 ///
 /// ```
-/// use uibeam::{Signal, callback};
+/// use uibeam::{UI, Beam, Signal, callback};
 /// use uibeam::client::{InputEvent, PointerEvent};
 /// use wasm_bindgen::JsCast;
 /// use web_sys::HtmlInputElement;
 ///
-/// # fn usage() {
-/// let name = Signal::new("Alice".to_owned());
-/// let count = Signal::new(0);
+/// struct ClientBeam;
 ///
-/// let handle_name_input = callback!([name], |e: InputEvent| {
-///     let input_element: HtmlInputElement = e
-///         .current_target().unwrap()
-///         .dyn_into().unwrap();
-///     name.set(input_element.value());
-/// });
+/// #[uibeam::client]
+/// impl Beam for ClientBeam {
+///     fn render(self) -> UI {
+///         let name = Signal::new("Alice".to_owned());
+///         let count = Signal::new(0);
 ///
-/// let handle_increment_click = callback!([count], |_: PointerEvent| {
-///     count.set(*count + 1);
-/// });
-/// # }
+///         let handle_name_input = callback!([name], |e: InputEvent| {
+///             let input_element: HtmlInputElement = e
+///                 .current_target().unwrap()
+///                 .dyn_into().unwrap();
+///             name.set(input_element.value());
+///         });
+///
+///         let handle_increment_click = callback!([count], |_: PointerEvent| {
+///             count.set(*count + 1);
+///         });
+///
+///         todo!()
+///     }
+/// }
 /// ```
 ///
 /// ## Example
 /// ```
-/// use uibeam::{UI, Laser, Signal, callback};
+/// use uibeam::{UI, Beam, Signal, callback};
 ///
-/// #[Laser]
 /// #[derive(serde::Serialize, serde::Deserialize)]
 /// pub struct Counter {
 ///     pub initial_count: i32,
 /// }
 ///
-/// impl Laser for Counter {
+/// #[uibeam::client(island)]
+/// impl Beam for Counter {
 ///     fn render(self) -> UI {
 ///         let count = Signal::new(self.initial_count);
 ///
@@ -370,13 +377,13 @@ where
 ///
 /// ## Example
 /// ```
-/// use uibeam::{UI, Laser, Signal, callback, computed};
+/// use uibeam::{UI, Beam, Signal, callback, computed};
 ///
-/// #[Laser]
 /// #[derive(serde::Serialize, serde::Deserialize)]
 /// pub struct ComputedExample;
 ///
-/// impl Laser for ComputedExample {
+/// #[uibeam::client(island)]
+/// impl Beam for ComputedExample {
 ///     fn render(self) -> UI {
 ///         let count = Signal::new(0u32);
 ///
@@ -437,14 +444,14 @@ where
 ///
 /// ## Example
 /// ```
-/// use uibeam::{UI, Laser, Signal, callback, effect};
+/// use uibeam::{UI, Beam, Signal, callback, effect};
 /// use web_sys::console;
 ///
-/// #[Laser]
 /// #[derive(serde::Serialize, serde::Deserialize)]
 /// pub struct EffectExample;
 ///
-/// impl Laser for EffectExample {
+/// #[uibeam::client(island)]
+/// impl Beam for EffectExample {
 ///     fn render(self) -> UI {
 ///         let count = Signal::new(0);
 ///

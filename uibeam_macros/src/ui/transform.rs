@@ -1,6 +1,6 @@
-pub(super) mod server;
 #[cfg(feature = "client")]
 pub(super) mod hydrate;
+pub(super) mod server;
 
 use super::parse::{
     AttributeTokens, AttributeValueToken, AttributeValueTokens, ContentPieceTokens, Directive,

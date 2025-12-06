@@ -163,10 +163,10 @@ pub trait Beam<Kind: bound::BeamKind = Server> {
 }
 
 #[doc(hidden)]
-pub use bound::{Server, render_on_server};
-#[doc(hidden)]
 #[cfg(feature = "client")]
 pub use bound::{Client, IslandBoundary, render_in_island};
+#[doc(hidden)]
+pub use bound::{Server, render_on_server};
 #[doc(hidden)]
 mod bound {
     use crate::Beam;
@@ -618,6 +618,7 @@ impl UI {
     }
 }
 
+#[cfg(not(feature = "client"))]
 #[cfg(test)]
 mod test {
     use super::*;

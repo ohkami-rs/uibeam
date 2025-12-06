@@ -32,10 +32,7 @@ impl Beam for CounterButton {
     fn render(self) -> UI {
         UI! {
             <button
-                class={format!(
-                    "cursor-pointer w-[32px] py-1 text-white rounded-md {}",
-                    self.class.unwrap_or("")
-                )}
+                class={self.class.unwrap_or("")}
                 onclick={self.on_click}
             >
                 {self.children}
@@ -62,18 +59,18 @@ impl Beam for Counter {
         });
 
         UI! {
-            <div class="w-[144px]">
-                <p class="text-2xl font-bold text-center">
+            <div>
+                <p>
                     "Count: "{*count}
                 </p>
-                <div class="text-center">
+                <div>
                     <CounterButton
                         on_click={Box::new(decrement)}
-                        class="bg-red-500"
+                        class={None}
                     >"-"</CounterButton>
                     <CounterButton
                         on_click={Box::new(increment)}
-                        class="bg-blue-500"
+                        class={None}
                     >"+"</CounterButton>
                 </div>
             </div>

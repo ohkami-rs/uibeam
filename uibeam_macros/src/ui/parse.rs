@@ -20,7 +20,7 @@ impl Directive {
     pub(super) fn client(&self) -> bool {
         self.name == "client"
     }
-    
+
     #[allow(unused)]
     pub(super) fn new(name: &str) -> Self {
         Directive {
@@ -61,7 +61,10 @@ pub(super) enum NodeTokens {
     TextNode(Vec<ContentPieceTokens>),
 }
 impl NodeTokens {
-    pub(super) fn enclosing_tag_children(&self, tag_name: &str) -> Option<&Vec<ContentPieceTokens>> {
+    pub(super) fn enclosing_tag_children(
+        &self,
+        tag_name: &str,
+    ) -> Option<&Vec<ContentPieceTokens>> {
         match self {
             NodeTokens::EnclosingTag { tag, content, .. }
                 if tag.to_string().eq_ignore_ascii_case(tag_name) =>
@@ -71,8 +74,12 @@ impl NodeTokens {
             _ => None,
         }
     }
-    
-    pub(super) fn enclosing_tag_children_mut(&mut self, tag_name: &str) -> Option<&mut Vec<ContentPieceTokens>> {
+
+    #[allow(unused)]
+    pub(super) fn enclosing_tag_children_mut(
+        &mut self,
+        tag_name: &str,
+    ) -> Option<&mut Vec<ContentPieceTokens>> {
         match self {
             NodeTokens::EnclosingTag { tag, content, .. }
                 if tag.to_string().eq_ignore_ascii_case(tag_name) =>
@@ -177,7 +184,9 @@ impl Parse for Directive {
 
 impl Parse for NodeTokens {
     fn parse(input: ParseStream) -> syn::Result<Self> {
+        #[allow(unused_mut)]
         let mut node = parse_internal(input)?;
+        #[cfg(feature = "client")]
         inject_hydration_hooks(&mut node);
         return Ok(node);
 
@@ -284,6 +293,7 @@ impl Parse for NodeTokens {
             }
         }
 
+        #[cfg(feature = "client")]
         fn inject_hydration_hooks(node: &mut NodeTokens) {
             if let Some(head_children) = node.enclosing_tag_children_mut("head") {
                 head_children.extend([

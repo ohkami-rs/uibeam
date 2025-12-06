@@ -43,13 +43,13 @@ async fn index(Query(q): Query<CounterMeta>) -> UI {
 
     UI! {
         <main>
-            <h1 class="text-4xl font-bold mb-8 text-center">"Counter Example"</h1>
-            <div class="space-y-8">
+            <h1>"Counter Example"</h1>
+            <div>
                 {[-100, -10, 0, 10, 100].iter().enumerate().map(|(i, &offset)| UI! {
-                    <div class="flex items-center justify-center space-x-4">
-                        <div class="w-1/3 min-w-fit grid gap-4 grid-cols-[1fr_144px]">
-                            <div class="flex items-center">
-                                <p class="text-2xl">"Counter #"{1+i}</p>
+                    <div>
+                        <div>
+                            <div>
+                                <p>"Counter #"{1+i}</p>
                             </div>
                             <div>
                                 <Counter initial_count={initial_count + offset} />

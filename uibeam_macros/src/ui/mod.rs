@@ -77,7 +77,7 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
             <::uibeam::UI>::concat([#(#uis),*])
         }
     };
-    
+
     #[cfg(not(feature = "client"))]
     return Ok(server_ui);
 

@@ -1,8 +1,8 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
-mod ui;
 #[cfg(feature = "client")]
 mod client;
+mod ui;
 
 /// # `UI!` - JSX-style template syntax
 ///
