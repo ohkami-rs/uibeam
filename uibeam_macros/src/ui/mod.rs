@@ -60,8 +60,7 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
                     let NodeTokens::EnclosingTag { content, .. } = &mut node else {
                         unreachable!();
                     };
-                    content.insert(
-                        0,
+                    content.extend([
                         ContentPieceTokens::Node(syn::parse_quote! {
                             <script type="importmap">
 r#"{"imports": {
@@ -71,7 +70,13 @@ r#"{"imports": {
 }}"#
                             </script>
                         }),
-                    );
+                        ContentPieceTokens::Node(syn::parse_quote! {
+<link rel="modulepreload" href="https://esm.sh/preact@10.28.0" />
+                        }),
+                        ContentPieceTokens::Node(syn::parse_quote! {
+<link rel="modulepreload" href="https://esm.sh/@preact/signals@2.5.1?external=preact" />
+                        }),
+                    ]);
                 }
 
                 if is_enclosing_tag(&node, "body") {
