@@ -181,11 +181,11 @@ pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///     
 ///     use uibeam::{UI, Beam};
 ///     use uibeam::{client, Signal, callback};
-///     use serde::{Serialize};
+///     use serde::{Serialize, Deserialize};
 ///     
 ///     // Client component located at **island boundary**
-///     // must be `Serialize`. (see NOTE below)
-///     #[derive(Serialize)]
+///     // must be `Serialize + for<'de> Deserialize<'de>`. (see NOTE below)
+///     #[derive(Serialize, Deserialize)]
 ///     pub struct Counter;
 ///     
 ///     // `#[client]` makes Beam a Wasm island.
@@ -238,9 +238,9 @@ pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///     ```
 ///    
 ///    **NOTE**:
-///    Just `#[client]` components without `(island)`,
-///    e.g. one having `children: UI` or `on_something: Box<dyn FnOnce(Event)>` as its props,
-///    can **only be used internally in `UI!` of another client component**.
+///    Client Beam at island boundary must be `Serialize + for<'de> Deserialize<'de>` in order to the Wasm island architecture.
+///    In contrast, `#[client]` components without `(island)`, e.g. having `children: UI` or `on_something: Box<dyn FnOnce(Event)>`
+///    as props, can NOT implement `Serialize` nor `Deserialize` and can **only be used internally in `UI!` of another client component**.
 ///    Especially note that client components at **island boundary can't have `children`**.
 ///
 /// 4. Compile the lib crate into Wasm by `wasm-pack build` with **`RUSTFLAGS='--cfg hydrate'`** and **`--out-name hydrate --target web`**:
@@ -252,13 +252,14 @@ pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///     RUSTFLAGS='--cfg hydrate' wasm-pack build --out-name hydrate --target web
 ///     ```
 ///     ```sh
-///     # **`--release`** in relase build:
-///     
-///     RUSTFLAGS='--cfg hydrate' wasm-pack build --out-name hydrate --target web --release
+///     # in hot-reloading loop, `--dev` flag is recommended:
+///
+///     cd islands
+///     RUSTFLAGS='--cfg hydrate' wasm-pack build --out-name hydrate --target web --dev
 ///     ```
 ///   
 ///    **NOTE**:
-///    All of `RUSTFLAGS='--cfg hydrate'`, `--out-name hydrate` and `--target web` are **required** here.
+///    All of `hydrate` cfg (not feature!), `hydrate` out-name and `web` target are **required** here.
 ///
 /// 5. Make sure that your server responds with **a complete HTML consist of one <html></html> containing your page contents**.
 ///    
