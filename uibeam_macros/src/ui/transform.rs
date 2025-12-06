@@ -51,7 +51,7 @@ impl NodeTokens {
 }
 
 impl Component<'_> {
-    fn into_instanciation_expr_with(self, directives: &[Directive]) -> syn::Result<syn::Expr> {
+    fn into_rendering_expr_with(self, directives: &[Directive]) -> syn::Result<syn::Expr> {
         let Component {
             name,
             attributes,

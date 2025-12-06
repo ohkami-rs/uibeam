@@ -127,8 +127,10 @@ pub(crate) fn transform(tokens: NodeTokens) -> syn::Result<TokenStream> {
         }
 
         if let Some(beam) = tokens.as_beam() {
-            beam.into_instanciation_expr_with(&[super::super::parse::Directive::new("client")])?
-                .to_tokens(t);
+            let rendering_expr = beam.into_rendering_expr_with(&[super::super::parse::Directive::new("client")])?;
+            (quote! {
+                ::uibeam::shoot(#rendering_expr)
+            }).to_tokens(t);
         } else {
             match tokens {
                 NodeTokens::Doctype { .. } => (/* ignore */),

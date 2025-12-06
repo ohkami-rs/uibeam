@@ -272,7 +272,7 @@ pub(crate) fn transform(
         piece.join(Piece::new_empty());
         piece.commit(&mut pieces);
         interpolations.push(Interpolation::Children(
-            beam.into_instanciation_expr_with(directives)?,
+            beam.into_rendering_expr_with(directives)?,
         ));
         piece.join(Piece::new_empty());
         piece.commit(&mut pieces);
