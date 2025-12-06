@@ -20,6 +20,8 @@ impl Directive {
     pub(super) fn client(&self) -> bool {
         self.name == "client"
     }
+    
+    #[allow(unused)]
     pub(super) fn new(name: &str) -> Self {
         Directive {
             _at: Default::default(),

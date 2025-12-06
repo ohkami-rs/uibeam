@@ -1,3 +1,5 @@
+#![cfg(feature = "client")]
+
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::{Token, parse_quote, spanned::Spanned};

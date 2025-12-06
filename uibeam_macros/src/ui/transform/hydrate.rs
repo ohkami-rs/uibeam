@@ -1,11 +1,10 @@
-// just allow unused when not(hydrate), instead of applying `#![cfg(hydrate)]`, for DX.
-#![cfg_attr(not(hydrate), allow(unused))]
+#![cfg(feature = "client")]
 
 use super::super::parse::{
     AttributeTokens, AttributeValueToken, AttributeValueTokens, ContentPieceTokens,
     InterpolationTokens, NodeTokens,
 };
-use super::{Component, prop_for_event};
+use super::prop_for_event;
 use proc_macro2::{Span, TokenStream};
 use quote::{ToTokens, quote};
 use syn::{Expr, LitStr};

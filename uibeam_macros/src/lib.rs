@@ -1,5 +1,6 @@
-mod client;
 mod ui;
+#[cfg(feature = "client")]
+mod client;
 
 /// # `UI!` - JSX-style template syntax
 ///
@@ -279,6 +280,7 @@ pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///
 ///    (as a result, generated `{crate name}/pkg/hydrate.js` is served at `/.uibeam/hydrate.js` route,
 ///    which is automatically loaded together with corresponding .wasm file in the hydration step on browser.)
+#[cfg(feature = "client")]
 #[proc_macro_attribute]
 pub fn client(
     args: proc_macro::TokenStream,
@@ -287,10 +289,4 @@ pub fn client(
     client::expand(args.into(), input.into())
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
-}
-
-#[doc(hidden)]
-#[proc_macro_attribute]
-pub fn consume(_: proc_macro::TokenStream, _: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    proc_macro::TokenStream::new()
 }

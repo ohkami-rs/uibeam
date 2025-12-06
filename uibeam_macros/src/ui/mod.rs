@@ -6,12 +6,13 @@ use quote::quote;
 
 pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
     let parse::UITokens {
-        #[cfg_attr(hydrate, allow(unused_variables))]
+        #[allow(unused_variables)]
         directives,
-        #[cfg_attr(hydrate, allow(unused_mut))]
+        #[allow(unused_mut)]
         mut nodes,
     } = syn::parse2(input)?;
 
+    #[cfg(feature = "client")]
     let hydrate_ui = {
         let uis = nodes
             .clone()
@@ -76,8 +77,12 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
             <::uibeam::UI>::concat([#(#uis),*])
         }
     };
+    
+    #[cfg(not(feature = "client"))]
+    return Ok(server_ui);
 
-    Ok(quote! {{
+    #[cfg(feature = "client")]
+    return Ok(quote! {{
         #[cfg(hydrate)]
         {
             #hydrate_ui
@@ -86,5 +91,5 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
         {
             #server_ui
         }
-    }})
+    }});
 }

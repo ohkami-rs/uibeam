@@ -19,6 +19,13 @@ all-features = true
 workspace = true
 
 [features]
+default = ["client"]
+
+client = [
+    "uibeam_macros/client",
+    "dep:serde", "dep:serde_json", "dep:wasm-bindgen", "dep:serde-wasm-bindgen", "dep:js-sys", "dep:web-sys"
+]
+
 __integration__ = []
 axum      = ["__integration__", "dep:axum-core", "dep:http", "dep:mime"]
 actix-web = ["__integration__", "dep:actix-web"]
@@ -34,12 +41,12 @@ http = { optional = true, version = "1.4" }
 mime = { optional = true, version = "0.3" }
 
 # for islands
-serde              = { version = "1.0" }
-serde_json         = { version = "1.0" }
-wasm-bindgen       = { version = "0.2.106" }
-serde-wasm-bindgen = { version = "0.6" }
-js-sys             = { version = "0.3" }
-web-sys            = { version = "0.3", features = [
+serde              = { optional = true, version = "1.0" }
+serde_json         = { optional = true, version = "1.0" }
+wasm-bindgen       = { optional = true, version = "0.2.106" }
+serde-wasm-bindgen = { optional = true, version = "0.6" }
+js-sys             = { optional = true, version = "0.3" }
+web-sys            = { optional = true, version = "0.3", features = [
     "console",
     "Window",
     "Document",

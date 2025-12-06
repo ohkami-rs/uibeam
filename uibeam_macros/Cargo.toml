@@ -18,6 +18,9 @@ workspace = true
 [lib]
 proc-macro = true
 
+[features]
+client = []
+
 [dependencies]
 uibeam_html = { path = "../uibeam_html", version = "=0.4.0" }
 proc-macro2 = "1.0"

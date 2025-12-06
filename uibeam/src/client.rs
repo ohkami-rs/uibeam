@@ -1,3 +1,5 @@
+#![cfg(feature = "client")]
+
 // TODO: support more events (update together with `uibeam_macros/src/ui/transform.rs`)
 pub use ::web_sys::{
     AnimationEvent, ClipboardEvent, CompositionEvent, Event, FocusEvent, InputEvent, KeyboardEvent,
