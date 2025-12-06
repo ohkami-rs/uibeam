@@ -12,8 +12,7 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
         mut nodes,
     } = syn::parse2(input)?;
 
-    #[cfg(hydrate)]
-    {
+    let hydrate_ui = {
         let uis = nodes
             .clone()
             .into_iter()
@@ -25,14 +24,12 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
             })
             .collect::<syn::Result<Vec<_>>>()?;
 
-        #[allow(clippy::needless_return)]
-        return Ok(quote! {
+        quote! {
             <::uibeam::UI>::from_iter([#(#uis),*])
-        });
-    }
+        }
+    };
 
-    #[cfg(not(hydrate))]
-    {
+    let server_ui = {
         use self::parse::{ContentPieceTokens, NodeTokens};
 
         fn is_enclosing_tag(node: &NodeTokens, tag_name: &str) -> bool {
@@ -116,9 +113,19 @@ r#"{"imports": {
             })
             .collect::<syn::Result<Vec<_>>>()?;
 
-        #[allow(clippy::needless_return)]
-        return Ok(quote! {
+        quote! {
             <::uibeam::UI>::concat([#(#uis),*])
-        });
+        }
     };
+
+    Ok(quote! {
+        #[cfg(hydrate)]
+        {
+            #hydrate_ui
+        }
+        #[cfg(not(hydrate))]
+        {
+            #server_ui
+        }
+    })
 }

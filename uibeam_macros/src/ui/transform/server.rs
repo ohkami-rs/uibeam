@@ -1,5 +1,3 @@
-#![cfg_attr(hydrate, allow(unused))]
-
 use super::super::parse::{
     AttributeTokens, AttributeValueToken, AttributeValueTokens, ContentPieceTokens, Directive,
     InterpolationTokens, NodeTokens,
@@ -7,7 +5,7 @@ use super::super::parse::{
 use super::{Component, prop_for_event};
 use proc_macro2::{Span, TokenStream};
 use quote::{ToTokens, quote};
-use syn::{spanned::Spanned, Expr, ExprLit, Lit, LitStr, Type};
+use syn::{Expr, ExprLit, Lit, LitStr, Type, spanned::Spanned};
 
 pub(crate) struct Piece(Option<String>);
 impl ToTokens for Piece {

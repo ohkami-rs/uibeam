@@ -138,7 +138,7 @@ pub(crate) fn transform(tokens: NodeTokens) -> syn::Result<TokenStream> {
 
             (quote! {
                 ::uibeam::client::VNode::new(
-                    ::uibeam::client::NodeType::component::<#name>(),
+                    ::uibeam::client::NodeType::component::<#name, _>(),
                     #props,
                     #children
                 )

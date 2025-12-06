@@ -57,10 +57,10 @@ fn prop_for_event(event: &str) -> syn::Result<(Ident, Type)> {
                     )),
                 )*
                 _ => Err(syn::Error::new(Span::call_site(), format!(
-                    "Handler for unknown event `{event}`. If it's valid event, \
-                    please submit an issue at https://github.com/ohkami-rs/uibeam/issues \
-                    to add support for it! \
-                    NOTE: custom event handlers are not supported in current version."
+                    "Unknown event handler `on{event}`. \
+                    NOTE: UIBeam's event handler name is `on{{event}}` with lowercase \
+                    e.g. `onclick` or `onpointerdown` as HTML standard. \
+                    If `{event}` is valid event, feel free to submit an issue for it: https://github.com/ohkami-rs/uibeam/issues"
                 )))
             }
         };

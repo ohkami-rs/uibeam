@@ -60,7 +60,10 @@ mod preact {
 
 #[cfg(hydrate)]
 use {
-    crate::{Beam, bound::{BeamKind, IslandInternal}},
+    crate::{
+        Beam,
+        bound::{BeamKind, IslandInternal},
+    },
     ::js_sys::{Array, Function, Object, Reflect},
     ::wasm_bindgen::prelude::*,
 };

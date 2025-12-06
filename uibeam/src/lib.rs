@@ -205,7 +205,7 @@ mod bound {
             Beam::<Client>::render(self)
         }
     }
-    
+
     // `IslandInternal` is ability to be rendered inside an island, meaning any Beams.
     #[doc(hidden)]
     impl<T> Beam<IslandInternal<Server>> for T
