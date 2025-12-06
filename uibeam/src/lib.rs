@@ -161,7 +161,7 @@ pub use bound::{Client, IslandBoundary, Server, render_in_island, render_on_serv
 #[doc(hidden)]
 mod bound {
     use crate::Beam;
-    
+
     #[doc(hidden)]
     pub trait BeamKind {}
     #[doc(hidden)]

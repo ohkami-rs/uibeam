@@ -21,29 +21,6 @@ impl Beam for Layout {
     }
 }
 
-// #[Laser(local)]
-// struct Button {
-//     label: String,
-//     class: Option<&'static str>,
-//     onclick: Box<dyn Fn(uibeam::laser::PointerEvent)>,
-// }
-// 
-// impl Laser for Button {
-//     fn render(self) -> UI {
-//         let class = format!(
-//             "cursor-pointer bg-red-500 w-[32px] py-1 text-white rounded-md {}",
-//             self.class.unwrap_or("")
-//         );
-// 
-//         UI! {
-//             <button
-//                 class={class}
-//                 onclick={self.onclick}
-//             >{self.label}</button>
-//         }
-//     }
-// }
-
 #[derive(serde::Serialize)]
 pub struct Counter {
     pub initial_count: i32,

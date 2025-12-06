@@ -1,10 +1,39 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use syn::{parse_quote, spanned::Spanned};
+use syn::{Token, parse_quote, spanned::Spanned};
+
+struct ClientArgs(syn::punctuated::Punctuated<ClientArgument, Token![,]>);
+impl syn::parse::Parse for ClientArgs {
+    fn parse(p: &syn::parse::ParseBuffer) -> syn::Result<Self> {
+        p.parse_terminated(ClientArgument::parse, Token![,])
+            .map(Self)
+    }
+}
+enum ClientArgument {
+    Island,
+}
+impl syn::parse::Parse for ClientArgument {
+    fn parse(p: &syn::parse::ParseBuffer) -> syn::Result<Self> {
+        let ident = p.parse::<syn::Ident>()?;
+        if ident == "island" {
+            Ok(Self::Island)
+        } else {
+            Err(syn::Error::new(
+                ident.span(),
+                format!(
+                    "unknown argument for #[client]: `{ident}`; \
+                    expected one of `#[client]` or `#[client(island)]`"
+                ),
+            ))
+        }
+    }
+}
 
 pub(super) fn expand(args: TokenStream, input: TokenStream) -> syn::Result<TokenStream> {
-    let is_island_boundary = syn::parse2::<syn::Ident>(args).is_ok_and(|i| i == "island");
+    let args = syn::parse2::<ClientArgs>(args)?;
     let impl_beam = syn::parse2::<syn::ItemImpl>(input)?;
+
+    let is_island_boundary = args.0.iter().any(|a| matches!(a, ClientArgument::Island));
 
     let self_ty = impl_beam.self_ty.clone();
     let self_name = match &*self_ty {
@@ -25,7 +54,7 @@ pub(super) fn expand(args: TokenStream, input: TokenStream) -> syn::Result<Token
             impl #impl_generics ::uibeam::IslandBoundary for #self_ty #ty_generics #where_clause {}
         }
     });
-    
+
     let impl_beam = {
         let mut impl_beam = impl_beam;
 

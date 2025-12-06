@@ -32,10 +32,7 @@ pub(crate) fn transform(tokens: NodeTokens) -> syn::Result<TokenStream> {
     encode(&mut t, tokens)?;
     return Ok(t);
 
-    fn encode(
-        t: &mut TokenStream,
-        tokens: NodeTokens,
-    ) -> syn::Result<()> {
+    fn encode(t: &mut TokenStream, tokens: NodeTokens) -> syn::Result<()> {
         fn into_props(attributes: Vec<AttributeTokens>) -> syn::Result<TokenStream> {
             if attributes.is_empty() {
                 return Ok(quote! {
@@ -94,9 +91,7 @@ pub(crate) fn transform(tokens: NodeTokens) -> syn::Result<TokenStream> {
             })
         }
 
-        fn into_children(
-            content: Vec<ContentPieceTokens>,
-        ) -> syn::Result<TokenStream> {
+        fn into_children(content: Vec<ContentPieceTokens>) -> syn::Result<TokenStream> {
             let children = content
                 .into_iter()
                 .map(|piece| match piece {
@@ -139,9 +134,7 @@ pub(crate) fn transform(tokens: NodeTokens) -> syn::Result<TokenStream> {
         {
             let props = into_props(attributes.to_vec())?;
 
-            let children = into_children(
-                content.map(<[_]>::to_vec).unwrap_or_else(Vec::new),
-            )?;
+            let children = into_children(content.map(<[_]>::to_vec).unwrap_or_else(Vec::new))?;
 
             (quote! {
                 ::uibeam::client::VNode::new(
