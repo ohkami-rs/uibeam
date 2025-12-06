@@ -7,7 +7,7 @@
  */
 
 /** dummy export to ensure this file is included in the final pkg/hydrate.js by wasm-pack */
-export function ensure_hydrate_js_is_included() {};
+export function ensure_included() {};
 
 (async () => {
   // self-import to access the hydraters by their name strings
