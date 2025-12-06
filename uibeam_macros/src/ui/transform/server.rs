@@ -5,7 +5,7 @@ use super::super::parse::{
 use super::{Component, prop_for_event};
 use proc_macro2::{Span, TokenStream};
 use quote::{ToTokens, quote};
-use syn::{Expr, ExprLit, Lit, LitStr, Type};
+use syn::{spanned::Spanned, Expr, ExprLit, Lit, LitStr, Type};
 
 pub(crate) struct Piece(Option<String>);
 impl ToTokens for Piece {
@@ -139,7 +139,7 @@ pub(crate) fn transform(
     }
 
     fn handle_attributes(
-        _directives: &[Directive],
+        directives: &[Directive],
         attributes: Vec<AttributeTokens>,
         current_piece: &mut Piece,
         pieces: &mut Vec<Piece>,
@@ -148,6 +148,15 @@ pub(crate) fn transform(
     ) -> syn::Result<()> {
         for AttributeTokens { name, value } in attributes {
             if let Some(event) = name.to_string().strip_prefix("on") {
+                if !directives.iter().any(|d| d.client()) {
+                    return Err(syn::Error::new(
+                        name.span(),
+                        format!(
+                            "unexpected event handler in server Beam: `{name}`; \
+                            event handlers are only allowed in #[client] Beams"
+                        ),
+                    ));
+                }
                 let (_prop, event_type) = prop_for_event(&event.to_ascii_lowercase())?;
                 ehannotations.push(EventHandlerAnnotation {
                     handler_expression: syn::parse2(value.unwrap().value.into_token_stream())?,

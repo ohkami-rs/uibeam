@@ -35,7 +35,6 @@ compile_error!("`hydrate` cfg must be specified only when compiling to Wasm");
 /* for `UI!` use in this crate itself */
 extern crate self as uibeam;
 
-#[doc(hidden)]
 pub mod client;
 #[cfg(feature = "__integration__")]
 mod integration;

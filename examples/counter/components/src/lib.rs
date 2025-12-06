@@ -1,4 +1,5 @@
 use uibeam::{UI, Beam, Signal, callback};
+use uibeam::client::PointerEvent;
 
 pub struct Layout {
     pub title: String,
@@ -21,12 +22,34 @@ impl Beam for Layout {
     }
 }
 
+struct CounterButton {
+    on_click: Box<dyn Fn(PointerEvent)>,
+    children: UI,
+    /// additional classes to modify default style
+    class: Option<&'static str>,
+}
+#[uibeam::client] // client component, but not Serialize, not at island boundary
+impl Beam for CounterButton {
+    fn render(self) -> UI {
+        UI! {
+            <button
+                class={format!(
+                    "cursor-pointer w-[32px] py-1 text-white rounded-md {}",
+                    self.class.unwrap_or("")
+                )}
+                onclick={self.on_click}
+            >
+                {self.children}
+            </button>
+        }
+    }
+}
+
 #[derive(serde::Serialize)]
 pub struct Counter {
     pub initial_count: i32,
 }
-
-#[uibeam::client(island)]
+#[uibeam::client(island)] // client component at island boundary
 impl Beam for Counter {
     fn render(self) -> UI {
         let count = Signal::new(self.initial_count);
@@ -45,14 +68,14 @@ impl Beam for Counter {
                     "Count: "{*count}
                 </p>
                 <div class="text-center">
-                    <button
-                        class="cursor-pointer bg-red-500  w-[32px] py-1 text-white rounded-md"
-                        onclick={decrement}
-                    >"-"</button>
-                    <button
-                        class="cursor-pointer bg-blue-500 w-[32px] py-1 text-white rounded-md"
-                        onclick={increment}
-                    >"+"</button>
+                    <CounterButton
+                        on_click={Box::new(decrement)}
+                        class="bg-red-500"
+                    >"-"</CounterButton>
+                    <CounterButton
+                        on_click={Box::new(increment)}
+                        class="bg-blue-500"
+                    >"+"</CounterButton>
                 </div>
             </div>
         }
