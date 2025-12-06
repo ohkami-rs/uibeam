@@ -1,6 +1,8 @@
 mod parse;
 mod transform;
 
+use self::parse::{ContentPieceTokens, NodeTokens};
+
 use proc_macro2::TokenStream;
 use quote::quote;
 
@@ -30,11 +32,11 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
 
     #[cfg(not(hydrate))]
     {
-        fn is_enclosing_tag(node: &NodeTokens, tag: &str) -> bool {
+        fn is_enclosing_tag(node: &NodeTokens, tag_name: &str) -> bool {
             match node {
                 /* starting with <html>..., without <!DOCTYPE html> */
                 NodeTokens::EnclosingTag { tag, .. }
-                    if tag.to_string().eq_ignore_ascii_case(tag) =>
+                    if tag.to_string().eq_ignore_ascii_case(tag_name) =>
                 {
                     true
                 }

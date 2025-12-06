@@ -1,13 +1,13 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use syn::{ItemImpl, ItemStruct, LitStr};
+use syn::{parse_quote, spanned::Spanned};
 
 pub(super) fn expand(args: TokenStream, input: TokenStream) -> syn::Result<TokenStream> {
-    let is_island_boundary = args.parse::<Ident>().is_ok_and(|i| i == "island");
-    let impl_beam = syn::parse2::<ItemImpl>(input)?;
+    let is_island_boundary = syn::parse2::<syn::Ident>(args).is_ok_and(|i| i == "island");
+    let impl_beam = syn::parse2::<syn::ItemImpl>(input)?;
 
-    let self_ty = impl_beam.self_ty.as_ref();
-    let self_name = match self_ty {
+    let self_ty = impl_beam.self_ty.clone();
+    let self_name = match &*self_ty {
         syn::Type::Path(p) => &p.path.segments.last().unwrap().ident,
         _ => {
             return Err(syn::Error::new(
@@ -17,32 +17,32 @@ pub(super) fn expand(args: TokenStream, input: TokenStream) -> syn::Result<Token
         }
     };
     let hydrater_name = format_ident!("__uibeam_hydrate_{self_name}__");
-    let hydrater_name_str = LitStr::new(&hydrater_name.to_string(), hydrater_name.span());
+    let hydrater_name_str = syn::LitStr::new(&hydrater_name.to_string(), hydrater_name.span());
 
     let impl_beam = {
         let mut impl_beam = impl_beam;
-        
+
         let Some((_, beam_trait, _)) = impl_beam.trait_.as_mut() else {
             return Err(syn::Error::new(
                 impl_beam.span(),
                 "wrong impl block for `Beam`",
             ));
         };
-        
+
         let beam_trait = beam_trait.segments.last_mut().unwrap(/* trait_ is Some */);
-        
+
         if !beam_trait.arguments.is_none() {
             return Err(syn::Error::new(
                 beam_trait.arguments.span(),
                 "wrong impl block for `Beam`",
             ));
         }
-        
-        beam_trait.arguments = parse_quote! {
-            <::uibeam::Client>
-        };
 
-        let Some(ImplItem::Fn(fn_render)) = impl_beam.items.first_mut() else {
+        beam_trait.arguments = syn::PathArguments::AngleBracketed(parse_quote! {
+            <::uibeam::Client>
+        });
+
+        let Some(syn::ImplItem::Fn(fn_render)) = impl_beam.items.first_mut() else {
             return Err(syn::Error::new(
                 impl_beam.span(),
                 "wrong impl block for `Beam`",
@@ -52,7 +52,7 @@ pub(super) fn expand(args: TokenStream, input: TokenStream) -> syn::Result<Token
         let mut stmts = fn_render.block.stmts.clone();
         insert_client_directive_to_ui_macros(&mut stmts);
 
-        fn_render.block = if island_boundary {
+        fn_render.block = if is_island_boundary {
             parse_quote! ({
                 use ::uibeam::client::ClientContext as _;
 
@@ -119,10 +119,10 @@ pub(super) fn expand(args: TokenStream, input: TokenStream) -> syn::Result<Token
     })
 }
 
-fn insert_client_directive_to_ui_macros(stmts: &mut [Stmt]) {
+fn insert_client_directive_to_ui_macros(stmts: &mut [syn::Stmt]) {
     stmts.iter_mut().for_each(walk_stmt);
 
-    fn rewrite_macro(mac: &mut Macro) {
+    fn rewrite_macro(mac: &mut syn::Macro) {
         if mac
             .path
             .segments
@@ -131,20 +131,23 @@ fn insert_client_directive_to_ui_macros(stmts: &mut [Stmt]) {
         {
             mac.tokens = {
                 let mut new_tokens = TokenStream::new();
-                (quote! { @client; }).to_tokens(&mut new_tokens);
-                mac.tokens.to_tokens(&mut new_tokens);
+                {
+                    use quote::ToTokens;
+                    (quote! { @client; }).to_tokens(&mut new_tokens);
+                    mac.tokens.to_tokens(&mut new_tokens);
+                }
                 new_tokens
             };
         }
     }
 
-    fn walk_stmt(stmt: &mut Stmt) {
+    fn walk_stmt(stmt: &mut syn::Stmt) {
         match stmt {
-            Stmt::Macro(StmtMacro { mac, .. }) => rewrite_macro(mac),
-            Stmt::Expr(expr) => walk_expr(expr),
-            Stmt::Item(item) => walk_item(item),
-            Stmt::Local(Local {
-                init: Some(LocalInit { expr, diverge, .. }),
+            syn::Stmt::Macro(syn::StmtMacro { mac, .. }) => rewrite_macro(mac),
+            syn::Stmt::Expr(expr, _) => walk_expr(expr),
+            syn::Stmt::Item(item) => walk_item(item),
+            syn::Stmt::Local(syn::Local {
+                init: Some(syn::LocalInit { expr, diverge, .. }),
                 ..
             }) => {
                 walk_expr(expr);
@@ -152,31 +155,35 @@ fn insert_client_directive_to_ui_macros(stmts: &mut [Stmt]) {
                     walk_expr(diverge_expr);
                 }
             }
-            Stmt::Local(Local { init: None, .. }) => (),
+            syn::Stmt::Local(syn::Local { init: None, .. }) => (),
         }
     }
 
-    fn walk_expr(expr: &mut Expr) {
+    fn walk_expr(expr: &mut syn::Expr) {
         match expr {
-            Expr::Array(ExprArray { elems, .. }) => elems.iter_mut().for_each(walk_expr),
-            Expr::Assign(ExprAssign { right, .. }) => walk_expr(right),
-            Expr::Async(ExprAsync { block, .. }) => block.stmts.iter_mut().for_each(walk_stmt),
-            Expr::Await(ExprAwait { base, .. }) => walk_expr(base),
-            Expr::Bunary(_) => (),
-            Expr::Block(ExprBlock { block, .. }) => block.stmts.iter_mut().for_each(walk_stmt),
-            Expr::Break(ExprBreak {
+            syn::Expr::Array(syn::ExprArray { elems, .. }) => elems.iter_mut().for_each(walk_expr),
+            syn::Expr::Assign(syn::ExprAssign { right, .. }) => walk_expr(right),
+            syn::Expr::Async(syn::ExprAsync { block, .. }) => {
+                block.stmts.iter_mut().for_each(walk_stmt)
+            }
+            syn::Expr::Await(syn::ExprAwait { base, .. }) => walk_expr(base),
+            syn::Expr::Binary(_) => (),
+            syn::Expr::Block(syn::ExprBlock { block, .. }) => {
+                block.stmts.iter_mut().for_each(walk_stmt)
+            }
+            syn::Expr::Break(syn::ExprBreak {
                 expr: Some(expr), ..
             }) => walk_expr(expr),
-            Expr::Call(ExprCall { args, .. }) => args.iter_mut().for_each(walk_expr),
-            Expr::Cast(_) => (),
-            Expr::Closure(ExprClosure { body, .. }) => walk_expr(body),
-            Expr::Field(ExprField { base, .. }) => walk_expr(base),
-            Expr::ForLoop(ExprForLoop { expr, body, .. }) => {
+            syn::Expr::Call(syn::ExprCall { args, .. }) => args.iter_mut().for_each(walk_expr),
+            syn::Expr::Cast(_) => (),
+            syn::Expr::Closure(syn::ExprClosure { body, .. }) => walk_expr(body),
+            syn::Expr::Field(syn::ExprField { base, .. }) => walk_expr(base),
+            syn::Expr::ForLoop(syn::ExprForLoop { expr, body, .. }) => {
                 walk_expr(expr);
                 body.stmts.iter_mut().for_each(walk_stmt);
             }
-            Expr::Group(ExprGroup { expr, .. }) => walk_expr(expr),
-            Expr::If(ExprIf {
+            syn::Expr::Group(syn::ExprGroup { expr, .. }) => walk_expr(expr),
+            syn::Expr::If(syn::ExprIf {
                 cond,
                 then_branch,
                 else_branch,
@@ -188,26 +195,30 @@ fn insert_client_directive_to_ui_macros(stmts: &mut [Stmt]) {
                     walk_expr(else_expr);
                 }
             }
-            Expr::Index(_) => (),
-            Expr::Infer(_) => (),
-            Expr::Let(ExprLet { expr, .. }) => walk_expr(expr),
-            Expr::Lit(_) => (),
-            Expr::Loop(ExprLoop { body, .. }) => body.stmts.iter_mut().for_each(walk_stmt),
-            Expr::Macro(ExprMacro { mac, .. }) => rewrite_macro(mac),
-            Expr::Match(ExprMatch { arms, .. }) => arms.iter_mut().for_each(|arm| {
+            syn::Expr::Index(_) => (),
+            syn::Expr::Infer(_) => (),
+            syn::Expr::Let(syn::ExprLet { expr, .. }) => walk_expr(expr),
+            syn::Expr::Lit(_) => (),
+            syn::Expr::Loop(syn::ExprLoop { body, .. }) => {
+                body.stmts.iter_mut().for_each(walk_stmt)
+            }
+            syn::Expr::Macro(syn::ExprMacro { mac, .. }) => rewrite_macro(mac),
+            syn::Expr::Match(syn::ExprMatch { arms, .. }) => arms.iter_mut().for_each(|arm| {
                 walk_expr(&mut arm.body);
             }),
-            Expr::MethodCall(ExprMethodCall { args, .. }) => args.iter_mut().for_each(walk_expr),
-            Expr::Paren(ExprParen { expr, .. }) => walk_expr(expr),
-            Expr::Path(_) => (),
-            Expr::Range(_) => (),
-            Expr::RawAddr(_) => (),
-            Expr::Reference(ExprReference { expr, .. }) => walk_expr(expr),
-            Expr::Repeat(_) => (),
-            Expr::Return(ExprReturn {
+            syn::Expr::MethodCall(syn::ExprMethodCall { args, .. }) => {
+                args.iter_mut().for_each(walk_expr)
+            }
+            syn::Expr::Paren(syn::ExprParen { expr, .. }) => walk_expr(expr),
+            syn::Expr::Path(_) => (),
+            syn::Expr::Range(_) => (),
+            syn::Expr::RawAddr(_) => (),
+            syn::Expr::Reference(syn::ExprReference { expr, .. }) => walk_expr(expr),
+            syn::Expr::Repeat(_) => (),
+            syn::Expr::Return(syn::ExprReturn {
                 expr: Some(expr), ..
             }) => walk_expr(expr),
-            Expr::Struct(ExprStruct { fields, rest, .. }) => {
+            syn::Expr::Struct(syn::ExprStruct { fields, rest, .. }) => {
                 fields.iter_mut().for_each(|field| {
                     walk_expr(&mut field.expr);
                 });
@@ -215,59 +226,64 @@ fn insert_client_directive_to_ui_macros(stmts: &mut [Stmt]) {
                     walk_expr(rest_expr);
                 }
             }
-            Expr::Try(ExprTry { expr, .. }) => walk_expr(expr),
-            Expr::TryBlock(ExprTryBlock { block, .. }) => {
+            syn::Expr::Try(syn::ExprTry { expr, .. }) => walk_expr(expr),
+            syn::Expr::TryBlock(syn::ExprTryBlock { block, .. }) => {
                 block.stmts.iter_mut().for_each(walk_stmt)
             }
-            Expr::Tuple(ExprTuple { elems, .. }) => elems.iter_mut().for_each(walk_expr),
-            Expr::Unary(_) => (),
-            Expr::Unsafe(ExprUnsafe { block, .. }) => block.stmts.iter_mut().for_each(walk_stmt),
-            Expr::Verbatim(_) => (),
-            Expr::While(ExprWhile { cond, block, .. }) => {
-                walk_expr(cond);
-                block.stmts.iter_mut().for_each(walk_stmt);
+            syn::Expr::Tuple(syn::ExprTuple { elems, .. }) => elems.iter_mut().for_each(walk_expr),
+            syn::Expr::Unary(_) => (),
+            syn::Expr::Unsafe(syn::ExprUnsafe { block, .. }) => {
+                block.stmts.iter_mut().for_each(walk_stmt)
             }
-            Expr::Yield(ExprYield {
+            syn::Expr::Verbatim(_) => (),
+            syn::Expr::While(syn::ExprWhile { cond, body, .. }) => {
+                walk_expr(cond);
+                body.stmts.iter_mut().for_each(walk_stmt);
+            }
+            syn::Expr::Yield(syn::ExprYield {
                 expr: Some(expr), ..
             }) => walk_expr(expr),
             _ => (),
         }
-
-        fn walk_item(item: &mut Item) {
-            match item {
-                Const(_) => (),
-                Enum(_) => (),
-                ExternCrate(_) => (),
-                Fn(ItemFn { block, .. }) => block.stmts.iter_mut().for_each(walk_stmt),
-                ForeignMod(_) => (),
-                Impl(ItemImpl { items, .. }) => items.iter_mut().for_each(|impl_item| {
-                    if let ImplItem::Method(ImplItemMethod { block, .. }) = impl_item {
+    }
+    fn walk_item(item: &mut syn::Item) {
+        match item {
+            syn::Item::Const(_) => (),
+            syn::Item::Enum(_) => (),
+            syn::Item::ExternCrate(_) => (),
+            syn::Item::Fn(syn::ItemFn { block, .. }) => block.stmts.iter_mut().for_each(walk_stmt),
+            syn::Item::ForeignMod(_) => (),
+            syn::Item::Impl(syn::ItemImpl { items, .. }) => {
+                items.iter_mut().for_each(|impl_item| {
+                    if let syn::ImplItem::Fn(syn::ImplItemFn { block, .. }) = impl_item {
                         block.stmts.iter_mut().for_each(walk_stmt);
                     }
-                }),
-                Macro(_) => (),
-                Mod(ItemMod {
-                    content: Some(_, items),
-                    ..
-                }) => items.iter_mut().for_each(walk_item),
-                Static(ItemStatic { expr, .. }) => walk_expr(expr),
-                Struct(_) => (),
-                Trait(ItemTrait { items, .. }) => items.iter_mut().for_each(|trait_item| {
-                    if let TraitItem::Method(TraitItemMethod {
+                })
+            }
+            syn::Item::Macro(_) => (),
+            syn::Item::Mod(syn::ItemMod {
+                content: Some((_, items)),
+                ..
+            }) => items.iter_mut().for_each(walk_item),
+            syn::Item::Static(syn::ItemStatic { expr, .. }) => walk_expr(expr),
+            syn::Item::Struct(_) => (),
+            syn::Item::Trait(syn::ItemTrait { items, .. }) => {
+                items.iter_mut().for_each(|trait_item| {
+                    if let syn::TraitItem::Fn(syn::TraitItemFn {
                         default: Some(block),
                         ..
                     }) = trait_item
                     {
                         block.stmts.iter_mut().for_each(walk_stmt);
                     }
-                }),
-                TraitAlias(_) => (),
-                Type(_) => (),
-                Union(_) => (),
-                Use(_) => (),
-                Verbatim(_) => (),
-                _ => (),
+                })
             }
+            syn::Item::TraitAlias(_) => (),
+            syn::Item::Type(_) => (),
+            syn::Item::Union(_) => (),
+            syn::Item::Use(_) => (),
+            syn::Item::Verbatim(_) => (),
+            _ => (),
         }
     }
 }

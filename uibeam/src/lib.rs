@@ -40,7 +40,8 @@ pub mod client;
 #[cfg(feature = "__integration__")]
 mod integration;
 
-pub use client::{Signal, batch, callback, computed, effect, untracked};
+pub use client::Signal;
+/* macro_export client::{batch, callback, computed, effect, untracked}; */
 pub use uibeam_html::escape;
 #[doc(hidden)]
 pub use uibeam_macros::consume;
@@ -166,7 +167,7 @@ mod bound {
     #[doc(hidden)]
     pub trait IslandBoundary: super::Beam<Client> + serde::Serialize {}
     #[doc(hidden)]
-    impl<T: super::Beam<Client> + serde::Serialize> IslandBoundary for {}
+    impl<T: super::Beam<Client> + serde::Serialize> IslandBoundary for T {}
 
     #[doc(hidden)]
     pub struct Serialize<K: BeamKind>(std::marker::PhantomData<K>);

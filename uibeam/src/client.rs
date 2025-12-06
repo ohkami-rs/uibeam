@@ -244,7 +244,7 @@ where
     T: serde::Serialize + for<'de> serde::Deserialize<'de>,
     F: Fn() -> T + 'static,
 {
-    pub fn new(getter: F) -> Self {
+    fn new(getter: F) -> Self {
         #[cfg(not(hydrate))]
         {
             // for template rendering
