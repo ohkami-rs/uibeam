@@ -6,6 +6,9 @@
  * It is responsible for hydrating the UI components on the client side.
  */
 
+/** dummy export to ensure this file is included in the final pkg/hydrate.js by wasm-pack */
+export function ensure_hydrate_js_is_included() {};
+
 (async () => {
   // self-import to access the hydraters by their name strings
   const { default: init, ...hydraters } = await import('/.uibeam/hydrate.js');

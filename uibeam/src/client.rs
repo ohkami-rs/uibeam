@@ -15,7 +15,10 @@ pub fn serialize_props<P: super::IslandBoundary>(props: &P) -> String {
 
 #[cfg(hydrate)]
 #[wasm_bindgen(module = "/src/hydrate.js")]
-extern "C" {}
+extern "C" {
+    #[wasm_bindgen]
+    pub fn ensure_hydrate_js_is_included();
+}
 
 #[cfg(hydrate)]
 mod preact {
@@ -66,6 +69,7 @@ use {
 
 #[cfg(hydrate)]
 pub fn hydrate(vdom: VNode, container: ::web_sys::Node) {
+    ensure_hydrate_js_is_included();
     preact::hydrate(vdom.0, container);
 }
 
