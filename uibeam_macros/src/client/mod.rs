@@ -21,8 +21,28 @@ pub(super) fn expand(args: TokenStream, input: TokenStream) -> syn::Result<Token
 
     let impl_beam = {
         let mut impl_beam = impl_beam;
+        
+        let Some((_, beam_trait, _)) = impl_beam.trait_.as_mut() else {
+            return Err(syn::Error::new(
+                impl_beam.span(),
+                "wrong impl block for `Beam`",
+            ));
+        };
+        
+        let beam_trait = beam_trait.segments.last_mut().unwrap(/* trait_ is Some */);
+        
+        if !beam_trait.arguments.is_none() {
+            return Err(syn::Error::new(
+                beam_trait.arguments.span(),
+                "wrong impl block for `Beam`",
+            ));
+        }
+        
+        beam_trait.arguments = parse_quote! {
+            <::uibeam::Client>
+        };
 
-        let Some(ImplItem::Fn(fn_render)) = impl_beam.first_mut() else {
+        let Some(ImplItem::Fn(fn_render)) = impl_beam.items.first_mut() else {
             return Err(syn::Error::new(
                 impl_beam.span(),
                 "wrong impl block for `Beam`",

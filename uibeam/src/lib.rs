@@ -164,7 +164,9 @@ mod bound {
     impl BeamKind for Client {}
 
     #[doc(hidden)]
-    pub trait IslandBoundary: serde::Serialize {}
+    pub trait IslandBoundary: super::Beam<Client> + serde::Serialize {}
+    #[doc(hidden)]
+    impl<T: super::Beam<Client> + serde::Serialize> IslandBoundary for {}
 
     #[doc(hidden)]
     pub struct Serialize<K: BeamKind>(std::marker::PhantomData<K>);
@@ -188,7 +190,7 @@ mod bound {
     #[doc(hidden)]
     impl<T> super::Beam<Serialize<Client>> for T
     where
-        T: super::Beam<Client> + IslandBoundary,
+        T: IslandBoundary,
     {
         #[inline(always)]
         fn render(self) -> super::UI {
