@@ -60,6 +60,7 @@ mod preact {
 
 #[cfg(hydrate)]
 use {
+    crate::{Beam, bound::{BeamKind, IslandInternal}},
     ::js_sys::{Array, Function, Object, Reflect},
     ::wasm_bindgen::prelude::*,
 };
@@ -81,13 +82,13 @@ impl NodeType {
         NodeType(tag.into())
     }
 
-    pub fn component<L>() -> NodeType
+    pub fn component<L, K: BeamKind>() -> NodeType
     where
-        L: Laser + for<'de> serde::Deserialize<'de>,
+        L: Beam<IslandInternal<K>> + for<'de> serde::Deserialize<'de>,
     {
         let component_function: Function = Closure::<dyn Fn(JsValue) -> JsValue>::new(|props| {
             let props: L = serde_wasm_bindgen::from_value(props).unwrap_throw();
-            <L as Laser>::render(props).into_vdom().0
+            crate::render_in_island(props).into_vdom().0
         })
         .into_js_value()
         .unchecked_into();

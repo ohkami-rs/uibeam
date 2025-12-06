@@ -2,7 +2,7 @@
 #![cfg_attr(not(hydrate), allow(unused))]
 
 use super::super::parse::{
-    AttributeTokens, AttributeValueToken, AttributeValueTokens, ContentPieceTokens, Directive,
+    AttributeTokens, AttributeValueToken, AttributeValueTokens, ContentPieceTokens,
     InterpolationTokens, NodeTokens,
 };
 use super::{Component, prop_for_event};

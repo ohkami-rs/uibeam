@@ -1,15 +1,14 @@
 mod parse;
 mod transform;
 
-use self::parse::{ContentPieceTokens, NodeTokens};
-
 use proc_macro2::TokenStream;
 use quote::quote;
 
 pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
     let parse::UITokens {
-        #[cfg_attr(hydrate, unused)]
+        #[cfg_attr(hydrate, allow(unused_variables))]
         directives,
+        #[cfg_attr(hydrate, allow(unused_mut))]
         mut nodes,
     } = syn::parse2(input)?;
 
@@ -19,7 +18,7 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
             .clone()
             .into_iter()
             .map(|node| {
-                let vdom_tokens = transform::hydrate::transform(&node)?;
+                let vdom_tokens = transform::hydrate::transform(node)?;
                 Ok(quote! {
                     ::uibeam::UI::new_unchecked(#vdom_tokens)
                 })
@@ -34,6 +33,8 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
 
     #[cfg(not(hydrate))]
     {
+        use self::parse::{ContentPieceTokens, NodeTokens};
+
         fn is_enclosing_tag(node: &NodeTokens, tag_name: &str) -> bool {
             match node {
                 /* starting with <html>..., without <!DOCTYPE html> */

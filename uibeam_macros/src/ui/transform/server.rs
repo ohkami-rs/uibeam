@@ -1,3 +1,5 @@
+#![cfg_attr(hydrate, allow(unused))]
+
 use super::super::parse::{
     AttributeTokens, AttributeValueToken, AttributeValueTokens, ContentPieceTokens, Directive,
     InterpolationTokens, NodeTokens,
