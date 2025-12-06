@@ -246,11 +246,6 @@ mod bound {
 pub fn shoot(ui: UI) -> Cow<'static, str> {
     ui.0
 }
-#[cfg(hydrate)]
-#[inline(always)]
-pub fn shoot(ui: UI) -> client::VNode {
-    ui.0
-}
 
 impl FromIterator<UI> for UI {
     #[cfg(not(hydrate))]

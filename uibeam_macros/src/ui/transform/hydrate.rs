@@ -28,109 +28,107 @@ fn as_event_handler(name: &str, expression: &Expr) -> Option<syn::Result<(LitStr
 /// Derives Rust codes that builds an `uibeam::client::VNode` expression
 /// corresponded to the `UI!` input
 pub(crate) fn transform(tokens: NodeTokens) -> syn::Result<TokenStream> {
-    let mut t = TokenStream::new();
-    encode(&mut t, tokens)?;
-    return Ok(t);
+    fn into_props(attributes: Vec<AttributeTokens>, is_beam: bool) -> syn::Result<TokenStream> {
+        if attributes.is_empty() {
+            return Ok(quote! {
+                ::uibeam::client::js_sys::Object::new()
+            });
+        }
 
-    fn encode(t: &mut TokenStream, tokens: NodeTokens) -> syn::Result<()> {
-        fn into_props(attributes: Vec<AttributeTokens>, is_beam: bool) -> syn::Result<TokenStream> {
-            if attributes.is_empty() {
-                return Ok(quote! {
-                    ::uibeam::client::js_sys::Object::new()
-                });
-            }
-
-            let kvs = attributes
-                .into_iter()
-                .map(|AttributeTokens { name, value }| {
-                    let name = name.to_string();
-                    match value {
-                        None => Ok(quote! {
-                            (#name, ::uibeam::client::wasm_bindgen::JsValue::TRUE)
+        let kvs = attributes
+            .into_iter()
+            .map(|AttributeTokens { name, value }| {
+                let name = name.to_string();
+                match value {
+                    None => Ok(quote! {
+                        (#name, ::uibeam::client::wasm_bindgen::JsValue::TRUE)
+                    }),
+                    Some(AttributeValueTokens { _eq, value }) => match value {
+                        AttributeValueToken::IntegerLiteral(i) => Ok(quote! {
+                            (#name, ::uibeam::client::wasm_bindgen::JsValue::from(#i))
                         }),
-                        Some(AttributeValueTokens { _eq, value }) => match value {
-                            AttributeValueToken::IntegerLiteral(i) => Ok(quote! {
-                                (#name, ::uibeam::client::wasm_bindgen::JsValue::from(#i))
-                            }),
-                            AttributeValueToken::StringLiteral(s) => {
-                                let s = LitStr::new(&uibeam_html::escape(&s.value()), s.span());
+                        AttributeValueToken::StringLiteral(s) => {
+                            let s = LitStr::new(&uibeam_html::escape(&s.value()), s.span());
+                            Ok(quote! {
+                                (#name, ::uibeam::client::wasm_bindgen::JsValue::from(#s))
+                            })
+                        }
+                        AttributeValueToken::Interpolation(InterpolationTokens {
+                            _unsafe,
+                            _brace,
+                            rust_expression,
+                        }) => match (is_beam, as_event_handler(&name, &rust_expression)) {
+                            (false, Some(eh)) => {
+                                let (prop, event_handler) = eh?;
                                 Ok(quote! {
-                                    (#name, ::uibeam::client::wasm_bindgen::JsValue::from(#s))
+                                    (#prop, #event_handler)
                                 })
                             }
-                            AttributeValueToken::Interpolation(InterpolationTokens {
-                                _unsafe,
-                                _brace,
-                                rust_expression,
-                            }) => match (is_beam, as_event_handler(&name, &rust_expression)) {
-                                (false, Some(eh)) => {
-                                    let (prop, event_handler) = eh?;
-                                    Ok(quote! {
-                                        (#prop, #event_handler)
-                                    })
-                                }
-                                _ => Ok(quote! {
-                                    (#name, ::uibeam::client::wasm_bindgen::JsValue::from(
-                                        ::uibeam::AttributeValue::from(#rust_expression)
-                                    ))
-                                }),
-                            },
+                            _ => Ok(quote! {
+                                (#name, ::uibeam::client::wasm_bindgen::JsValue::from(
+                                    ::uibeam::AttributeValue::from(#rust_expression)
+                                ))
+                            }),
                         },
-                    }
-                })
-                .collect::<syn::Result<Vec<_>>>()?;
-
-            Ok(quote! {
-                {
-                    let props = ::uibeam::client::js_sys::Object::new();
-                    for (k, v) in [#(#kvs),*] {
-                        ::uibeam::client::js_sys::Reflect::set(&props, &k.into(), &v).unwrap();
-                    }
-                    props
+                    },
                 }
             })
-        }
+            .collect::<syn::Result<Vec<_>>>()?;
 
-        fn into_children(content: Vec<ContentPieceTokens>) -> syn::Result<TokenStream> {
-            let children = content
-                .into_iter()
-                .map(|piece| match piece {
-                    ContentPieceTokens::StaticText(text) => {
-                        let text = if text.token().to_string().starts_with("r#") {
-                            text
-                        } else {
-                            LitStr::new(&uibeam_html::escape(&text.value()), text.span())
-                        };
-                        Ok(quote! {
-                            ::uibeam::client::VNode::text(#text)
-                        })
-                    }
-                    ContentPieceTokens::Interpolation(InterpolationTokens {
-                        _unsafe,
-                        _brace,
-                        rust_expression,
-                    }) => {
-                        let is_escape = syn::LitBool::new(_unsafe.is_none(), Span::call_site());
-                        Ok(quote! {
-                            ::uibeam::IntoChildren::<_, #is_escape>::into_children(
-                                #rust_expression
-                            ).into_vdom()
-                        })
-                    }
-                    ContentPieceTokens::Node(n) => transform(n),
-                })
-                .collect::<syn::Result<Vec<_>>>()?;
+        Ok(quote! {
+            {
+                let props = ::uibeam::client::js_sys::Object::new();
+                for (k, v) in [#(#kvs),*] {
+                    ::uibeam::client::js_sys::Reflect::set(&props, &k.into(), &v).unwrap();
+                }
+                props
+            }
+        })
+    }
 
-            Ok(quote! {
-                vec![#(#children),*]
+    fn into_children(content: Vec<ContentPieceTokens>) -> syn::Result<TokenStream> {
+        let children = content
+            .into_iter()
+            .map(|piece| match piece {
+                ContentPieceTokens::StaticText(text) => {
+                    let text = if text.token().to_string().starts_with("r#") {
+                        text
+                    } else {
+                        LitStr::new(&uibeam_html::escape(&text.value()), text.span())
+                    };
+                    Ok(quote! {
+                        ::uibeam::client::VNode::text(#text)
+                    })
+                }
+                ContentPieceTokens::Interpolation(InterpolationTokens {
+                    _unsafe,
+                    _brace,
+                    rust_expression,
+                }) => {
+                    let is_escape = syn::LitBool::new(_unsafe.is_none(), Span::call_site());
+                    Ok(quote! {
+                        ::uibeam::IntoChildren::<_, #is_escape>::into_children(
+                            #rust_expression
+                        ).into_vdom()
+                    })
+                }
+                ContentPieceTokens::Node(n) => transform(n),
             })
-        }
+            .collect::<syn::Result<Vec<_>>>()?;
 
+        Ok(quote! {
+            vec![#(#children),*]
+        })
+    }
+
+    fn encode(t: &mut TokenStream, tokens: NodeTokens) -> syn::Result<()> {
         if let Some(beam) = tokens.as_beam() {
-            let rendering_expr = beam.into_rendering_expr_with(&[super::super::parse::Directive::new("client")])?;
+            let rendering_expr =
+                beam.into_rendering_expr_with(&[super::super::parse::Directive::new("client")])?;
             (quote! {
-                ::uibeam::shoot(#rendering_expr)
-            }).to_tokens(t);
+                #rendering_expr.into_vdom()
+            })
+            .to_tokens(t);
         } else {
             match tokens {
                 NodeTokens::Doctype { .. } => (/* ignore */),
@@ -184,10 +182,17 @@ pub(crate) fn transform(tokens: NodeTokens) -> syn::Result<TokenStream> {
                 }
 
                 NodeTokens::TextNode(node_pieces) => {
-                    into_children(node_pieces)?.to_tokens(t);
+                    let vnodes_vec = into_children(node_pieces)?;
+                    (quote! {
+                        ::uibeam::client::VNode::fragment(#vnodes_vec)
+                    }).to_tokens(t);
                 }
             }
         }
         Ok(())
     }
+    
+    let mut t = TokenStream::new();
+    encode(&mut t, tokens)?;
+    Ok(t)
 }
