@@ -141,7 +141,7 @@ pub(super) fn expand(args: TokenStream, input: TokenStream) -> syn::Result<Token
                 ) {
                     ::uibeam::client::hydrate(
                         ::uibeam::client::VNode::new(
-                            ::uibeam::client::NodeType::component::<#self_name>(),
+                            ::uibeam::client::NodeType::component::<#self_name, _>(),
                             props,
                             vec![],
                         ),

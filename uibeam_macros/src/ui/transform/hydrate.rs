@@ -33,7 +33,7 @@ pub(crate) fn transform(tokens: NodeTokens) -> syn::Result<TokenStream> {
     return Ok(t);
 
     fn encode(t: &mut TokenStream, tokens: NodeTokens) -> syn::Result<()> {
-        fn into_props(attributes: Vec<AttributeTokens>) -> syn::Result<TokenStream> {
+        fn into_props(attributes: Vec<AttributeTokens>, is_beam: bool) -> syn::Result<TokenStream> {
             if attributes.is_empty() {
                 return Ok(quote! {
                     ::uibeam::client::js_sys::Object::new()
@@ -62,14 +62,14 @@ pub(crate) fn transform(tokens: NodeTokens) -> syn::Result<TokenStream> {
                                 _unsafe,
                                 _brace,
                                 rust_expression,
-                            }) => match as_event_handler(&name, &rust_expression) {
-                                Some(eh) => {
+                            }) => match (is_beam, as_event_handler(&name, &rust_expression)) {
+                                (false, Some(eh)) => {
                                     let (prop, event_handler) = eh?;
                                     Ok(quote! {
                                         (#prop, #event_handler)
                                     })
                                 }
-                                None => Ok(quote! {
+                                _ => Ok(quote! {
                                     (#name, ::uibeam::client::wasm_bindgen::JsValue::from(
                                         ::uibeam::AttributeValue::from(#rust_expression)
                                     ))
@@ -132,7 +132,7 @@ pub(crate) fn transform(tokens: NodeTokens) -> syn::Result<TokenStream> {
             content,
         }) = tokens.as_beam()
         {
-            let props = into_props(attributes.to_vec())?;
+            let props = into_props(attributes.to_vec(), true)?;
 
             let children = into_children(content.map(<[_]>::to_vec).unwrap_or_else(Vec::new))?;
 
@@ -161,7 +161,7 @@ pub(crate) fn transform(tokens: NodeTokens) -> syn::Result<TokenStream> {
                 } => {
                     let tag = tag.to_string();
 
-                    let props = into_props(attributes)?;
+                    let props = into_props(attributes, false)?;
 
                     let children = into_children(content)?;
 
@@ -184,7 +184,7 @@ pub(crate) fn transform(tokens: NodeTokens) -> syn::Result<TokenStream> {
                 } => {
                     let tag = tag.to_string();
 
-                    let props = into_props(attributes)?;
+                    let props = into_props(attributes, false)?;
 
                     (quote! {
                         ::uibeam::client::VNode::new(

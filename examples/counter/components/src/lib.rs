@@ -27,7 +27,7 @@ struct CounterButton {
     /// additional classes to modify default style
     class: Option<&'static str>,
 }
-#[uibeam::client] // client component, but not Serialize, not at island boundary
+#[uibeam::client] // client component, but not Serialize/Deserialize and not at island boundary
 impl Beam for CounterButton {
     fn render(self) -> UI {
         UI! {
@@ -44,7 +44,7 @@ impl Beam for CounterButton {
     }
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Counter {
     pub initial_count: i32,
 }

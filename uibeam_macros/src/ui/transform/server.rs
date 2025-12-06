@@ -283,7 +283,7 @@ pub(crate) fn transform(
                     .as_ident()
                     .expect("Component attribute name must be a valid Rust identifier");
                 let (value, is_literal) = match &a.value {
-                    None => (quote! {true}, false),
+                    None => (quote! {true}, true),
                     Some(AttributeValueTokens { value, .. }) => match value {
                         AttributeValueToken::StringLiteral(lit) => (lit.into_token_stream(), true),
                         AttributeValueToken::IntegerLiteral(lit) => (lit.into_token_stream(), true),
@@ -330,14 +330,22 @@ pub(crate) fn transform(
             } else {
                 quote! { ::uibeam::render_on_server }
             };
-
+let stringified_for_error = {
+    let attributes = attributes.clone();
+    quote! {
+        #render_method(#name {
+            #(#attributes)*
+            #children
+        })
+    }
+}.to_string();
             syn::parse2(quote! {
                 #render_method(#name {
                     #(#attributes)*
                     #children
                 })
             })
-            .unwrap()
+            .unwrap_or_else(|_| panic!("failed to parse component instantiation: {stringified_for_error}"))
         }));
         piece.join(Piece::new_empty());
         piece.commit(&mut pieces);

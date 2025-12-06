@@ -118,7 +118,7 @@ r#"{"imports": {
         }
     };
 
-    Ok(quote! {
+    Ok(quote! {{
         #[cfg(hydrate)]
         {
             #hydrate_ui
@@ -127,5 +127,5 @@ r#"{"imports": {
         {
             #server_ui
         }
-    })
+    }})
 }

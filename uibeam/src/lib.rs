@@ -173,7 +173,7 @@ mod bound {
     impl BeamKind for Client {}
 
     #[doc(hidden)]
-    pub trait IslandBoundary: Beam<Client> + serde::Serialize {}
+    pub trait IslandBoundary: Beam<Client> + serde::Serialize + for<'de> serde::Deserialize<'de> {}
 
     #[doc(hidden)]
     pub struct ServerOrIslandBoundary<K: BeamKind>(std::marker::PhantomData<K>);
@@ -206,7 +206,7 @@ mod bound {
         }
     }
 
-    // `IslandInternal` is ability to be rendered inside an island, meaning any Beams.
+    // `IslandInternal` is ability to be rendered inside an island i.e. any Beams.
     #[doc(hidden)]
     impl<T> Beam<IslandInternal<Server>> for T
     where

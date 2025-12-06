@@ -85,12 +85,12 @@ impl NodeType {
         NodeType(tag.into())
     }
 
-    pub fn component<L, K: BeamKind>() -> NodeType
+    pub fn component<B, K: BeamKind>() -> NodeType
     where
-        L: Beam<IslandInternal<K>> + for<'de> serde::Deserialize<'de>,
+        B: Beam<IslandInternal<K>> + for<'de> serde::Deserialize<'de>,
     {
         let component_function: Function = Closure::<dyn Fn(JsValue) -> JsValue>::new(|props| {
-            let props: L = serde_wasm_bindgen::from_value(props).unwrap_throw();
+            let props: B = serde_wasm_bindgen::from_value(props).unwrap_throw();
             crate::render_in_island(props).into_vdom().0
         })
         .into_js_value()
