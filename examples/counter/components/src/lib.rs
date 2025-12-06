@@ -5,7 +5,6 @@ pub struct Layout {
     pub title: String,
     pub children: UI,
 }
-
 impl Beam for Layout {
     fn render(self) -> UI {
         UI! {
