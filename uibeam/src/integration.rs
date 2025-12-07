@@ -1,3 +1,5 @@
+#![cfg(not(hydrate))]
+
 use crate::{UI, shoot};
 
 #[cfg(feature = "axum")]

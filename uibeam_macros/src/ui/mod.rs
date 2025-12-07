@@ -5,15 +5,20 @@ use proc_macro2::TokenStream;
 use quote::quote;
 
 pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
-    let parse::UITokens { mut nodes } = syn::parse2(input)?;
+    let parse::UITokens {
+        #[allow(unused_variables)]
+        directives,
+        #[allow(unused_mut)]
+        mut nodes,
+    } = syn::parse2(input)?;
 
-    #[cfg(feature = "laser")]
-    let wasm32_ui = {
-        let wasm32_nodes = nodes
+    #[cfg(feature = "client")]
+    let hydrate_ui = {
+        let uis = nodes
             .clone()
             .into_iter()
             .map(|node| {
-                let vdom_tokens = transform::wasm32::transform(node)?;
+                let vdom_tokens = transform::hydrate::transform(node)?;
                 Ok(quote! {
                     ::uibeam::UI::new_unchecked(#vdom_tokens)
                 })
@@ -21,39 +26,33 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
             .collect::<syn::Result<Vec<_>>>()?;
 
         quote! {
-            <::uibeam::UI>::from_iter([#(#wasm32_nodes),*])
+            <::uibeam::UI>::from_iter([#(#uis),*])
         }
     };
 
-    let native_ui = {
+    let server_ui = {
         if nodes
             .first()
-            .is_some_and(|node| matches!(node, parse::NodeTokens::Doctype { .. }))
+            .is_some_and(|node| matches!(node, self::parse::NodeTokens::Doctype { .. }))
         {
+            // removing existing doctype declaration to insert our own later
+            // as a part of static string literal (for performance optimization)
             nodes.remove(0);
         }
 
-        let mut should_insert_doctype = nodes.first().is_some_and(|node| match node {
-            /* starting with <html>..., without <!DOCTYPE html> */
-            parse::NodeTokens::EnclosingTag { tag, .. }
-                if tag.to_string().eq_ignore_ascii_case("html") =>
-            {
-                true
-            }
-            _ => false,
-        });
-
-        let native_nodes = nodes
+        let uis = nodes
             .into_iter()
             .map(|node| {
+                let is_html_tag = node.enclosing_tag_children("html").is_some();
+
                 let (mut literals, expressions, ehannotations) =
-                    transform::native::transform(node)?;
-                if should_insert_doctype {
+                    transform::server::transform(&directives, node)?;
+
+                if is_html_tag {
                     literals
                         .first_mut()
                         .unwrap()
                         .edit(|lit| *lit = format!("<!DOCTYPE html>{lit}"));
-                    should_insert_doctype = false;
                 }
 
                 let ehannotations = (!ehannotations.is_empty()).then(|| {
@@ -75,18 +74,22 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
             .collect::<syn::Result<Vec<_>>>()?;
 
         quote! {
-            <::uibeam::UI>::concat([#(#native_nodes),*])
+            <::uibeam::UI>::concat([#(#uis),*])
         }
     };
 
-    #[cfg(not(feature = "laser"))]
-    return Ok(native_ui);
+    #[cfg(not(feature = "client"))]
+    return Ok(server_ui);
 
-    #[cfg(feature = "laser")]
-    return Ok(quote! {
+    #[cfg(feature = "client")]
+    return Ok(quote! {{
+        #[cfg(hydrate)]
         {
-            #[cfg(target_arch = "wasm32")] {#wasm32_ui}
-            #[cfg(not(target_arch = "wasm32"))] {#native_ui}
+            #hydrate_ui
         }
-    });
+        #[cfg(not(hydrate))]
+        {
+            #server_ui
+        }
+    }});
 }

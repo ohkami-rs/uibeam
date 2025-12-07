@@ -1,11 +1,14 @@
-pub(super) mod native;
+#[cfg(feature = "client")]
+pub(super) mod hydrate;
+pub(super) mod server;
 
-#[cfg(feature = "laser")]
-pub(super) mod wasm32;
-
-use super::parse::{AttributeTokens, ContentPieceTokens, HtmlIdent, NodeTokens};
-use proc_macro2::Span;
-use syn::{Ident, Type};
+use super::parse::{
+    AttributeTokens, AttributeValueToken, AttributeValueTokens, ContentPieceTokens, Directive,
+    HtmlIdent, InterpolationTokens, NodeTokens,
+};
+use proc_macro2::{Span, TokenStream};
+use quote::{ToTokens, quote};
+use syn::{Ident, Type, spanned::Spanned};
 
 struct Component<'n> {
     name: &'n Ident,
@@ -48,6 +51,82 @@ impl NodeTokens {
     }
 }
 
+impl Component<'_> {
+    fn into_rendering_expr_with(self, directives: &[Directive]) -> syn::Result<syn::Expr> {
+        let Component {
+            name,
+            attributes,
+            content,
+        } = self;
+
+        let attributes = attributes
+            .iter()
+            .map(|a| {
+                let name = a.name.as_ident().ok_or_else(|| {
+                    syn::Error::new(
+                        a.name.span(),
+                        "expected a valid Rust identifier for Beam property name",
+                    )
+                })?;
+                let (value, is_literal) = match &a.value {
+                    None => (quote! {true}, true),
+                    Some(AttributeValueTokens { value, .. }) => match value {
+                        AttributeValueToken::StringLiteral(lit) => (lit.into_token_stream(), true),
+                        AttributeValueToken::IntegerLiteral(lit) => (lit.into_token_stream(), true),
+                        AttributeValueToken::Interpolation(InterpolationTokens {
+                            rust_expression,
+                            ..
+                        }) => (rust_expression.into_token_stream(), false),
+                    },
+                };
+                Ok(if is_literal {
+                    quote! {
+                        #[allow(unused_braces)]
+                        #name: (#value).into(),
+                    }
+                } else {
+                    quote! {
+                        #name: #value,
+                    }
+                })
+            })
+            .collect::<syn::Result<Vec<_>>>()?;
+
+        let children = match content {
+            None => None,
+            Some(c) => Some({
+                let children_tokens = c
+                    .iter()
+                    .map(ToTokens::to_token_stream)
+                    .collect::<TokenStream>();
+                // Explicitly using `expand()`, instead of just returning
+                // `children: UI! { #(#directives)* #children_tokens }`,
+                // to avoid recursive macro expansions.
+                let children_tokens = crate::ui::expand(quote![
+                    #(#directives)*
+                    #children_tokens
+                ])?;
+                quote! {
+                    children: #children_tokens,
+                }
+            }),
+        };
+
+        let render_method = if directives.iter().any(|d| d.client()) {
+            quote! { ::uibeam::render_in_island }
+        } else {
+            quote! { ::uibeam::render_on_server }
+        };
+
+        syn::parse2(quote! {
+            #render_method(#name {
+                #(#attributes)*
+                #children
+            })
+        })
+    }
+}
+
 fn prop_for_event(event: &str) -> syn::Result<(Ident, Type)> {
     macro_rules! preact_handlers {
         ($($eventname:literal: $propName:ident($Event:ty);)*) => {
@@ -55,14 +134,14 @@ fn prop_for_event(event: &str) -> syn::Result<(Ident, Type)> {
                 $(
                     $eventname => Ok((
                         Ident::new(stringify!($propName), proc_macro2::Span::call_site()),
-                        syn::parse_quote! {::uibeam::laser::web_sys::$Event}
+                        syn::parse_quote! {::uibeam::client::web_sys::$Event}
                     )),
                 )*
                 _ => Err(syn::Error::new(Span::call_site(), format!(
-                    "Handler for unknown event `{event}`. If it's valid event, \
-                    please submit an issue at https://github.com/ohkami-rs/uibeam/issues \
-                    to add support for it! \
-                    NOTE: custom event handlers are not supported in current version."
+                    "unknown event handler `on{event}`. \
+                    NOTE: UIBeam's event handlers are named as `on{{event}}` with totally lowercase, \
+                    e.g. `onclick` `onpointerdown`, as HTML standard. \
+                    if `{event}` is a valid event, feel free to submit an issue for it: https://github.com/ohkami-rs/uibeam/issues"
                 )))
             }
         };
