@@ -24,22 +24,22 @@ cargo metask check test
 """
 
 check = """
-cargo metask check_fmt check_clippy check_clippy_wasm32 check_clippy_wasm32_hydrate
+cargo metask check_fmt clippy clippy_wasm32 clippy_wasm32_hydrate
 """
 check_fmt = """
 cargo fmt --all --check
 """
-check_clippy = """
+clippy = """
 cargo clippy --all-targets -- --deny warnings
 cargo clippy --all-targets --no-default-features -- --deny warnings
 cargo clippy --all-targets --all-features -- --deny warnings  ## `client` + all integrations
 """
-check_clippy_wasm32 = """
+clippy_wasm32 = """
 export CARGO_BUILD_TARGET='wasm32-unknown-unknown'
 cargo clippy --lib -- --deny warnings
 cargo clippy --lib --no-default-features -- --deny warnings
 """
-check_clippy_wasm32_hydrate = """
+clippy_wasm32_hydrate = """
 export CARGO_BUILD_TARGET='wasm32-unknown-unknown'
 export RUSTFLAGS='--cfg hydrate'  ## `hydrate` cfg requires `client` feature
 cargo clippy --lib -- --deny warnings
