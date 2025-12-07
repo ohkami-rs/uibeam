@@ -16,40 +16,23 @@ pub fn serialize_props<P: super::IslandBoundary>(props: &P) -> String {
 }
 
 #[cfg(hydrate)]
-mod src_hydrate_js {
+mod runtime_js {
     use super::*;
 
-    #[wasm_bindgen(module = "/src/hydrate.js")]
+    #[wasm_bindgen(module = "/runtime.mjs")]
     extern "C" {
-        #[wasm_bindgen]
-        pub fn ensure_included();
-    }
-}
-
-#[cfg(hydrate)]
-mod preact {
-    use super::*;
-
-    #[wasm_bindgen(module = "preact")]
-    unsafe extern "C" {
         #[wasm_bindgen(js_name = "hydrate")]
         pub(super) fn hydrate(vdom: JsValue, container: ::web_sys::Node);
 
         #[wasm_bindgen(js_name = "createElement")]
         pub(super) fn create_element(r#type: JsValue, props: Object, children: Array) -> JsValue;
 
-        #[wasm_bindgen(js_name = "cloneElement")]
-        pub(super) fn clone_element(vdom: JsValue, props: Object, children: Array) -> JsValue;
-
         #[wasm_bindgen(js_name = "createRef")]
         pub(super) fn create_ref() -> JsValue;
 
         #[wasm_bindgen(js_name = "Fragment")]
         pub(super) fn fragment(props: Object) -> JsValue;
-    }
-
-    #[wasm_bindgen(module = "@preact/signals")]
-    unsafe extern "C" {
+        
         #[wasm_bindgen(js_name = "useSignal")]
         pub(super) fn signal(value: JsValue) -> Object;
 
@@ -75,8 +58,7 @@ use {
 
 #[cfg(hydrate)]
 pub fn hydrate(vdom: VNode, container: ::web_sys::Node) {
-    src_hydrate_js::ensure_included();
-    preact::hydrate(vdom.0, container);
+    runtime_js::hydrate(vdom.0, container);
 }
 
 #[cfg(hydrate)]
@@ -106,7 +88,7 @@ impl NodeType {
 #[cfg(hydrate)]
 impl VNode {
     pub fn new(r#type: NodeType, props: Object, children: Vec<VNode>) -> VNode {
-        VNode(preact::create_element(
+        VNode(runtime_js::create_element(
             r#type.0,
             props,
             children.into_iter().map(|vdom| vdom.0).collect::<Array>(),
@@ -121,7 +103,7 @@ impl VNode {
             &children.into_iter().map(|vdom| vdom.0).collect::<Array>(),
         )
         .ok();
-        VNode(preact::fragment(props))
+        VNode(runtime_js::fragment(props))
     }
 
     pub fn text(text: impl Into<std::borrow::Cow<'static, str>>) -> VNode {
@@ -247,7 +229,7 @@ where
     fn new(value: T) -> Self {
         Self {
             #[cfg(hydrate)]
-            preact_signal: preact::signal(serde_wasm_bindgen::to_value(&value).unwrap_throw()),
+            preact_signal: runtime_js::signal(serde_wasm_bindgen::to_value(&value).unwrap_throw()),
             current_value: std::rc::Rc::new(std::cell::UnsafeCell::new(value)),
         }
     }
@@ -356,7 +338,7 @@ where
         {
             let init = getter();
 
-            let preact_computed = preact::computed(
+            let preact_computed = runtime_js::computed(
                 Closure::<dyn Fn() -> JsValue>::new(move || {
                     serde_wasm_bindgen::to_value(&getter()).unwrap_throw()
                 })
@@ -433,7 +415,7 @@ where
         #[cfg(hydrate)]
         {
             let f = Closure::<dyn Fn()>::new(f).into_js_value().unchecked_into();
-            preact::effect(f);
+            runtime_js::effect(f);
         }
         Self
     }
@@ -498,7 +480,7 @@ where
         #[cfg(hydrate)]
         {
             let f = Closure::<dyn Fn()>::new(f).into_js_value().unchecked_into();
-            preact::effect(f);
+            runtime_js::effect(f);
         }
         Self
     }
@@ -523,7 +505,7 @@ where
         #[cfg(hydrate)]
         {
             let f = Closure::<dyn Fn()>::new(f).into_js_value().unchecked_into();
-            preact::effect(f);
+            runtime_js::effect(f);
         }
         Self
     }

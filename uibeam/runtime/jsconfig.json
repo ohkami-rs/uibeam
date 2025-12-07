@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "preact": ["vendor/preact@10.28.0.mjs"],
+      "preact/hooks": ["vendor/preact@10.28.0-hooks.mjs"],
+      "@preact/signals": ["vendor/@preact-signals@2.5.1.mjs"],
+      "@preact/signals-core": ["vendor/@preact-signals-core@1.12.1.mjs"]
+    }
+  }
+}
