@@ -160,20 +160,6 @@ pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///     crate-type = ["cdylib", "rlib"]
 ///     ```
 ///     
-///    For size optimization, following configuration is recommended:
-///   
-///     ```toml
-///     [package.metadata.wasm-pack.release]
-///     wasm-opt = ["-Oz"]  # or "-Os"
-///     
-///     [profile.release]
-///     opt-level = 'z'  # or 's'
-///     lto = true
-///     codegen-unit = 1
-///     ```
-///
-///    See https://rustwasm.github.io/docs/book/game-of-life/code-size.html or other specific documents for more details.
-///    
 /// 3. Define and use your client components:
 ///
 ///     ```rust
