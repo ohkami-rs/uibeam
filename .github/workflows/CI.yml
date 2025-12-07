@@ -40,8 +40,8 @@ jobs:
         id: cache_cargo_tools
         uses: actions/cache@v4
         with:
-          key: ${{ runner.os }}-${{ matrix.toolchain }}-cargo-tools
-          path: ~/.cargo/bin
+          key: ${{ runner.os }}-cargo-tools-${{ matrix.toolchain }}
+          path: ~/.cargo
       - name: Install cargo tools
         if: steps.cache_cargo_tools.outputs.cache-hit != 'true'
         run: cargo install cargo-metask wasm-pack wasm-bindgen-cli
