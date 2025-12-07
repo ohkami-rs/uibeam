@@ -127,9 +127,9 @@ pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///
 /// ### overview
 ///
-/// **`#[client]`** makes `Beam` a _*WASM island*_ : initially rendered in server, sent with serialized props, and hydrated with deserialized props in client.
+/// **`#[client]`** makes `Beam` a _*WASM island*_ : initially rendered on server, sent with serialized props, and hydrated with deserialized props on browser.
 ///
-/// `Signal`, `computed`, `effect` are available in them.
+/// `Signal`, `computed`, `effect`, `batch`, `untracked` are available in them.
 ///
 /// ### note
 ///
@@ -238,7 +238,7 @@ pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///     ```
 ///    
 ///    **NOTE**:
-///    Client Beam at island boundary must be `Serialize + for<'de> Deserialize<'de>` in order to the Wasm island architecture.
+///    Client Beam at island boundary must be `Serialize + for<'de> Deserialize<'de>` for the Wasm island architecture.
 ///    In contrast, `#[client]` components without `(island)`, e.g. having `children: UI` or `on_something: Box<dyn FnOnce(Event)>`
 ///    as props, can NOT implement `Serialize` nor `Deserialize` and can **only be used internally in `UI!` of another client component**.
 ///    Especially note that client components at **island boundary can't have `children`**.
@@ -252,7 +252,7 @@ pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///     RUSTFLAGS='--cfg hydrate' wasm-pack build --out-name hydrate --target web
 ///     ```
 ///     ```sh
-///     # in hot-reloading loop, `--dev` flag is recommended:
+///     # in a hot-reloading loop, `--dev` flag is recommended:
 ///
 ///     cd islands
 ///     RUSTFLAGS='--cfg hydrate' wasm-pack build --out-name hydrate --target web --dev
@@ -261,16 +261,16 @@ pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///    **NOTE**:
 ///    All of `hydrate` cfg (not feature!), `hydrate` out-name and `web` target are **required** here.
 ///
-/// 5. Make sure that your server responds with **a complete HTML consist of one <html></html> containing your page contents**.
+/// 5. Make sure that your server responds with **a complete HTML consist of one `<html></html>` containing your page contents**.
 ///    
 ///    Then, setup your server to serve the output directory (default: `pkg`) at **`/.uibeam`** route:
-///  
+///
 ///     ```rust
 ///     /* axum example */
-///  
+///
 ///     use axum::Router;
 ///     use tower_http::services::ServeDir;
-///  
+///
 ///     fn app() -> Router {
 ///         Router::new()
 ///             .nest_service(
