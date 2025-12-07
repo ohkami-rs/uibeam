@@ -133,7 +133,7 @@ pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///
 /// ### note
 ///
-/// Currently UIBeam's client component system is built upon [`Preact`](https://preactjs.com).
+/// Currently UIBeam's client component system is built upon [Preact](https://preactjs.com).
 /// This may be rewritten in pure Rust in the future, but may not because of potential reduction in the final .wasm size.
 ///
 /// ### usage

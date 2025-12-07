@@ -299,11 +299,14 @@ impl Parse for NodeTokens {
                 head_children.extend([
                         ContentPieceTokens::Node(syn::parse_quote! {
                             <script type="importmap">
-                                r#"{"imports": {"preact": "https://esm.sh/preact@10.28.0", "preact/": "https://esm.sh/preact@10.28.0/", "@preact/signals": "https://esm.sh/@preact/signals@2.5.1?external=preact"}}"#
+                                r#"{"imports": {"preact": "https://esm.sh/preact@10.28.0", "preact/hooks": "https://esm.sh/preact@10.28.0/hooks?external=preact", "@preact/signals": "https://esm.sh/@preact/signals@2.5.1?external=preact"}}"#
                             </script>
                         }),
                         ContentPieceTokens::Node(syn::parse_quote! {
                             <link rel="modulepreload" href="https://esm.sh/preact@10.28.0" />
+                        }),
+                        ContentPieceTokens::Node(syn::parse_quote! {
+                            <link rel="modulepreload" href="https://esm.sh/preact@10.28.0/hooks?external=preact" />
                         }),
                         ContentPieceTokens::Node(syn::parse_quote! {
                             <link rel="modulepreload" href="https://esm.sh/@preact/signals@2.5.1?external=preact" />
