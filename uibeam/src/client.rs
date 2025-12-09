@@ -32,7 +32,7 @@ mod runtime_js {
 
         #[wasm_bindgen(js_name = "Fragment")]
         pub(super) fn fragment(props: Object) -> JsValue;
-        
+
         #[wasm_bindgen(js_name = "useSignal")]
         pub(super) fn signal(value: JsValue) -> Object;
 
