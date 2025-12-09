@@ -19,7 +19,7 @@
 ## Features
 
 - Struct-based component model.
-- Client components via island architecture in Wasm. (See *Client Component* section below)
+- Client components via island architecture in Wasm. (**experimental**) (See *Client Component* section below)
 - Best effort to generate efficient code for template rendering with less redundant memory allocation.
 
 Additionally, HTML completions and hovers in `UI!` by VSCode extension. (search`uibeam` in the extension marketplace)
@@ -245,9 +245,10 @@ fn main() {
 
 ### note
 
-Currently UIBeam's hydration system is built upon [Preact](https://preactjs.com).
-This may be rewritten in pure Rust in the future, but may not,
-because of the potential reduction in the size of Wasm output.
+**EXPERIMENTAL**.
+
+Currently UIBeam's hydration/reactivity system is built upon [Preact](https://preactjs.com).
+This will be rewritten in pure Rust in the future.
 
 ### usage
 

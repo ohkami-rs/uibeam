@@ -145,9 +145,10 @@ pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///
 /// ### note
 ///
-/// Currently UIBeam's hydration system is built upon [Preact](https://preactjs.com).
-/// This may be rewritten in pure Rust in the future, but may not,
-/// because of the potential reduction in the size of Wasm output.
+/// **EXPERIMENTAL**.
+///
+/// Currently UIBeam's hydration/reactivity system is built upon [Preact](https://preactjs.com).
+/// This will be rewritten in pure Rust in the future.
 ///
 /// ### usage
 ///
