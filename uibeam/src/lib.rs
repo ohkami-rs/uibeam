@@ -18,14 +18,15 @@
 //! </div>
 //!
 //! - `UI!` : JSX-style template syntax with compile-time checks
-//! - `Beam` : Component System based on Rust structs
+//! - `Beam` : Component system based on Rust structs
 //!
 //! ## Features
 //!
-//! - Supports client component via island architecture in Wasm. (See *Client Component* section below)
-//! - Simply organized API and codebase.
-//! - Emits efficient template rendering avoiding redundant memory allocations as smartly as possible.
-//! - HTML completions and hovers in `UI!` by VSCode extension. ( search "uibeam" from extension marketplace )
+//! - Struct-based component model with minimal macro usage. (just `UI!` amd `#[client]`)
+//! - Client components via island architecture in Wasm. (See *Client Component* section below)
+//! - Best effort to generate efficient code for template rendering with less redundant memory allocation.
+//!
+//! Additionally, HTML completions and hovers in `UI!` by VSCode extension. ( search `uibeam` in the extension marketplace )
 //!
 //! ![](https://github.com/ohkami-rs/uibeam/raw/HEAD/support/vscode/assets/completion.png)
 
