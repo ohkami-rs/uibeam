@@ -22,7 +22,7 @@
 - Client components via island architecture in Wasm. (See *Client Component* section below)
 - Best effort to generate efficient code for template rendering with less redundant memory allocation.
 
-Additionally, HTML completions and hovers in `UI!` by VSCode extension. ( search `uibeam` in the extension marketplace )
+Additionally, HTML completions and hovers in `UI!` by VSCode extension. (search`uibeam` in the extension marketplace)
 
 ![](https://github.com/ohkami-rs/uibeam/raw/HEAD/support/vscode/assets/completion.png)
 
@@ -76,7 +76,7 @@ fn main() {
 
 ### unsafely insert HTML string
 
-**raw string literal** ( `r#"..."#` ) or **unsafe block** contents are rendered *without HTML-escape* :
+**raw string literal** (`r#"..."#`) or **unsafe block** contents are rendered *without HTML-escape* :
 
 <!-- ignore for `include_str!` -->
 ```rust,ignore
