@@ -278,45 +278,76 @@ working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/mai
     /* islands/src/lib.rs */
     
     use uibeam::{UI, Beam};
-    use uibeam::{client, Signal, callback};
+    use uibeam::{Signal, callback, client::PointerEvent};
     use serde::{Serialize, Deserialize};
     
-    // Client component located at **island boundary**
-    // must be `Serialize + for<'de> Deserialize<'de>`. (see NOTE below)
-    #[derive(Serialize, Deserialize)]
-    pub struct Counter;
-    
-    // `#[client]` makes Beam a Wasm island.
-    // `(island)` means this beam is **island boundary**.
-    #[client(island)]
+    struct CounterButton {
+        on_click: Box<dyn Fn(PointerEvent)>,
+        children: UI,
+        /// additional classes to modify default style
+        class: Option<&'static str>,
+    }
+    #[uibeam::client] // client component, but not Serialize/Deserialize and not at island boundary
+    impl Beam for CounterButton {
+        fn render(self) -> UI {
+            UI! {
+                <button
+                    class={self.class.unwrap_or("")}
+                    onclick={self.on_click}
+                >
+                    {self.children}
+                </button>
+            }
+        }
+    }
+
+    // client component at **island boundary** must be `Serialize + for<'de> Deserialize<'de>`.
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct Counter {
+        pub initial_count: i32,
+    }
+    // `(island)` means **island boundary**
+    #[uibeam::client(island)]
     impl Beam for Counter {
         fn render(self) -> UI {
-            let count = Signal::new(0);
-    
-            // `callback!` - a thin utility for callbacks over signals.
+            let count = Signal::new(self.initial_count);
+
+            // callback! - a thin utility for callbacks using signals.
             let increment = callback!(
-                // [dependent_signals, ...]
+                // [dependent signals, ...]
                 [count],
                 // closure depending on the signals
                 |_| count.set(*count + 1)
             );
             /* << expanded >>
-    
+             
             let increment = {
                 let count = count.clone();
                 move |_| count.set(*count + 1)
             };
-            
+              
             */
-    
+
             let decrement = callback!([count], |_| {
-                count.set(*count - 1)
+                count.set(*count - 1);
             });
-    
+
             UI! {
-                <p>"Count: "{*count}</p>
-                <button onclick={increment}>"+"</button>
-                <button onclick={decrement}>"-"</button>
+                <div>
+                    <p>
+                        "Count: "{*count}
+                    </p>
+                    <div>
+                        <CounterButton
+                            on_click={Box::new(decrement)}
+                            class={None}
+                        >"-"</CounterButton>
+                        <CounterButton
+                            on_click={Box::new(increment)}
+                            class={None}
+                        >"+"</CounterButton>
+                    </div>
+                </div>
             }
         }
     }
@@ -340,7 +371,6 @@ working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/mai
    In contrast, `#[client]` component that, e.g. has `children: UI` or `on_something: Box<dyn FnOnce(Event)>`
    as its props, can NOT implement `Serialize` nor `Deserialize`, can NOT has `(island)`,
    and can **only be used internally in `UI!` of another client component**.
-   Especially note that **island boundary component itself can't have `children`**.
 
 4. Compile the lib crate into Wasm by `wasm-pack build` with **`RUSTFLAGS='--cfg hydrate'`** and **`--out-name hydrate --target web`**:
 
