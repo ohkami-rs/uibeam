@@ -12,14 +12,20 @@ license       = { workspace = true }
 keywords      = { workspace = true }
 categories    = { workspace = true }
 
+[package.metadata.docs.rs]
+all-features = true
+
+[lints]
+workspace = true
+
 [lib]
 proc-macro = true
 
 [features]
-laser = []
+client = []
 
 [dependencies]
-uibeam_html = { path = "../uibeam_html", version = "=0.3.1" }
+uibeam_html = { path = "../uibeam_html", version = "=0.4.0" }
 proc-macro2 = "1.0"
 quote       = "1.0"
 syn         = { version = "2.0", features = ["full"] }

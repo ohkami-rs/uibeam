@@ -3,7 +3,7 @@ resolver = "3"
 members  = ["uibeam", "uibeam_html", "uibeam_macros"]
 
 [workspace.package]
-version    = "0.3.1"
+version    = "0.4.0"
 edition    = "2024"
 authors    = ["kanarus <kanarus786@gmail.com>"]
 homepage   = "https://crates.io/uibeam"
@@ -13,42 +13,74 @@ license    = "MIT"
 keywords   = ["jsx", "html", "template-engine", "web", "ui"]
 categories = ["template-engine", "web-programming", "wasm"]
 
+[workspace.lints.clippy]
+duplicated_attributes = "allow" # to keep readability with complex feature combinations
+[workspace.lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(hydrate)"] } # for `hydrate` cfg (this can't be realized via feature flag to support wasm32 server environment like Cloudflare Workers)
+
 [workspace.metadata.tasks]
 CI = """
-cargo metask \
-    test
+cargo metask check test
+"""
+
+check = """
+cargo metask check_fmt clippy clippy_wasm32 clippy_wasm32_hydrate
+"""
+check_fmt = """
+cargo fmt --all --check
+"""
+clippy = """
+cargo clippy --all-targets -- --deny warnings
+cargo clippy --all-targets --no-default-features -- --deny warnings
+cargo clippy --all-targets --all-features -- --deny warnings  ## `client` + all integrations
+"""
+clippy_wasm32 = """
+export CARGO_BUILD_TARGET='wasm32-unknown-unknown'
+cargo clippy --lib -- --deny warnings
+cargo clippy --lib --no-default-features -- --deny warnings
+"""
+clippy_wasm32_hydrate = """
+export CARGO_BUILD_TARGET='wasm32-unknown-unknown'
+export RUSTFLAGS='--cfg hydrate'  ## `hydrate` cfg requires `client` feature
+cargo clippy --lib -- --deny warnings
 """
 
 test = """
 cargo metask test_crates test_examples
 """
 test_crates = """
-    cd uibeam
-    echo "================[doc]================\n"
-    cargo test --doc --all-features
-    echo "================[vanilla]================\n"
-    cargo test --lib
-    echo "================[laser]================\n"
-    cargo test --lib --features laser
-    echo "================[integrations]================\n"
-    for integration in $(cargo info --color never uibeam | awk '/\\[.*__integration__.*\\]/ {print $1}'); do
-        if [ "$integration" != "openapi" ]; then
-            echo "================[integration:$integration]================\n"
-            cargo test --lib --features "$integration"
-            cargo test --lib --features "$integration",openapi
-            cargo test --lib --features "$integration",laser
-            cargo test --lib --features "$integration",laser,openapi
-        fi
-    done
+export RUSTFLAGS='--deny warnings'
+cd uibeam
+echo "================[doc]================\n"
+cargo test --doc --all-features
+echo "================[default]================\n"
+cargo test --lib
+echo "================[with no features]================\n"
+cargo test --lib --no-default-features
+echo "================[with integrations]================\n"
+for integration in $(cargo info --color never uibeam | awk '/\\[.*__integration__.*\\]/ {print $1}'); do
+    if [ "$integration" != "openapi" ]; then
+        echo "================[integration:$integration]================\n"
+        cargo test --lib --features "$integration"
+        cargo test --lib --features "$integration",openapi
+        cargo test --lib --no-default-features --features "$integration"
+        cargo test --lib --no-default-features --features "$integration",openapi
+    fi
+done
 """
 test_examples = """
-    cd examples
-    for directory in ./*/; do
-        if [ "$(basename $directory)" != "target" ]; then
-            echo "================[example:$(basename $directory)]================\n"
-            cd "$directory"
-            cargo test
-            cd ..
+export RUSTFLAGS='--deny warnings'
+cd examples
+for directory in ./*/; do
+    if [ "$(basename $directory)" != "target" ]; then
+        echo "================[example:$(basename $directory)]================\n"
+        cd "$directory"
+        cargo test
+        if [ -f "test.sh" ]; then
+            chmod +x ./test.sh
+            ./test.sh
         fi
-    done
+        cd ..
+    fi
+done
 """

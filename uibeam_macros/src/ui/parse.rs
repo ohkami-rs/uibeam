@@ -1,13 +1,34 @@
-use quote::{quote, ToTokens};
+use quote::{ToTokens, quote};
 use syn::parse::{Parse, ParseStream};
 use syn::spanned::Spanned;
-use syn::{token, Expr, Ident, LitInt, LitStr, Token};
+use syn::{Expr, Ident, LitInt, LitStr, Token, token};
 
 /// Parsed representation of the UI macro input.
-/// 
-/// This is almost HTML syntax, but with some Rust expressions embedded within `{}`.
+///
+/// This is almost HTML syntax, but with optional `@directive;`s and some Rust expressions embedded within `{}`.
 pub(super) struct UITokens {
+    pub(super) directives: Vec<Directive>,
     pub(super) nodes: Vec<NodeTokens>,
+}
+
+pub(super) struct Directive {
+    pub(super) _at: Token![@],
+    pub(super) name: Ident,
+    pub(super) _semi: Token![;],
+}
+impl Directive {
+    pub(super) fn client(&self) -> bool {
+        self.name == "client"
+    }
+
+    #[allow(unused)]
+    pub(super) fn new(name: &str) -> Self {
+        Directive {
+            _at: Default::default(),
+            name: quote::format_ident!("{name}"),
+            _semi: Default::default(),
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -39,6 +60,36 @@ pub(super) enum NodeTokens {
     },
     TextNode(Vec<ContentPieceTokens>),
 }
+impl NodeTokens {
+    pub(super) fn children_of_enclosing_tag(
+        &self,
+        tag_name: &str,
+    ) -> Option<&Vec<ContentPieceTokens>> {
+        match self {
+            NodeTokens::EnclosingTag { tag, content, .. }
+                if tag.to_string().eq_ignore_ascii_case(tag_name) =>
+            {
+                Some(content)
+            }
+            _ => None,
+        }
+    }
+
+    #[allow(unused)]
+    pub(super) fn children_of_enclosing_tag_mut(
+        &mut self,
+        tag_name: &str,
+    ) -> Option<&mut Vec<ContentPieceTokens>> {
+        match self {
+            NodeTokens::EnclosingTag { tag, content, .. }
+                if tag.to_string().eq_ignore_ascii_case(tag_name) =>
+            {
+                Some(content)
+            }
+            _ => None,
+        }
+    }
+}
 
 mod keyword {
     syn::custom_keyword!(DOCTYPE);
@@ -57,10 +108,9 @@ impl HtmlIdent {
 }
 impl PartialEq for HtmlIdent {
     fn eq(&self, other: &Self) -> bool {
-        self.head == other.head &&
-        self.rest.len() == other.rest.len() && Iterator::zip(
-            self.rest.iter(), other.rest.iter()
-        ).all(|((_, a), (_, b))| a == b)
+        self.head == other.head
+            && self.rest.len() == other.rest.len()
+            && Iterator::zip(self.rest.iter(), other.rest.iter()).all(|((_, a), (_, b))| a == b)
     }
 }
 impl std::fmt::Display for HtmlIdent {
@@ -109,112 +159,202 @@ pub(super) enum AttributeValueToken {
 
 impl Parse for UITokens {
     fn parse(input: ParseStream) -> syn::Result<Self> {
+        let mut directives = Vec::new();
+        while input.peek(Token![@]) {
+            directives.push(input.parse()?);
+        }
+
         let mut nodes = Vec::new();
         while !input.is_empty() {
             nodes.push(input.parse()?);
         }
-        Ok(UITokens { nodes })
+
+        Ok(UITokens { directives, nodes })
+    }
+}
+
+impl Parse for Directive {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let _at: Token![@] = input.parse()?;
+        let name: Ident = input.parse()?;
+        let _semi: Token![;] = input.parse()?;
+        Ok(Directive { _at, name, _semi })
     }
 }
 
 impl Parse for NodeTokens {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        if input.peek(Token![<]) {
-            if input.peek2(Token![!]) {
-                let _open: Token![<] = input.parse()?;
-                let _bang: Token![!] = input.parse()?;
-                let _doctype: keyword::DOCTYPE = input.parse()?;
-                let _html: keyword::html = input.parse()?;
-                let _end: Token![>] = input.parse()?;
+        #[allow(unused_mut)]
+        let mut node = parse_internal(input)?;
+        #[cfg(feature = "client")]
+        inject_hydration_hooks(&mut node);
+        return Ok(node);
 
-                return Ok(NodeTokens::Doctype {
-                    _open,
-                    _bang,
-                    _doctype,
-                    _html,
-                    _end,
-                });
-            }
+        fn parse_internal(input: ParseStream) -> syn::Result<NodeTokens> {
+            if input.peek(Token![<]) {
+                if input.peek2(Token![!]) {
+                    let _open: Token![<] = input.parse()?;
+                    let _bang: Token![!] = input.parse()?;
+                    let _doctype: keyword::DOCTYPE = input.parse()?;
+                    let _html: keyword::html = input.parse()?;
+                    let _end: Token![>] = input.parse()?;
 
-            // reject empty tags (`<>`) or end tags (`</name>`)
-            if !input.peek2(Ident) {
-                return Err(input.error("Expected a tag name after '<' for a start tag"));
-            }
-
-            let _start_open: Token![<] = input.parse()?;
-            let tag: HtmlIdent = input.parse()?;
-
-            let mut attributes = Vec::new();
-            while let Ok(attribute) = input.parse::<AttributeTokens>() {
-                attributes.push(attribute);
-            }
-
-            if input.peek(Token![/]) {
-                let _slash: Token![/] = input.parse()?;
-                let _end: Token![>] = input.parse()?;
-
-                Ok(NodeTokens::SelfClosingTag {
-                    _open: _start_open,
-                    tag,
-                    attributes,
-                    _slash,
-                    _end,
-                })
-
-            } else if input.peek(Token![>]) {
-                let _start_close: Token![>] = input.parse()?;
-
-                // tolerantly accept some self-closing tags without a slash
-                if tag.head == "br"
-                || tag.head == "meta"
-                || tag.head == "link"
-                || tag.head == "hr"
-                {
-                    return Ok(NodeTokens::SelfClosingTag {
-                        _open: _start_open,
-                        tag,
-                        attributes,
-                        _slash: Token![/](input.span()),
-                        _end: _start_close,
+                    return Ok(NodeTokens::Doctype {
+                        _open,
+                        _bang,
+                        _doctype,
+                        _html,
+                        _end,
                     });
                 }
 
-                let mut content = Vec::<ContentPieceTokens>::new();
-                while (!input.is_empty()) && !(input.peek(Token![<]) && input.peek2(Token![/])) {
-                    content.push(input.parse()?);
+                // reject empty tags (`<>`) or end tags (`</name>`)
+                if !input.peek2(Ident) {
+                    return Err(input.error("Expected a tag name after '<' for a start tag"));
                 }
 
-                let _end_open: Token![<] = input.parse()?;
-                let _slash: Token![/] = input.parse()?;
+                let _start_open: Token![<] = input.parse()?;
+                let tag: HtmlIdent = input.parse()?;
 
-                let _tag: HtmlIdent = input.parse()?;
-                if _tag != tag {
-                    return Err(syn::Error::new(tag.span(), format!("Not closing tag: no corresponded `/>` or `</{tag}>` exists")))
+                let mut attributes = Vec::new();
+                while let Ok(attribute) = input.parse::<AttributeTokens>() {
+                    attributes.push(attribute);
                 }
 
-                let _end_close: Token![>] = input.parse()?;
+                if input.peek(Token![/]) {
+                    let _slash: Token![/] = input.parse()?;
+                    let _end: Token![>] = input.parse()?;
 
-                Ok(NodeTokens::EnclosingTag {
-                    _start_open,
-                    tag,
-                    attributes,
-                    _start_close,
-                    content,
-                    _end_open,
-                    _slash,
-                    _tag,
-                    _end_close,
-                })
+                    Ok(NodeTokens::SelfClosingTag {
+                        _open: _start_open,
+                        tag,
+                        attributes,
+                        _slash,
+                        _end,
+                    })
+                } else if input.peek(Token![>]) {
+                    let _start_close: Token![>] = input.parse()?;
 
+                    // tolerantly accept some self-closing tags without a slash
+                    if tag.head == "br"
+                        || tag.head == "meta"
+                        || tag.head == "link"
+                        || tag.head == "hr"
+                    {
+                        return Ok(NodeTokens::SelfClosingTag {
+                            _open: _start_open,
+                            tag,
+                            attributes,
+                            _slash: Token![/](input.span()),
+                            _end: _start_close,
+                        });
+                    }
+
+                    let mut content = Vec::<ContentPieceTokens>::new();
+                    #[allow(clippy::nonminimal_bool)]
+                    while (!input.is_empty()) && !(input.peek(Token![<]) && input.peek2(Token![/]))
+                    {
+                        content.push(input.parse()?);
+                    }
+
+                    let _end_open: Token![<] = input.parse()?;
+                    let _slash: Token![/] = input.parse()?;
+
+                    let _tag: HtmlIdent = input.parse()?;
+                    if _tag != tag {
+                        return Err(syn::Error::new(
+                            tag.span(),
+                            format!("Not closing tag: no corresponded `/>` or `</{tag}>` exists"),
+                        ));
+                    }
+
+                    let _end_close: Token![>] = input.parse()?;
+
+                    Ok(NodeTokens::EnclosingTag {
+                        _start_open,
+                        tag,
+                        attributes,
+                        _start_close,
+                        content,
+                        _end_open,
+                        _slash,
+                        _tag,
+                        _end_close,
+                    })
+                } else {
+                    Err(input.error("Expected '>' or '/>' at the end of a tag"))
+                }
             } else {
-                Err(input.error("Expected '>' or '/>' at the end of a tag"))
+                let mut pieces = Vec::new();
+                while let Ok(content_piece_tokens) = input.parse::<ContentPieceTokens>() {
+                    pieces.push(content_piece_tokens);
+                }
+                Ok(NodeTokens::TextNode(pieces))
             }
-        } else {
-            let mut pieces = Vec::new();
-            while let Ok(content_piece_tokens) = input.parse::<ContentPieceTokens>() {
-                pieces.push(content_piece_tokens);
+        }
+
+        #[cfg(feature = "client")]
+        fn inject_hydration_hooks(node: &mut NodeTokens) {
+            // this hash is fixed for uibeam's (name, version) pair
+            //
+            // ref:
+            // - https://github.com/wasm-bindgen/wasm-bindgen/blob/184509116115e23517be1cb0bccff02672acde5b/crates/macro-support/src/encode.rs#L111
+            // - https://github.com/wasm-bindgen/wasm-bindgen/blob/184509116115e23517be1cb0bccff02672acde5b/crates/macro-support/src/hash.rs
+            fn wasm_bindgen_unique_crate_identifier(
+                name: impl AsRef<str>,
+                version: impl AsRef<str>,
+            ) -> String {
+                use std::hash::{Hash, Hasher};
+
+                let mut h = std::hash::DefaultHasher::new();
+                name.as_ref().hash(&mut h);
+                version.as_ref().hash(&mut h);
+                let hash = h.finish();
+
+                let mut h = std::hash::DefaultHasher::new();
+                hash.hash(&mut h);
+                0_i32.hash(&mut h);
+                let hash = h.finish();
+
+                format!("{hash:016x}")
             }
-            Ok(NodeTokens::TextNode(pieces))
+
+            static UIBEAM_HASH: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+                // `uibeam_macros`'s version equals to `uibeam`'s version
+                wasm_bindgen_unique_crate_identifier("uibeam", env!("CARGO_PKG_VERSION"))
+            });
+            /*
+                TODO: generate and handle `{cratename}-{version}.(js|wasm)`
+                Currently fix their identifier to a concrete name
+                for references to it in the `uibeam/runtime/{runtime.js, bundle.sh}`.
+
+                static USER_ISLANDS_CRATE_NAME_VERSION: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+                    let name = std::env::var("CARGO_PKG_NAME").unwrap();
+                    let version = std::env::var("CARGO_PKG_VERSION").unwrap();
+                    format!("{name}-{version}")
+                });
+            */
+            let runtime_mjs_path = format!("/.uibeam/snippets/uibeam-{}/runtime.mjs", *UIBEAM_HASH);
+            let hydrate_js_path = "/.uibeam/hydrate.js";
+            let hydrate_bg_wasm_path = "/.uibeam/hydrate_bg.wasm";
+
+            if let Some(head_children) = node.children_of_enclosing_tag_mut("head") {
+                head_children.push(ContentPieceTokens::Node(syn::parse_quote! {
+                    <link rel="modulepreload" href=#runtime_mjs_path />
+                }));
+                head_children.push(ContentPieceTokens::Node(syn::parse_quote! {
+                    <link rel="modulepreload" href=#hydrate_js_path />
+                }));
+                head_children.push(ContentPieceTokens::Node(syn::parse_quote! {
+                    <link rel="prefetch" href=#hydrate_bg_wasm_path as="fetch" type="application/wasm" crossorigin>
+                }));
+            }
+
+            if let Some(body_children) = node.children_of_enclosing_tag_mut("body") {
+                body_children.push(ContentPieceTokens::Node(syn::parse_quote! {
+                    <script type="module" src=#hydrate_js_path></script>
+                }));
+            }
         }
     }
 }
@@ -223,13 +363,10 @@ impl Parse for ContentPieceTokens {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         if input.peek(Token![unsafe]) || input.peek(token::Brace) {
             Ok(Self::Interpolation(input.parse()?))
-
         } else if input.peek(LitStr) {
             Ok(Self::StaticText(input.parse()?))
-
         } else if input.peek(Token![<]) {
             Ok(Self::Node(input.parse()?))
-
         } else {
             Err(input.error("Expected one of: start tag, string literal, {expression}"))
         }
@@ -238,7 +375,8 @@ impl Parse for ContentPieceTokens {
 
 impl Parse for InterpolationTokens {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let _unsafe = input.peek(Token![unsafe])
+        let _unsafe = input
+            .peek(Token![unsafe])
             .then(|| input.parse())
             .transpose()?;
 
@@ -261,10 +399,8 @@ impl Parse for InterpolationTokens {
 impl Parse for AttributeTokens {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let name: HtmlIdent = input.parse()?;
-        let value: Option<AttributeValueTokens> = input
-            .peek(Token![=])
-            .then(|| input.parse())
-            .transpose()?;
+        let value: Option<AttributeValueTokens> =
+            input.peek(Token![=]).then(|| input.parse()).transpose()?;
         Ok(AttributeTokens { name, value })
     }
 }
@@ -288,8 +424,9 @@ impl Parse for AttributeValueTokens {
         let value = if input.peek(LitStr) {
             AttributeValueToken::StringLiteral(input.parse()?)
         } else if input.peek(LitInt) {
-            AttributeValueToken::IntegerLiteral(input.parse()?) 
-        } else if input.peek(token::Brace) {// NOT expect `unsafe` here
+            AttributeValueToken::IntegerLiteral(input.parse()?)
+        } else if input.peek(token::Brace) {
+            // NOT expect `unsafe` here
             AttributeValueToken::Interpolation(input.parse()?)
         } else {
             return Err(input.error("Expected string literal or interpolation"));
@@ -299,6 +436,14 @@ impl Parse for AttributeValueTokens {
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
+
+impl ToTokens for Directive {
+    fn to_tokens(&self, t: &mut proc_macro2::TokenStream) {
+        self._at.to_tokens(t);
+        self.name.to_tokens(t);
+        self._semi.to_tokens(t);
+    }
+}
 
 impl ToTokens for ContentPieceTokens {
     fn to_tokens(&self, t: &mut proc_macro2::TokenStream) {
@@ -312,8 +457,12 @@ impl ToTokens for ContentPieceTokens {
 
 impl ToTokens for InterpolationTokens {
     fn to_tokens(&self, t: &mut proc_macro2::TokenStream) {
-        self._unsafe.map(|unsafe_token| unsafe_token.to_tokens(t));
-        self._brace.surround(t, |inner| self.rust_expression.to_tokens(inner));
+        if let Some(_unsafe) = &self._unsafe {
+            _unsafe.to_tokens(t);
+        }
+        self._brace.surround(t, |inner| {
+            self.rust_expression.to_tokens(inner);
+        });
     }
 }
 
@@ -329,7 +478,8 @@ impl ToTokens for NodeTokens {
             } => {
                 (quote! {
                     #_open #_bang #_doctype #_html #_end
-                }).to_tokens(t);
+                })
+                .to_tokens(t);
             }
             NodeTokens::EnclosingTag {
                 _start_open,
@@ -348,7 +498,8 @@ impl ToTokens for NodeTokens {
                     #_start_open #tag #(#attributes)* #_start_close
                     #(#content)*
                     #_end_open #_slash #_tag #_end_close
-                }).to_tokens(t);
+                })
+                .to_tokens(t);
             }
             NodeTokens::SelfClosingTag {
                 _open,
@@ -360,13 +511,15 @@ impl ToTokens for NodeTokens {
                 let attributes = attributes.iter().map(AttributeTokens::to_token_stream);
                 (quote! {
                     #_open #tag #(#attributes)* #_slash #_end
-                }).to_tokens(t);
+                })
+                .to_tokens(t);
             }
             NodeTokens::TextNode(pieces) => {
                 let pieces = pieces.iter().map(ContentPieceTokens::to_token_stream);
                 (quote! {
                     #(#pieces)*
-                }).to_tokens(t);
+                })
+                .to_tokens(t);
             }
         }
     }
@@ -385,7 +538,9 @@ impl ToTokens for HtmlIdent {
 impl ToTokens for AttributeTokens {
     fn to_tokens(&self, t: &mut proc_macro2::TokenStream) {
         self.name.to_tokens(t);
-        self.value.as_ref().map(|value| value.to_tokens(t));
+        if let Some(value) = &self.value {
+            value.to_tokens(t);
+        }
     }
 }
 
@@ -402,12 +557,13 @@ impl ToTokens for AttributeValueToken {
                 lit_str.to_tokens(t);
             }
             AttributeValueToken::IntegerLiteral(lit_int) => {
-                LitStr::new(
-                    lit_int.base10_digits(),
-                    lit_int.span(),
-                ).to_tokens(t);
+                LitStr::new(lit_int.base10_digits(), lit_int.span()).to_tokens(t);
             }
-            AttributeValueToken::Interpolation(InterpolationTokens { _unsafe, _brace, rust_expression }) => {
+            AttributeValueToken::Interpolation(InterpolationTokens {
+                _unsafe,
+                _brace,
+                rust_expression,
+            }) => {
                 assert!(_unsafe.is_none());
                 _brace.surround(t, |inner| rust_expression.to_tokens(inner));
             }

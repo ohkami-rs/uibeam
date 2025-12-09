@@ -1,8 +1,7 @@
 use components::{Layout, Counter};
 use uibeam::UI;
 use ohkami::{Ohkami, Route, FangAction, Request, Response};
-use ohkami::serde::Deserialize;
-use ohkami::claw::{param::Query, content::Html};
+use ohkami::claw::param::Query;
 
 #[derive(Clone)]
 struct LayoutFang {
@@ -34,23 +33,23 @@ impl FangAction for Logger {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 struct CounterMeta {
     init: Option<i32>,
 }
 
-async fn index(Query(q): Query<CounterMeta>) -> Html<std::borrow::Cow<'static, str>> {
+async fn index(Query(q): Query<CounterMeta>) -> UI {
     let initial_count = q.init.unwrap_or(0);
 
-    Html(uibeam::shoot(UI! {
+    UI! {
         <main>
-            <h1 class="text-4xl font-bold mb-8 text-center">"Counter Example"</h1>
-            <div class="space-y-8">
+            <h1>"Counter Example"</h1>
+            <div>
                 {[-100, -10, 0, 10, 100].iter().enumerate().map(|(i, &offset)| UI! {
-                    <div class="flex items-center justify-center space-x-4">
-                        <div class="w-1/3 min-w-fit grid gap-4 grid-cols-[1fr_144px]">
-                            <div class="flex items-center">
-                                <p class="text-2xl">"Counter #"{1+i}</p>
+                    <div>
+                        <div>
+                            <div>
+                                <p>"Counter #"{1+i}</p>
                             </div>
                             <div>
                                 <Counter initial_count={initial_count + offset} />
@@ -60,7 +59,7 @@ async fn index(Query(q): Query<CounterMeta>) -> Html<std::borrow::Cow<'static, s
                 })}
             </div>
         </main>
-    }))
+    }
 }
 
 fn main() {

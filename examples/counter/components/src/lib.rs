@@ -1,16 +1,15 @@
-use uibeam::{UI, Beam, Laser, Signal, callback};
+use uibeam::{UI, Beam, Signal, callback};
+use uibeam::client::PointerEvent;
 
 pub struct Layout {
     pub title: String,
     pub children: UI,
 }
-
 impl Beam for Layout {
     fn render(self) -> UI {
         UI! {
             <html>
                 <head>
-                    <link rel="stylesheet" href="/.uibeam/tailwind.css" />
                     <title>{&*self.title}</title>
                 </head>
                 <body>
@@ -21,36 +20,32 @@ impl Beam for Layout {
     }
 }
 
-// #[Laser(local)]
-// struct Button {
-//     label: String,
-//     class: Option<&'static str>,
-//     onclick: Box<dyn Fn(uibeam::laser::PointerEvent)>,
-// }
-// 
-// impl Laser for Button {
-//     fn render(self) -> UI {
-//         let class = format!(
-//             "cursor-pointer bg-red-500 w-[32px] py-1 text-white rounded-md {}",
-//             self.class.unwrap_or("")
-//         );
-// 
-//         UI! {
-//             <button
-//                 class={class}
-//                 onclick={self.onclick}
-//             >{self.label}</button>
-//         }
-//     }
-// }
+struct CounterButton {
+    on_click: Box<dyn Fn(PointerEvent)>,
+    children: UI,
+    /// additional classes to modify default style
+    class: Option<&'static str>,
+}
+#[uibeam::client] // client component, but not Serialize/Deserialize and not at island boundary
+impl Beam for CounterButton {
+    fn render(self) -> UI {
+        UI! {
+            <button
+                class={self.class.unwrap_or("")}
+                onclick={self.on_click}
+            >
+                {self.children}
+            </button>
+        }
+    }
+}
 
-#[Laser]
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct Counter {
     pub initial_count: i32,
 }
-
-impl Laser for Counter {
+#[uibeam::client(island)] // client component at island boundary
+impl Beam for Counter {
     fn render(self) -> UI {
         let count = Signal::new(self.initial_count);
 
@@ -63,21 +58,40 @@ impl Laser for Counter {
         });
 
         UI! {
-            <div class="w-[144px]">
-                <p class="text-2xl font-bold text-center">
+            <div>
+                <p>
                     "Count: "{*count}
                 </p>
-                <div class="text-center">
-                    <button
-                        class="cursor-pointer bg-red-500  w-[32px] py-1 text-white rounded-md"
-                        onclick={decrement}
-                    >"-"</button>
-                    <button
-                        class="cursor-pointer bg-blue-500 w-[32px] py-1 text-white rounded-md"
-                        onclick={increment}
-                    >"+"</button>
+                <div>
+                    <CounterButton
+                        on_click={Box::new(decrement)}
+                        class={None}
+                    >"-"</CounterButton>
+                    <CounterButton
+                        on_click={Box::new(increment)}
+                        class={None}
+                    >"+"</CounterButton>
                 </div>
             </div>
         }
     }
+}
+
+#[cfg(test)]
+#[test]
+fn test_html() {
+    let html = uibeam::shoot(UI! {
+        <Layout title="Test Counter">
+            <Counter initial_count={5} />
+        </Layout>
+    });
+
+    let expected_html = include_str!("../expected.pretty.html")
+        .split('\n')
+        .map(str::trim)
+        .collect::<Vec<_>>()
+        .join("")
+        .replace("\",\"", "\", \""); // handling importmap format
+
+    assert_eq!(html, expected_html);
 }

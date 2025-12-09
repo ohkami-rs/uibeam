@@ -3,22 +3,8 @@ resolver = "3"
 members  = [".", "components"]
 
 [workspace.dependencies]
-uibeam = { path = "../../uibeam", features = ["laser"] }
+uibeam = { path = "../../uibeam", features = ["ohkami"] }
 serde  = { version = "1", features = ["derive"] }
-
-[workspace.metadata.tasks]
-build-dev = """
-    [ -d components/pkg ] && rm -rf components/pkg || :
-    wasm-pack build components --target web --out-name lasers --dev
-    tailwindcss -c tailwind.config.js -o components/pkg/tailwind.css
-    cargo build
-"""
-build-release = """
-    [ -d components/pkg ] && rm -rf components/pkg || :
-    wasm-pack build components --target web --out-name lasers # default is release
-    tailwindcss -c tailwind.config.js -o components/pkg/tailwind.css
-    cargo build --release
-"""
 
 [package]
 name    = "counter"

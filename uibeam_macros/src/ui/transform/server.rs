@@ -1,8 +1,11 @@
-use super::super::parse::{NodeTokens, ContentPieceTokens, InterpolationTokens, AttributeTokens, AttributeValueTokens, AttributeValueToken};
-use super::{Component, prop_for_event};
-use proc_macro2::{TokenStream, Span};
-use quote::{quote, ToTokens};
-use syn::{Expr, ExprLit, Lit, LitStr, Type};
+use super::super::parse::{
+    AttributeTokens, AttributeValueToken, ContentPieceTokens, Directive, InterpolationTokens,
+    NodeTokens,
+};
+use super::prop_for_event;
+use proc_macro2::{Span, TokenStream};
+use quote::{ToTokens, quote};
+use syn::{Expr, ExprLit, Lit, LitStr, Type, spanned::Spanned};
 
 pub(crate) struct Piece(Option<String>);
 impl ToTokens for Piece {
@@ -29,8 +32,10 @@ impl Piece {
 
     fn join(&mut self, other: Piece) {
         match &mut self.0 {
-            Some(text) => if let Some(other_text) = other.0 {
-                text.push_str(&other_text);
+            Some(text) => {
+                if let Some(other_text) = other.0 {
+                    text.push_str(&other_text);
+                }
             }
             None => {
                 self.0 = other.0;
@@ -82,7 +87,10 @@ pub(crate) struct EventHandlerAnnotation {
 }
 impl ToTokens for EventHandlerAnnotation {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let Self { handler_expression, event_type } = self;
+        let Self {
+            handler_expression,
+            event_type,
+        } = self;
         tokens.extend(quote! {
             {
                 fn __<Handler: Fn(#event_type)>(handler: Handler) {}
@@ -96,27 +104,21 @@ impl ToTokens for EventHandlerAnnotation {
 /// Derives `({HTML-escaped literal pieces}, {interpolating expressions})`
 /// from the `NodeTokens`
 pub(crate) fn transform(
+    directives: &[Directive],
     tokens: NodeTokens,
-) -> syn::Result<(
-    Vec<Piece>,
-    Vec<Interpolation>,
-    Vec<EventHandlerAnnotation>,
-)> {
-    let (mut pieces, mut interpolations, mut ehannotations) = (Vec::new(), Vec::new(), Vec::new());
-
-    let mut piece = Piece::none();
-
+) -> syn::Result<(Vec<Piece>, Vec<Interpolation>, Vec<EventHandlerAnnotation>)> {
     fn handle_node_tokens(
+        directives: &[Directive],
         node: NodeTokens,
         current_piece: &mut Piece,
         pieces: &mut Vec<Piece>,
         interpolations: &mut Vec<Interpolation>,
         ehannotations: &mut Vec<EventHandlerAnnotation>,
     ) -> syn::Result<()> {
-        let (child_pieces, child_interpolations, child_ehannotation) = transform(node)?;
+        let (child_pieces, child_interpolations, child_ehannotation) = transform(directives, node)?;
 
         let mut child_pieces = child_pieces.into_iter();
-        
+
         if let Some(first_child_piece) = child_pieces.next() {
             current_piece.join(first_child_piece);
         }
@@ -125,8 +127,9 @@ pub(crate) fn transform(
             interpolations.push(i);
             *current_piece = child_pieces.next().unwrap();
         }
-        
-        #[cfg(debug_assertions)] {
+
+        #[cfg(debug_assertions)]
+        {
             assert!(child_pieces.next().is_none());
         }
 
@@ -136,6 +139,7 @@ pub(crate) fn transform(
     }
 
     fn handle_attributes(
+        directives: &[Directive],
         attributes: Vec<AttributeTokens>,
         current_piece: &mut Piece,
         pieces: &mut Vec<Piece>,
@@ -144,10 +148,19 @@ pub(crate) fn transform(
     ) -> syn::Result<()> {
         for AttributeTokens { name, value } in attributes {
             if let Some(event) = name.to_string().strip_prefix("on") {
+                if !directives.iter().any(|d| d.client()) {
+                    return Err(syn::Error::new(
+                        name.span(),
+                        format!(
+                            "unexpected event handler in server Beam: `{name}`; \
+                            event handlers are only allowed in #[client] Beams"
+                        ),
+                    ));
+                }
                 let (_prop, event_type) = prop_for_event(&event.to_ascii_lowercase())?;
                 ehannotations.push(EventHandlerAnnotation {
                     handler_expression: syn::parse2(value.unwrap().value.into_token_stream())?,
-                    event_type
+                    event_type,
                 });
                 continue;
             }
@@ -164,12 +177,12 @@ pub(crate) fn transform(
                     }
                     AttributeValueToken::IntegerLiteral(lit) => {
                         // escape is not needed for integer literals
-                        current_piece.join(Piece::new(format!(
-                            "\"{}\"",
-                            lit.base10_digits()
-                        )));
+                        current_piece.join(Piece::new(format!("\"{}\"", lit.base10_digits())));
                     }
-                    AttributeValueToken::Interpolation(InterpolationTokens { rust_expression, .. }) => {
+                    AttributeValueToken::Interpolation(InterpolationTokens {
+                        rust_expression,
+                        ..
+                    }) => {
                         current_piece.commit(pieces);
                         interpolations.push(Interpolation::Attribute(rust_expression));
                     }
@@ -180,6 +193,7 @@ pub(crate) fn transform(
     }
 
     fn handle_content_pieces(
+        directives: &[Directive],
         content: Vec<ContentPieceTokens>,
         current_piece: &mut Piece,
         pieces: &mut Vec<Piece>,
@@ -195,20 +209,39 @@ pub(crate) fn transform(
                         Piece::new(uibeam_html::escape(&text.value()))
                     });
                 }
-                ContentPieceTokens::Interpolation(InterpolationTokens { _unsafe, rust_expression, .. }) => {
+                ContentPieceTokens::Interpolation(InterpolationTokens {
+                    _unsafe,
+                    rust_expression,
+                    ..
+                }) => {
                     let (is_unsafe, is_lit_str) = (
                         _unsafe.is_some(),
-                        matches!(rust_expression, Expr::Lit(ExprLit { lit: Lit::Str(_), .. })),
+                        matches!(
+                            rust_expression,
+                            Expr::Lit(ExprLit {
+                                lit: Lit::Str(_),
+                                ..
+                            })
+                        ),
                     );
-                    if is_lit_str {// specialize for string literal
-                        let Expr::Lit(ExprLit { lit: Lit::Str(lit_str), .. }) = rust_expression else {unreachable!()};
+                    if is_lit_str {
+                        // specialize for string literal
+                        let Expr::Lit(ExprLit {
+                            lit: Lit::Str(lit_str),
+                            ..
+                        }) = rust_expression
+                        else {
+                            unreachable!()
+                        };
                         current_piece.join(if is_unsafe {
                             Piece::new(lit_str.value())
                         } else {
                             Piece::new(uibeam_html::escape(&lit_str.value()))
                         });
                     } else {
-                        current_piece.is_none().then(|| *current_piece = Piece::new_empty());
+                        current_piece
+                            .is_none()
+                            .then(|| *current_piece = Piece::new_empty());
                         current_piece.commit(pieces);
                         interpolations.push(if is_unsafe {
                             Interpolation::UnsafeRawChildren(rust_expression)
@@ -219,68 +252,30 @@ pub(crate) fn transform(
                     }
                 }
                 ContentPieceTokens::Node(node) => handle_node_tokens(
+                    directives,
                     node,
                     current_piece,
                     pieces,
                     interpolations,
                     ehannotations,
-                )?
+                )?,
             }
         }
         Ok(())
     }
 
-    if let Some(Component { name, attributes, content }) = tokens.as_beam() {
-        piece.join(Piece::new_empty());
-        piece.commit(&mut pieces);
-        interpolations.push(Interpolation::Children({
-            let attributes = attributes.iter().map(|a| {
-                let name = a.name.as_ident().expect("Component attribute name must be a valid Rust identifier");
-                let (value, is_literal) = match &a.value {
-                    None => {
-                        (quote! {true}, false)
-                    }
-                    Some(AttributeValueTokens { value, .. }) => match value {
-                        AttributeValueToken::StringLiteral(lit) => {
-                            (lit.into_token_stream(), true)
-                        }
-                        AttributeValueToken::IntegerLiteral(lit) => {
-                            (lit.into_token_stream(), true)
-                        }
-                        AttributeValueToken::Interpolation(InterpolationTokens { rust_expression, .. }) => {
-                            (rust_expression.into_token_stream(), false)
-                        }
-                    }
-                };
-                if is_literal {
-                    quote! {
-                        #[allow(unused_braces)]
-                        #name: (#value).into(),
-                    }
-                } else {
-                    quote! {
-                        #name: #value,
-                    }
-                }
-            });
-            let children = content.map(|c| {
-                let children_tokens = c.iter()
-                    .map(ToTokens::to_token_stream)
-                    .collect::<TokenStream>();
-                quote! {
-                    children: ::uibeam::UI! { #children_tokens },
-                }
-            });
-            syn::parse2(quote! {
-                <#name as ::uibeam::Beam>::render(#name {
-                    #(#attributes)*
-                    #children
-                })
-            }).unwrap()
-        }));
-        piece.join(Piece::new_empty());
-        piece.commit(&mut pieces);
+    let (mut pieces, mut interpolations, mut ehannotations) = (Vec::new(), Vec::new(), Vec::new());
 
+    let mut piece = Piece::none();
+
+    if let Some(beam) = tokens.as_beam() {
+        piece.join(Piece::new_empty());
+        piece.commit(&mut pieces);
+        interpolations.push(Interpolation::Children(
+            beam.into_rendering_expr_with(directives)?,
+        ));
+        piece.join(Piece::new_empty());
+        piece.commit(&mut pieces);
     } else {
         match tokens {
             NodeTokens::Doctype {
@@ -309,6 +304,7 @@ pub(crate) fn transform(
             } => {
                 piece.join(Piece::new(format!("<{tag}")));
                 handle_attributes(
+                    directives,
                     attributes,
                     &mut piece,
                     &mut pieces,
@@ -317,6 +313,7 @@ pub(crate) fn transform(
                 )?;
                 piece.join(Piece::new(">"));
                 handle_content_pieces(
+                    directives,
                     content,
                     &mut piece,
                     &mut pieces,
@@ -326,9 +323,16 @@ pub(crate) fn transform(
                 piece.join(Piece::new(format!("</{tag}>")));
             }
 
-            NodeTokens::SelfClosingTag { _open, tag, attributes, _slash, _end } => {
+            NodeTokens::SelfClosingTag {
+                _open,
+                tag,
+                attributes,
+                _slash,
+                _end,
+            } => {
                 piece.join(Piece::new(format!("<{tag}")));
                 handle_attributes(
+                    directives,
                     attributes,
                     &mut piece,
                     &mut pieces,
@@ -340,6 +344,7 @@ pub(crate) fn transform(
 
             NodeTokens::TextNode(node_pieces) => {
                 handle_content_pieces(
+                    directives,
                     node_pieces,
                     &mut piece,
                     &mut pieces,

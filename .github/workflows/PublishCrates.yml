@@ -16,7 +16,7 @@ jobs:
       id-token: write # for OIDC authentication
     
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           ref: main
           fetch-depth: 0
@@ -32,7 +32,7 @@ jobs:
           done
           exit 1
       
-      - uses: rust-lang/crates-io-auth-action@v1
+      - uses: rust-lang/crates-io-auth-action@b7e9a28eded4986ec6b1fa40eeee8f8f165559ec # v1.0.3
         id: cratesio_auth
       
       - name: Trusted Publish to crates.io
