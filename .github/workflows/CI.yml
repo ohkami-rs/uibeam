@@ -17,7 +17,7 @@ jobs:
         task: ['check_fmt clippy', 'clippy_wasm32', 'clippy_wasm32_hydrate', 'test_crates', 'test_examples']
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
       - name: Setup Rust
         run: |
@@ -34,11 +34,13 @@ jobs:
           echo 'rustflags = ["-C", "link-arg=-fuse-ld=/usr/bin/mold"]' >> $HOME/.cargo/config.toml
       
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.9
+        uses: mozilla-actions/sccache-action@7d986dd989559c6ecdb630a3fd2557667be217ad # v0.0.9
+        with:
+          version: "v0.12.0" # sccache version
       
       - name: Cache cargo tools
         id: cache_cargo_tools
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           key: ${{ runner.os }}-cargo-tools-${{ matrix.toolchain }}
           path: ~/.cargo
