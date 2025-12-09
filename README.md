@@ -278,7 +278,7 @@ working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/mai
     /* islands/src/lib.rs */
     
     use uibeam::{UI, Beam};
-    use uibeam::{client, Signal, callback};
+    use uibeam::{Signal, callback, client::PointerEvent};
     use serde::{Serialize, Deserialize};
     
     struct CounterButton {

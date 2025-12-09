@@ -88,4 +88,4 @@ axum       = { version = "0.8" }
 actix-web  = { version = "4.12", default-features = false, features = ["macros"] }
 tower-http = { version = "0.6", features = ["fs"] } # [2025-05-19] build fails without `default-features = false`
 ohkami     = { version = "0.24", features = ["rt_tokio"] }
-web-sys    = { version = "0.3", features = ["HtmlInputElement"] } # for doc tests around Lasers
+web-sys    = { version = "0.3", features = ["HtmlInputElement"] } # for doc tests
