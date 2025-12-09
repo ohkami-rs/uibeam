@@ -18,7 +18,7 @@
 
 ## Features
 
-- Struct-based component model with minimal macro usage. (just `UI!` amd `#[client]`)
+- Struct-based component model.
 - Client components via island architecture in Wasm. (See *Client Component* section below)
 - Best effort to generate efficient code for template rendering with less redundant memory allocation.
 
