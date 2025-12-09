@@ -6,12 +6,6 @@ members  = [".", "components"]
 uibeam = { path = "../../uibeam", features = ["ohkami"] }
 serde  = { version = "1", features = ["derive"] }
 
-[workspace.lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ["cfg(hydrate)"] }
-
-[lints]
-workspace = true
-
 [package]
 name    = "counter"
 version = "0.0.0"

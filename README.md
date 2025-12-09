@@ -271,20 +271,6 @@ working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/mai
     crate-type = ["cdylib", "rlib"]
     ```
     
-   For size optimization, following configuration is recommended:
-  
-    ```toml
-    [package.metadata.wasm-pack.release]
-    wasm-opt = ["-Oz"]  # or "-Os"
-    
-    [profile.release]
-    opt-level = 'z'  # or 's'
-    lto = true
-    codegen-unit = 1
-    ```
-
-   See https://rustwasm.github.io/docs/book/game-of-life/code-size.html or other specific documents for more details.
-   
 3. Define and use your client components:
 
     ```rust
@@ -360,17 +346,18 @@ working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/mai
     # example when naming the lib crate `islands`
 
     cd islands
-    RUSTFLAGS='--cfg hydrate' wasm-pack build --out-name hydrate --target web
+    RUSTFLAGS='--cfg hydrate' wasm-pack build --out-name 'hydrate' --target web
     ```
     ```sh
     # in a hot-reloading loop, `--dev` flag is recommended:
 
     cd islands
-    RUSTFLAGS='--cfg hydrate' wasm-pack build --out-name hydrate --target web --dev
+    RUSTFLAGS='--cfg hydrate' wasm-pack build --out-name 'hydrate' --target web --dev
     ```
   
    **NOTE**:
-   All of `hydrate` cfg (not feature!), `hydrate` out-name and `web` target are **required** here.
+   Both `hydrate` cfg (not feature!) and `hydrate` out-name are **required** here.
+   This restriction may be relaxted in future versions.
 
 5. Make sure that your server responds with **a complete HTML consist of one `<html></html>` containing your page contents**.
    

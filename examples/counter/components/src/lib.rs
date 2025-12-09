@@ -91,7 +91,7 @@ fn test_html() {
         .map(str::trim)
         .collect::<Vec<_>>()
         .join("")
-        .replace("\",\"", "\", \""); // for importmap format
+        .replace("\",\"", "\", \""); // handling importmap format
 
     assert_eq!(html, expected_html);
 }

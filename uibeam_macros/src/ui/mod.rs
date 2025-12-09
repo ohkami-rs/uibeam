@@ -12,25 +12,32 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
         mut nodes,
     } = syn::parse2(input)?;
 
-    #[cfg(feature = "client")]
-    let hydrate_ui = {
-        let uis = nodes
-            .clone()
-            .into_iter()
-            .map(|node| {
-                let vdom_tokens = transform::hydrate::transform(node)?;
-                Ok(quote! {
-                    ::uibeam::UI::new_unchecked(#vdom_tokens)
-                })
-            })
-            .collect::<syn::Result<Vec<_>>>()?;
-
-        quote! {
-            <::uibeam::UI>::from_iter([#(#uis),*])
+    if crate::cfg_hydrate() {
+        #[cfg(not(feature = "client"))]
+        {
+            Err(syn::Error::new(
+                proc_macro2::Span::call_site(),
+                "`hydrate` cfg can not be activated without uibeam's `client` feature",
+            ))
         }
-    };
+        #[cfg(feature = "client")]
+        {
+            let uis = nodes
+                .clone()
+                .into_iter()
+                .map(|node| {
+                    let vdom_tokens = transform::hydrate::transform(node)?;
+                    Ok(quote! {
+                        ::uibeam::UI::new_unchecked(#vdom_tokens)
+                    })
+                })
+                .collect::<syn::Result<Vec<_>>>()?;
 
-    let server_ui = {
+            Ok(quote! {
+                <::uibeam::UI>::from_iter([#(#uis),*])
+            })
+        }
+    } else {
         if nodes
             .first()
             .is_some_and(|node| matches!(node, self::parse::NodeTokens::Doctype { .. }))
@@ -43,7 +50,7 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
         let uis = nodes
             .into_iter()
             .map(|node| {
-                let is_html_tag = node.enclosing_tag_children("html").is_some();
+                let is_html_tag = node.children_of_enclosing_tag("html").is_some();
 
                 let (mut literals, expressions, ehannotations) =
                     transform::server::transform(&directives, node)?;
@@ -73,23 +80,8 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
             })
             .collect::<syn::Result<Vec<_>>>()?;
 
-        quote! {
+        Ok(quote! {
             <::uibeam::UI>::concat([#(#uis),*])
-        }
-    };
-
-    #[cfg(not(feature = "client"))]
-    return Ok(server_ui);
-
-    #[cfg(feature = "client")]
-    return Ok(quote! {{
-        #[cfg(hydrate)]
-        {
-            #hydrate_ui
-        }
-        #[cfg(not(hydrate))]
-        {
-            #server_ui
-        }
-    }});
+        })
+    }
 }

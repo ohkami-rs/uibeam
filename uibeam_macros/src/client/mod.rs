@@ -91,18 +91,18 @@ pub(super) fn expand(args: TokenStream, input: TokenStream) -> syn::Result<Token
         insert_client_directive_to_ui_macros(&mut stmts);
 
         fn_render.block = if is_island_boundary {
-            parse_quote! ({
-                use ::uibeam::client_attribute as _;
-
-                #[cfg(hydrate)]
-                return {
+            if crate::cfg_hydrate() {
+                parse_quote!({
+                    use ::uibeam::client_attribute as _;
                     #(#stmts)*
-                };
-
-                #[cfg(not(hydrate))]
-                return {
+                })
+            } else {
+                parse_quote!({
+                    use ::uibeam::client_attribute as _;
                     let props = ::uibeam::client::serialize_props(&self);
-                    let dry_ui = { #(#stmts)* };
+                    let dry_ui = {
+                        #(#stmts)*
+                    };
                     ::uibeam::UI! {
                         <div
                             data-uibeam-hydrater=#hydrater_name_str
@@ -111,8 +111,8 @@ pub(super) fn expand(args: TokenStream, input: TokenStream) -> syn::Result<Token
                             {dry_ui}
                         </div>
                     }
-                }
-            })
+                })
+            }
         } else {
             parse_quote!({
                 use ::uibeam::client_attribute as _;
@@ -123,9 +123,8 @@ pub(super) fn expand(args: TokenStream, input: TokenStream) -> syn::Result<Token
         impl_beam
     };
 
-    let hydrater = is_island_boundary.then(|| {
+    let hydrater = (crate::cfg_hydrate() && is_island_boundary).then(|| {
         quote! {
-            #[cfg(hydrate)]
             #[doc(hidden)]
             #[allow(unused, non_snake_case)]
             pub mod #hydrater_name {
@@ -133,7 +132,6 @@ pub(super) fn expand(args: TokenStream, input: TokenStream) -> syn::Result<Token
                 use ::uibeam::client::wasm_bindgen;
                 use ::uibeam::client::wasm_bindgen::{JsCast, UnwrapThrowExt};
 
-                #[cfg(hydrate)]
                 #[doc(hidden)]
                 #[allow(unused, non_snake_case)]
                 #[wasm_bindgen::prelude::wasm_bindgen]

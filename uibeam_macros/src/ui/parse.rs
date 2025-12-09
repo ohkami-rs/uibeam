@@ -61,7 +61,7 @@ pub(super) enum NodeTokens {
     TextNode(Vec<ContentPieceTokens>),
 }
 impl NodeTokens {
-    pub(super) fn enclosing_tag_children(
+    pub(super) fn children_of_enclosing_tag(
         &self,
         tag_name: &str,
     ) -> Option<&Vec<ContentPieceTokens>> {
@@ -76,7 +76,7 @@ impl NodeTokens {
     }
 
     #[allow(unused)]
-    pub(super) fn enclosing_tag_children_mut(
+    pub(super) fn children_of_enclosing_tag_mut(
         &mut self,
         tag_name: &str,
     ) -> Option<&mut Vec<ContentPieceTokens>> {
@@ -295,28 +295,64 @@ impl Parse for NodeTokens {
 
         #[cfg(feature = "client")]
         fn inject_hydration_hooks(node: &mut NodeTokens) {
-            if let Some(head_children) = node.enclosing_tag_children_mut("head") {
-                head_children.extend([
-                        ContentPieceTokens::Node(syn::parse_quote! {
-                            <script type="importmap">
-                                r#"{"imports": {"preact": "https://esm.sh/preact@10.28.0", "preact/hooks": "https://esm.sh/preact@10.28.0/hooks?external=preact", "@preact/signals": "https://esm.sh/@preact/signals@2.5.1?external=preact"}}"#
-                            </script>
-                        }),
-                        ContentPieceTokens::Node(syn::parse_quote! {
-                            <link rel="modulepreload" href="https://esm.sh/preact@10.28.0" />
-                        }),
-                        ContentPieceTokens::Node(syn::parse_quote! {
-                            <link rel="modulepreload" href="https://esm.sh/preact@10.28.0/hooks?external=preact" />
-                        }),
-                        ContentPieceTokens::Node(syn::parse_quote! {
-                            <link rel="modulepreload" href="https://esm.sh/@preact/signals@2.5.1?external=preact" />
-                        }),
-                    ]);
+            // this hash is fixed for uibeam's (name, version) pair
+            //
+            // ref:
+            // - https://github.com/wasm-bindgen/wasm-bindgen/blob/184509116115e23517be1cb0bccff02672acde5b/crates/macro-support/src/encode.rs#L111
+            // - https://github.com/wasm-bindgen/wasm-bindgen/blob/184509116115e23517be1cb0bccff02672acde5b/crates/macro-support/src/hash.rs
+            fn wasm_bindgen_unique_crate_identifier(
+                name: impl AsRef<str>,
+                version: impl AsRef<str>,
+            ) -> String {
+                use std::hash::{Hash, Hasher};
+
+                let mut h = std::hash::DefaultHasher::new();
+                name.as_ref().hash(&mut h);
+                version.as_ref().hash(&mut h);
+                let hash = h.finish();
+
+                let mut h = std::hash::DefaultHasher::new();
+                hash.hash(&mut h);
+                0_i32.hash(&mut h);
+                let hash = h.finish();
+
+                format!("{hash:016x}")
             }
 
-            if let Some(body_children) = node.enclosing_tag_children_mut("body") {
+            static UIBEAM_HASH: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+                // `uibeam_macros`'s version equals to `uibeam`'s version
+                wasm_bindgen_unique_crate_identifier("uibeam", env!("CARGO_PKG_VERSION"))
+            });
+            /*
+                TODO: generate and handle `{cratename}-{version}.(js|wasm)`
+                Currently fix their identifier to a concrete name
+                for references to it in the `uibeam/runtime/{runtime.js, bundle.sh}`.
+
+                static USER_ISLANDS_CRATE_NAME_VERSION: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+                    let name = std::env::var("CARGO_PKG_NAME").unwrap();
+                    let version = std::env::var("CARGO_PKG_VERSION").unwrap();
+                    format!("{name}-{version}")
+                });
+            */
+            let runtime_mjs_path = format!("/.uibeam/snippets/uibeam-{}/runtime.mjs", *UIBEAM_HASH);
+            let hydrate_js_path = "/.uibeam/hydrate.js";
+            let hydrate_bg_wasm_path = "/.uibeam/hydrate_bg.wasm";
+
+            if let Some(head_children) = node.children_of_enclosing_tag_mut("head") {
+                head_children.push(ContentPieceTokens::Node(syn::parse_quote! {
+                    <link rel="modulepreload" href=#runtime_mjs_path />
+                }));
+                head_children.push(ContentPieceTokens::Node(syn::parse_quote! {
+                    <link rel="modulepreload" href=#hydrate_js_path />
+                }));
+                head_children.push(ContentPieceTokens::Node(syn::parse_quote! {
+                    <link rel="prefetch" href=#hydrate_bg_wasm_path as="fetch" type="application/wasm" crossorigin>
+                }));
+            }
+
+            if let Some(body_children) = node.children_of_enclosing_tag_mut("body") {
                 body_children.push(ContentPieceTokens::Node(syn::parse_quote! {
-                    <script type="module" src="/.uibeam/hydrate.js"></script>
+                    <script type="module" src=#hydrate_js_path></script>
                 }));
             }
         }

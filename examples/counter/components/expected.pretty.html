@@ -2,18 +2,9 @@
 <html>
   <head>
     <title>Test Counter</title>
-    <script type="importmap">
-    {
-      "imports": {
-        "preact": "https://esm.sh/preact@10.28.0",
-        "preact/hooks": "https://esm.sh/preact@10.28.0/hooks?external=preact",
-        "@preact/signals": "https://esm.sh/@preact/signals@2.5.1?external=preact"
-      }
-    }
-    </script>
-    <link rel="modulepreload" href="https://esm.sh/preact@10.28.0"/>
-    <link rel="modulepreload" href="https://esm.sh/preact@10.28.0/hooks?external=preact"/>
-    <link rel="modulepreload" href="https://esm.sh/@preact/signals@2.5.1?external=preact"/>
+    <link rel="modulepreload" href="/.uibeam/snippets/uibeam-cb239ac6a7862368/runtime.mjs"/>
+    <link rel="modulepreload" href="/.uibeam/hydrate.js"/>
+    <link rel="prefetch" href="/.uibeam/hydrate_bg.wasm" as="fetch" type="application/wasm" crossorigin/>
   </head>
   <body>
     <div data-uibeam-hydrater="__uibeam_hydrate_Counter__" data-uibeam-props="{&#34;initial_count&#34;:5}">
