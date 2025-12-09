@@ -91,7 +91,7 @@ pub(super) fn expand(args: TokenStream, input: TokenStream) -> syn::Result<Token
         insert_client_directive_to_ui_macros(&mut stmts);
 
         fn_render.block = if is_island_boundary {
-            if crate::cfg_hydrate()? {
+            if crate::cfg_hydrate() {
                 parse_quote!({
                     use ::uibeam::client_attribute as _;
                     #(#stmts)*
@@ -123,7 +123,7 @@ pub(super) fn expand(args: TokenStream, input: TokenStream) -> syn::Result<Token
         impl_beam
     };
 
-    let hydrater = (crate::cfg_hydrate()? && is_island_boundary).then(|| {
+    let hydrater = (crate::cfg_hydrate() && is_island_boundary).then(|| {
         quote! {
             #[doc(hidden)]
             #[allow(unused, non_snake_case)]

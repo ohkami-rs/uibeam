@@ -6,21 +6,14 @@ mod ui;
 
 // hack to avoid generating codes that includes `#[cfg(hydrate)]`
 // and detect `hydrate` cfg in proc-macro context
-fn cfg_hydrate() -> syn::Result<bool> {
+fn cfg_hydrate() -> bool {
+    // this LazyLock is just a performance improvement
+    // that avoids repeated read of an environment variable
     static CACHE: std::sync::LazyLock<bool> = std::sync::LazyLock::new(|| {
         // e.g. `--cfg hydrate`
         std::env::var("RUSTFLAGS").is_ok_and(|it| it.contains("hydrate"))
     });
-    let yes = *CACHE;
-
-    if yes && !cfg!(feature = "client") {
-        return Err(syn::Error::new(
-            proc_macro2::Span::call_site(),
-            "`hydrate` cfg can not be activated without uibeam's `client` feature",
-        ));
-    }
-
-    Ok(yes)
+    *CACHE
 }
 
 /// # `UI!` - JSX-style template syntax
