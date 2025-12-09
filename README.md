@@ -291,12 +291,12 @@ working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/mai
     impl Beam for CounterButton {
         fn render(self) -> UI {
             UI! {
-              <button
-                  class={self.class.unwrap_or("")}
-                  onclick={self.on_click}
-              >
-                  {self.children}
-              </button>
+                <button
+                    class={self.class.unwrap_or("")}
+                    onclick={self.on_click}
+                >
+                    {self.children}
+                </button>
             }
         }
     }
