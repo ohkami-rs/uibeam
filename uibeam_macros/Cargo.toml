@@ -1,7 +1,7 @@
 [package]
 name          = "uibeam_macros"
 documentation = "https://docs.rs/uibeam_macro"
-description   = "proc macros for UIBeam - A lightweight, JSX-style Web UI library for Rust"
+description   = "proc macros for UIBeam - A struct-based, JSX-style Web UI library for Rust"
 version       = { workspace = true }
 edition       = { workspace = true }
 authors       = { workspace = true }

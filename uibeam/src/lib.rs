@@ -7,7 +7,7 @@
 //!         UIBeam
 //!     </h1>
 //!     <p>
-//!         A lightweight, JSX-style Web UI library for Rust
+//!         A struct-based, JSX-style Web UI library for Rust
 //!     </p>
 //! </div>
 //!
