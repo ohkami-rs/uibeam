@@ -301,18 +301,32 @@ working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/mai
         }
     }
 
+    // client component at **island boundary** must be `Serialize + for<'de> Deserialize<'de>`.
     #[derive(serde::Serialize, serde::Deserialize)]
     pub struct Counter {
         pub initial_count: i32,
     }
-    #[uibeam::client(island)] // client component at island boundary
+    // `(island)` means **island boundary**
+    #[uibeam::client(island)]
     impl Beam for Counter {
         fn render(self) -> UI {
             let count = Signal::new(self.initial_count);
 
-            let increment = callback!([count], |_| {
-                count.set(*count + 1);
-            });
+            // callback! - a thin utility for callbacks using signals.
+            let increment = callback!(
+                // [dependent signals, ...]
+                [count],
+                // closure depending on the signals
+                |_| count.set(*count + 1)
+            );
+            /* << expanded >>
+             
+            let increment = {
+                let count = count.clone();
+                move |_| count.set(*count + 1)
+            };
+              
+            */
 
             let decrement = callback!([count], |_| {
                 count.set(*count - 1);
@@ -357,10 +371,6 @@ working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/mai
    In contrast, `#[client]` component that, e.g. has `children: UI` or `on_something: Box<dyn FnOnce(Event)>`
    as its props, can NOT implement `Serialize` nor `Deserialize`, can NOT has `(island)`,
    and can **only be used internally in `UI!` of another client component**.
-<<<<<<< HEAD
-=======
-   Especially note that **island boundary component itself can't have `children`**.
->>>>>>> 03accf39b274f0af726af4acbd4c04a1b5fb7fc5
 
 4. Compile the lib crate into Wasm by `wasm-pack build` with **`RUSTFLAGS='--cfg hydrate'`** and **`--out-name hydrate --target web`**:
 

@@ -202,18 +202,32 @@ pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///         }
 ///     }
 ///
+///     // client component at **island boundary** must be `Serialize + for<'de> Deserialize<'de>`.
 ///     #[derive(serde::Serialize, serde::Deserialize)]
 ///     pub struct Counter {
 ///         pub initial_count: i32,
 ///     }
-///     #[uibeam::client(island)] // client component at island boundary
+///     // `(island)` means **island boundary**
+///     #[uibeam::client(island)]
 ///     impl Beam for Counter {
 ///         fn render(self) -> UI {
 ///             let count = Signal::new(self.initial_count);
 ///
-///             let increment = callback!([count], |_| {
-///                 count.set(*count + 1);
-///             });
+///             // callback! - a thin utility for callbacks using signals.
+///             let increment = callback!(
+///                 // [dependent signals, ...]
+///                 [count],
+///                 // closure depending on the signals
+///                 |_| count.set(*count + 1)
+///             );
+///             /* << expanded >>
+///              
+///             let increment = {
+///                 let count = count.clone();
+///                 move |_| count.set(*count + 1)
+///             };
+///               
+///             */
 ///
 ///             let decrement = callback!([count], |_| {
 ///                 count.set(*count - 1);
