@@ -157,7 +157,7 @@ pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///
 ///     ```toml
 ///     [dependencies]
-///     uibeam = { version = "0.4" }
+///     uibeam = { version = "0.4" }  # `client` is a default feature
 ///     serde  = { version = "1", features = ["derive"] }
 ///     ```
 ///
