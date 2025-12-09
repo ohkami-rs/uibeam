@@ -43,7 +43,7 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
         let uis = nodes
             .into_iter()
             .map(|node| {
-                let is_html_tag = node.enclosing_tag_children("html").is_some();
+                let is_html_tag = node.children_of_enclosing_tag("html").is_some();
 
                 let (mut literals, expressions, ehannotations) =
                     transform::server::transform(&directives, node)?;

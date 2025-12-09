@@ -61,7 +61,7 @@ pub(super) enum NodeTokens {
     TextNode(Vec<ContentPieceTokens>),
 }
 impl NodeTokens {
-    pub(super) fn enclosing_tag_children(
+    pub(super) fn children_of_enclosing_tag(
         &self,
         tag_name: &str,
     ) -> Option<&Vec<ContentPieceTokens>> {
@@ -76,7 +76,7 @@ impl NodeTokens {
     }
 
     #[allow(unused)]
-    pub(super) fn enclosing_tag_children_mut(
+    pub(super) fn children_of_enclosing_tag_mut(
         &mut self,
         tag_name: &str,
     ) -> Option<&mut Vec<ContentPieceTokens>> {
@@ -338,7 +338,7 @@ impl Parse for NodeTokens {
             let hydrate_js_path = "/.uibeam/hydrate.js";
             let hydrate_bg_wasm_path = "/.uibeam/hydrate_bg.wasm";
 
-            if let Some(head_children) = node.enclosing_tag_children_mut("head") {
+            if let Some(head_children) = node.children_of_enclosing_tag_mut("head") {
                 head_children.push(ContentPieceTokens::Node(syn::parse_quote! {
                     <link rel="modulepreload" href=#runtime_mjs_path />
                 }));
@@ -350,7 +350,7 @@ impl Parse for NodeTokens {
                 }));
             }
 
-            if let Some(body_children) = node.enclosing_tag_children_mut("body") {
+            if let Some(body_children) = node.children_of_enclosing_tag_mut("body") {
                 body_children.push(ContentPieceTokens::Node(syn::parse_quote! {
                     <script type="module" src=#hydrate_js_path></script>
                 }));
