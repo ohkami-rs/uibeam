@@ -135,18 +135,19 @@ pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         .into()
 }
 
-/// ## Client Component - WASM islands
+/// ## Client Component - Wasm islands
 ///
 /// ### overview
 ///
-/// **`#[client]`** makes `Beam` a _*WASM island*_ : initially rendered on server, sent with serialized props, and hydrated with deserialized props on browser.
+/// **`#[client]`** makes your `Beam` a _*Wasm island*_ : initially rendered on server, sent with serialized props, and hydrated with deserialized props on browser.
 ///
 /// `Signal`, `computed`, `effect`, `batch`, `untracked` are available in them.
 ///
 /// ### note
 ///
-/// Currently UIBeam's client component system is built upon [Preact](https://preactjs.com).
-/// This may be rewritten in pure Rust in the future, but may not because of potential reduction in the final .wasm size.
+/// Currently UIBeam's hydration system is built upon [Preact](https://preactjs.com).
+/// This may be rewritten in pure Rust in the future, but may not,
+/// because of the potential reduction in the size of Wasm output.
 ///
 /// ### usage
 ///
@@ -163,7 +164,7 @@ pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// 2. Configure to export all your client components from a specific library crate.
 ///    (e.g. `lib.rs` entrypoint, or another member crate of a workspace)
 ///    
-///    (There's no problem if including ordinary `Beam`s, not only client ones, in the lib crate.)
+///    (There's no problem if also including ordinary `Beam`s in the lib crate.)
 ///
 ///    Additionally, specify `crate-type = ["cdylib", "rlib"]` for the crate:
 ///
@@ -237,9 +238,10 @@ pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///    
 ///    **NOTE**:
 ///    Client Beam at island boundary must be `Serialize + for<'de> Deserialize<'de>` for the Wasm island architecture.
-///    In contrast, `#[client]` components without `(island)`, e.g. having `children: UI` or `on_something: Box<dyn FnOnce(Event)>`
-///    as props, can NOT implement `Serialize` nor `Deserialize` and can **only be used internally in `UI!` of another client component**.
-///    Especially note that client components at **island boundary can't have `children`**.
+///    In contrast, `#[client]` component that, e.g. has `children: UI` or `on_something: Box<dyn FnOnce(Event)>`
+///    as its props, can NOT implement `Serialize` nor `Deserialize`, can NOT has `(island)`,
+///    and can **only be used internally in `UI!` of another client component**.
+///    Especially note that **island boundary component itself can't have `children`**.
 ///
 /// 4. Compile the lib crate into Wasm by `wasm-pack build` with **`RUSTFLAGS='--cfg hydrate'`** and **`--out-name hydrate --target web`**:
 ///
@@ -260,9 +262,7 @@ pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///    Both `hydrate` cfg (not feature!) and `hydrate` out-name are **required** here.
 ///    This restriction may be relaxted in future versions.
 ///
-/// 5. Make sure that your server responds with **a complete HTML consist of one `<html></html>` containing your page contents**.
-///    
-///    Then, setup your server to serve the output directory (default: `pkg`) at **`/.uibeam`** route:
+/// 5. Setup your server to serve the output directory (default: `pkg`) at **`/.uibeam`** route:
 ///
 ///     ```rust
 ///     /* axum example */
@@ -280,8 +280,11 @@ pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///     }
 ///     ```
 ///
-///    (as a result, generated `{crate name}/pkg/hydrate.js` is served at `/.uibeam/hydrate.js` route,
+///    (as a result, the generated `{crate name}/pkg/hydrate.js` is served at `/.uibeam/hydrate.js` route,
 ///    which is automatically loaded together with corresponding .wasm file in the hydration step on browser.)
+///    
+///    **NOTE**:
+///    Make sure that your server responds with **a complete HTML consist of one `<html></html>` containing your page contents**.
 #[cfg_attr(docsrs, doc(cfg(feature = "client")))]
 #[cfg(feature = "client")]
 #[proc_macro_attribute]
