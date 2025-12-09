@@ -182,42 +182,59 @@ pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///     use uibeam::{client, Signal, callback};
 ///     use serde::{Serialize, Deserialize};
 ///     
-///     // Client component located at **island boundary**
-///     // must be `Serialize + for<'de> Deserialize<'de>`. (see NOTE below)
-///     #[derive(Serialize, Deserialize)]
-///     pub struct Counter;
-///     
-///     // `#[client]` makes Beam a Wasm island.
-///     // `(island)` means this beam is **island boundary**.
-///     #[client(island)]
+///     struct CounterButton {
+///         on_click: Box<dyn Fn(PointerEvent)>,
+///         children: UI,
+///         /// additional classes to modify default style
+///         class: Option<&'static str>,
+///     }
+///     #[uibeam::client] // client component, but not Serialize/Deserialize and not at island boundary
+///     impl Beam for CounterButton {
+///         fn render(self) -> UI {
+///             UI! {
+///               <button
+///                   class={self.class.unwrap_or("")}
+///                   onclick={self.on_click}
+///               >
+///                   {self.children}
+///               </button>
+///             }
+///         }
+///     }
+///
+///     #[derive(serde::Serialize, serde::Deserialize)]
+///     pub struct Counter {
+///         pub initial_count: i32,
+///     }
+///     #[uibeam::client(island)] // client component at island boundary
 ///     impl Beam for Counter {
 ///         fn render(self) -> UI {
-///             let count = Signal::new(0);
-///     
-///             // `callback!` - a thin utility for callbacks over signals.
-///             let increment = callback!(
-///                 // [dependent_signals, ...]
-///                 [count],
-///                 // closure depending on the signals
-///                 |_| count.set(*count + 1)
-///             );
-///             /* << expanded >>
-///     
-///             let increment = {
-///                 let count = count.clone();
-///                 move |_| count.set(*count + 1)
-///             };
-///             
-///             */
-///     
-///             let decrement = callback!([count], |_| {
-///                 count.set(*count - 1)
+///             let count = Signal::new(self.initial_count);
+///
+///             let increment = callback!([count], |_| {
+///                 count.set(*count + 1);
 ///             });
-///     
+///
+///             let decrement = callback!([count], |_| {
+///                 count.set(*count - 1);
+///             });
+///
 ///             UI! {
-///                 <p>"Count: "{*count}</p>
-///                 <button onclick={increment}>"+"</button>
-///                 <button onclick={decrement}>"-"</button>
+///                 <div>
+///                     <p>
+///                         "Count: "{*count}
+///                     </p>
+///                     <div>
+///                         <CounterButton
+///                             on_click={Box::new(decrement)}
+///                             class={None}
+///                         >"-"</CounterButton>
+///                         <CounterButton
+///                             on_click={Box::new(increment)}
+///                             class={None}
+///                         >"+"</CounterButton>
+///                     </div>
+///                 </div>
 ///             }
 ///         }
 ///     }
@@ -241,7 +258,6 @@ pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///    In contrast, `#[client]` component that, e.g. has `children: UI` or `on_something: Box<dyn FnOnce(Event)>`
 ///    as its props, can NOT implement `Serialize` nor `Deserialize`, can NOT has `(island)`,
 ///    and can **only be used internally in `UI!` of another client component**.
-///    Especially note that **island boundary component itself can't have `children`**.
 ///
 /// 4. Compile the lib crate into Wasm by `wasm-pack build` with **`RUSTFLAGS='--cfg hydrate'`** and **`--out-name hydrate --target web`**:
 ///
