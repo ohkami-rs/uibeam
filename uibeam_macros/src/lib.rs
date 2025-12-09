@@ -4,6 +4,25 @@
 mod client;
 mod ui;
 
+// hack to avoid generating codes that includes `#[cfg(hydrate)]`
+// and detect `hydrate` cfg in proc-macro context
+fn cfg_hydrate() -> syn::Result<bool> {
+    static CACHE: std::sync::LazyLock<bool> = std::sync::LazyLock::new(|| {
+        // e.g. `--cfg hydrate`
+        std::env::var("RUSTFLAGS").is_ok_and(|it| it.contains("hydrate"))
+    });
+    let yes = *CACHE;
+
+    if yes && !cfg!(feature = "client") {
+        return Err(syn::Error::new(
+            proc_macro2::Span::call_site(),
+            "`hydrate` cfg can not be activated without uibeam's `client` feature",
+        ));
+    }
+
+    Ok(yes)
+}
+
 /// # `UI!` - JSX-style template syntax
 ///
 /// > HTML completions and hovers are available by VSCode extension.\

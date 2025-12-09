@@ -12,8 +12,7 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
         mut nodes,
     } = syn::parse2(input)?;
 
-    #[cfg(feature = "client")]
-    let hydrate_ui = {
+    if crate::cfg_hydrate()? {
         let uis = nodes
             .clone()
             .into_iter()
@@ -25,12 +24,10 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
             })
             .collect::<syn::Result<Vec<_>>>()?;
 
-        quote! {
+        Ok(quote! {
             <::uibeam::UI>::from_iter([#(#uis),*])
-        }
-    };
-
-    let server_ui = {
+        })
+    } else {
         if nodes
             .first()
             .is_some_and(|node| matches!(node, self::parse::NodeTokens::Doctype { .. }))
@@ -73,23 +70,8 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
             })
             .collect::<syn::Result<Vec<_>>>()?;
 
-        quote! {
+        Ok(quote! {
             <::uibeam::UI>::concat([#(#uis),*])
-        }
-    };
-
-    #[cfg(not(feature = "client"))]
-    return Ok(server_ui);
-
-    #[cfg(feature = "client")]
-    return Ok(quote! {{
-        #[cfg(hydrate)]
-        {
-            #hydrate_ui
-        }
-        #[cfg(not(hydrate))]
-        {
-            #server_ui
-        }
-    }});
+        })
+    }
 }
