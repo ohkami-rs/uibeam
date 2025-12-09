@@ -328,8 +328,10 @@ impl Parse for NodeTokens {
                 Currently fix their identifier to a concrete name
                 for references to it in the `uibeam/runtime/{runtime.js, bundle.sh}`.
 
-                static USER_ISLANDS_CRATE_NAME: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
-                    std::env::var("CARGO_PKG_NAME").unwrap()
+                static USER_ISLANDS_CRATE_NAME_VERSION: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+                    let name = std::env::var("CARGO_PKG_NAME").unwrap();
+                    let version = std::env::var("CARGO_PKG_VERSION").unwrap();
+                    format!("{name}-{version}")
                 });
             */
             let runtime_mjs_path = format!("/.uibeam/snippets/uibeam-{}/runtime.mjs", *UIBEAM_HASH);
