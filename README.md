@@ -357,6 +357,10 @@ working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/mai
    In contrast, `#[client]` component that, e.g. has `children: UI` or `on_something: Box<dyn FnOnce(Event)>`
    as its props, can NOT implement `Serialize` nor `Deserialize`, can NOT has `(island)`,
    and can **only be used internally in `UI!` of another client component**.
+<<<<<<< HEAD
+=======
+   Especially note that **island boundary component itself can't have `children`**.
+>>>>>>> 03accf39b274f0af726af4acbd4c04a1b5fb7fc5
 
 4. Compile the lib crate into Wasm by `wasm-pack build` with **`RUSTFLAGS='--cfg hydrate'`** and **`--out-name hydrate --target web`**:
 
