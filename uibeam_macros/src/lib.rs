@@ -254,17 +254,18 @@ pub fn UI(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///     # example when naming the lib crate `islands`
 ///
 ///     cd islands
-///     RUSTFLAGS='--cfg hydrate' wasm-pack build --out-name hydrate --target web
+///     RUSTFLAGS='--cfg hydrate' wasm-pack build --out-name 'hydrate' --target web
 ///     ```
 ///     ```sh
 ///     # in a hot-reloading loop, `--dev` flag is recommended:
 ///
 ///     cd islands
-///     RUSTFLAGS='--cfg hydrate' wasm-pack build --out-name hydrate --target web --dev
+///     RUSTFLAGS='--cfg hydrate' wasm-pack build --out-name 'hydrate' --target web --dev
 ///     ```
 ///   
 ///    **NOTE**:
-///    All of `hydrate` cfg (not feature!), `hydrate` out-name and `web` target are **required** here.
+///    Both `hydrate` cfg (not feature!) and `hydrate` out-name are **required** here.
+///    This restriction may be relaxted in future versions.
 ///
 /// 5. Make sure that your server responds with **a complete HTML consist of one `<html></html>` containing your page contents**.
 ///    

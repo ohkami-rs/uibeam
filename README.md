@@ -357,6 +357,7 @@ working example: [examples/counter](https://github.com/ohkami-rs/uibeam/blob/mai
   
    **NOTE**:
    Both `hydrate` cfg (not feature!) and `hydrate` out-name are **required** here.
+   This restriction may be relaxted in future versions.
 
 5. Make sure that your server responds with **a complete HTML consist of one `<html></html>` containing your page contents**.
    
