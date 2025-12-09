@@ -50,10 +50,10 @@ fn cfg_hydrate() -> bool {
 /// ### Text Nodes
 ///
 /// - _string literals_ : Any string literals are allowed. No `{}` is needed.
-///   - Raw string literals ( `r#"..."#` ) are **NOT escaped**.
+///   - Raw string literals (`r#"..."#`)are **NOT escaped**.
 /// - _interpolations_ : Rust expressions surrounded by `{}` :
 ///   - Any type that implements `std::fmt::Display` is allowed.
-///   - Unsafe blocks ( `unsafe { ... }` ) are **NOT escaped**.
+///   - Unsafe blocks (`unsafe{ ... }`) are **NOT escaped**.
 ///
 /// ### Beams
 ///
