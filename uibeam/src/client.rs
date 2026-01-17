@@ -18,7 +18,7 @@ pub fn serialize_props<P: super::IslandBoundary>(props: &P) -> String {
 #[cfg(not(hydrate))]
 pub(crate) mod server_gc {
     use std::{cell::RefCell, any::Any};
-    use std::panic::{catch_unwind, AssertUnwindSafe};
+    use std::panic::{resume_unwind, catch_unwind, AssertUnwindSafe};
     
     thread_local! {
         static GC: RefCell<Vec<Box<dyn Any>>> = RefCell::new(Vec::new());
@@ -49,17 +49,9 @@ pub(crate) mod server_gc {
     }
     
      pub(crate) fn run_in_gc_context<R>(f: impl FnOnce() -> R) -> R {
-         let result = catch_unwind(AssertUnwindSafe(|| f())).unwrap_or_else(|e| {
-             if let Some(s) = e.downcast_ref::<String>() {
-                 panic!("{s}");
-             } else if let Some(s) = e.downcast_ref::<&str>() {
-                 panic!("{s}");
-             } else {
-                 panic!("uibeam: panic within shoot context");
-             }
-         });
+         let result = catch_unwind(AssertUnwindSafe(|| f()));
          GC.with_borrow_mut(|vec| vec.clear());
-         result
+         result.unwrap_or_else(|e| resume_unwind(e))
      }
 }
 
