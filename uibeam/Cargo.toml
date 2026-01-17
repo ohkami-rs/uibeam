@@ -23,7 +23,10 @@ default = ["client"]
 
 client = [
     "uibeam_macros/client",
-    "dep:serde", "dep:serde_json", "dep:wasm-bindgen", "dep:serde-wasm-bindgen", "dep:js-sys", "dep:web-sys"
+    "dep:alien-signals",
+    "dep:serde", "dep:serde_json",
+    "dep:wasm-bindgen", "dep:serde-wasm-bindgen",
+    "dep:js-sys", "dep:web-sys"
 ]
 
 __integration__ = []
@@ -41,6 +44,7 @@ http = { optional = true, version = "1.4" }
 mime = { optional = true, version = "0.3" }
 
 # for islands
+alien-signals      = { optional = true, version = "0.1" }
 serde              = { optional = true, version = "1.0" }
 serde_json         = { optional = true, version = "1.0" }
 wasm-bindgen       = { optional = true, version = "0.2.106" }

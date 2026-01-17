@@ -15,506 +15,258 @@ pub fn serialize_props<P: super::IslandBoundary>(props: &P) -> String {
     ::serde_json::to_string(props).unwrap()
 }
 
-#[cfg(hydrate)]
-mod runtime_js {
-    use super::*;
-
-    #[wasm_bindgen(module = "/runtime.mjs")]
-    extern "C" {
-        #[wasm_bindgen(js_name = "hydrate")]
-        pub(super) fn hydrate(vdom: JsValue, container: ::web_sys::Node);
-
-        #[wasm_bindgen(js_name = "createElement")]
-        pub(super) fn create_element(r#type: JsValue, props: Object, children: Array) -> JsValue;
-
-        #[wasm_bindgen(js_name = "createRef")]
-        pub(super) fn create_ref() -> JsValue;
-
-        #[wasm_bindgen(js_name = "Fragment")]
-        pub(super) fn fragment(props: Object) -> JsValue;
-
-        #[wasm_bindgen(js_name = "useSignal")]
-        pub(super) fn signal(value: JsValue) -> Object;
-
-        #[wasm_bindgen(js_name = "useComputed")]
-        pub(super) fn computed(f: Function) -> Object;
-
-        #[wasm_bindgen(js_name = "useSignalEffect")]
-        pub(super) fn effect(f: Function);
-
-        #[wasm_bindgen(js_name = "batch")]
-        pub(super) fn batch(f: Function);
-
-        #[wasm_bindgen(js_name = "untracked")]
-        pub(super) fn untracked(f: Function);
+#[cfg(not(hydrate))]
+pub(crate) mod server_gc {
+    use std::{cell::RefCell, any::Any};
+    use std::panic::{catch_unwind, AssertUnwindSafe};
+    
+    thread_local! {
+        static GC: RefCell<Vec<Box<dyn Any>>> = RefCell::new(Vec::new());
     }
-}
-
-#[cfg(hydrate)]
-use {
-    ::js_sys::{Array, Function, Object, Reflect},
-    ::wasm_bindgen::prelude::*,
-};
-
-#[cfg(hydrate)]
-pub fn hydrate(vdom: VNode, container: ::web_sys::Node) {
-    runtime_js::hydrate(vdom.0, container);
-}
-
-#[cfg(hydrate)]
-pub struct VNode(JsValue);
-
-#[cfg(hydrate)]
-pub struct NodeType(JsValue);
-
-#[cfg(hydrate)]
-impl NodeType {
-    pub fn tag(tag: &'static str) -> NodeType {
-        NodeType(tag.into())
-    }
-
-    pub fn component<B: crate::bound::IslandBoundary>() -> NodeType {
-        let component_function: Function = Closure::<dyn Fn(JsValue) -> JsValue>::new(|props| {
-            let props: B = serde_wasm_bindgen::from_value(props).unwrap_throw();
-            crate::render_in_island(props).into_vdom().0
-        })
-        .into_js_value()
-        .unchecked_into();
-
-        NodeType(component_function.unchecked_into())
-    }
-}
-
-#[cfg(hydrate)]
-impl VNode {
-    pub fn new(r#type: NodeType, props: Object, children: Vec<VNode>) -> VNode {
-        VNode(runtime_js::create_element(
-            r#type.0,
-            props,
-            children.into_iter().map(|vdom| vdom.0).collect::<Array>(),
-        ))
-    }
-
-    pub fn fragment(children: Vec<VNode>) -> VNode {
-        let props = Object::new();
-        Reflect::set(
-            &props,
-            &"children".into(),
-            &children.into_iter().map(|vdom| vdom.0).collect::<Array>(),
-        )
-        .ok();
-        VNode(runtime_js::fragment(props))
-    }
-
-    pub fn text(text: impl Into<std::borrow::Cow<'static, str>>) -> VNode {
-        match text.into() {
-            std::borrow::Cow::Owned(s) => VNode(s.into()),
-            std::borrow::Cow::Borrowed(s) => VNode(s.into()),
+    
+    pub(super) struct Pointer<T>(std::ptr::NonNull<T>);
+    impl<T> Clone for Pointer<T> {
+        fn clone(&self) -> Self {
+            *self
         }
     }
-}
-
-/// A thin shorthand for creating closures of clone-and-move pattern.
-///
-/// This is useful when creating **event handlers or callbacks using signals**:
-///
-/// ```
-/// use uibeam::{UI, Beam, Signal, callback};
-/// use uibeam::client::{InputEvent, PointerEvent};
-/// use wasm_bindgen::JsCast;
-/// use web_sys::HtmlInputElement;
-///
-/// struct ClientBeam;
-///
-/// #[uibeam::client]
-/// impl Beam for ClientBeam {
-///     fn render(self) -> UI {
-///         let name = Signal::new("Alice".to_owned());
-///         let count = Signal::new(0);
-///
-///         let handle_name_input = callback!([name], |e: InputEvent| {
-///             let input_element: HtmlInputElement = e
-///                 .current_target().unwrap()
-///                 .dyn_into().unwrap();
-///             name.set(input_element.value());
-///         });
-///
-///         let handle_increment_click = callback!([count], |_: PointerEvent| {
-///             count.set(*count + 1);
-///         });
-///
-///         todo!()
-///     }
-/// }
-/// ```
-///
-/// ## Example
-/// ```
-/// use uibeam::{UI, Beam, Signal, callback};
-///
-/// #[derive(serde::Serialize, serde::Deserialize)]
-/// pub struct Counter {
-///     pub initial_count: i32,
-/// }
-///
-/// #[uibeam::client(island)]
-/// impl Beam for Counter {
-///     fn render(self) -> UI {
-///         let count = Signal::new(self.initial_count);
-///
-///         let increment = callback!([count], |_| {
-///             count.set(*count + 1);
-///         });
-///
-///         let decrement = callback!([count], |_| {
-///             count.set(*count - 1);
-///         });
-///
-///         UI! {
-///             <div class="w-[144px]">
-///                 <p class="text-2xl font-bold text-center">
-///                     "Count: "{*count}
-///                 </p>
-///                 <div class="text-center">
-///                     <button
-///                         class="cursor-pointer bg-red-500  w-[32px] py-1 text-white rounded-md"
-///                         onclick={decrement}
-///                     >"-"</button>
-///                     <button
-///                         class="cursor-pointer bg-blue-500 w-[32px] py-1 text-white rounded-md"
-///                         onclick={increment}
-///                     >"+"</button>
-///                 </div>
-///             </div>
-///         }
-///     }
-/// }
-/// ```
-#[cfg_attr(docsrs, doc(cfg(feature = "client")))]
-#[macro_export]
-macro_rules! callback {
-    ([$($dep:ident),*], || $result:expr) => {
-        {
-            $(let $dep = $dep.clone();)+
-            move || $result
+    impl<T> Copy for Pointer<T> {}
+    impl<T> Pointer<T> {
+        /// SAFETY: When calling this method, you have to ensure that the pointer is convertible to a reference.
+        pub(super) unsafe fn as_ref(&self) -> &T {
+            // SAFETY: by caller's guarantee
+            unsafe { self.0.as_ref() }
         }
-    };
-    ([$($dep:ident),*], |_ $(: $Type:ty)?| $result:expr) => {
-        {
-            $(let $dep = $dep.clone();)*
-            move |_ $(: $Type)?| $result
+    }
+    
+    pub(super) fn alloc<T: 'static>(value: T) -> Pointer<T> {
+        let raw = Box::into_raw(Box::new(value));
+        // SAFETY: `raw` is valid pointer allocated from Box.
+        unsafe {            
+            GC.with_borrow_mut(|vec| vec.push(Box::from_raw(raw)));
+            Pointer(std::ptr::NonNull::new_unchecked(raw))
         }
-    };
-    ([$($dep:ident),*], |$($arg:ident $(: $Type:ty)?),+| $result:expr) => {
-        {
-            $(let $dep = $dep.clone();)+
-            move |$($arg $(: $Type)?),+| $result
-        }
-    };
+    }
+    
+     pub(crate) fn run_in_gc_context<R>(f: impl FnOnce() -> R) -> R {
+         let result = catch_unwind(AssertUnwindSafe(|| f())).unwrap_or_else(|e| {
+             if let Some(s) = e.downcast_ref::<String>() {
+                 panic!("{s}");
+             } else if let Some(s) = e.downcast_ref::<&str>() {
+                 panic!("{s}");
+             } else {
+                 panic!("uibeam: panic within shoot context");
+             }
+         });
+         GC.with_borrow_mut(|vec| vec.clear());
+         result
+     }
 }
 
 #[cfg_attr(docsrs, doc(cfg(feature = "client")))]
-pub struct Signal<T: serde::Serialize + for<'de> serde::Deserialize<'de>> {
+pub struct Signal<T> {
     #[cfg(hydrate)]
-    preact_signal: Object,
-    /// buffer for `Deref` impl on single-threaded wasm
-    /// (and also used for template rendering)
-    current_value: std::rc::Rc<std::cell::UnsafeCell<T>>,
+    alien_signal: ::alien_signals::Signal<T>,
+    /// A dummy signal value just for template rendering,
+    /// not handling any updates.
+    #[cfg(not(hydrate))]
+    value: server_gc::Pointer<T>,
 }
-
-impl<T> super::client_attribute<T> for Signal<T>
-where
-    T: serde::Serialize + for<'de> serde::Deserialize<'de>,
-{
-    fn new(value: T) -> Self {
+impl<T> Clone for Signal<T> {
+    fn clone(&self) -> Self {
         Self {
             #[cfg(hydrate)]
-            preact_signal: runtime_js::signal(serde_wasm_bindgen::to_value(&value).unwrap_throw()),
-            current_value: std::rc::Rc::new(std::cell::UnsafeCell::new(value)),
+            alien_signal: self.alien_signal.clone(),
+            #[cfg(not(hydrate))]
+            value: self.value.clone(),
         }
     }
 }
-
-impl<T> Signal<T>
-where
-    T: serde::Serialize + for<'de> serde::Deserialize<'de>,
-{
+impl<T> Copy for Signal<T> {}
+impl<T: Clone + 'static> Signal<T> {
+    pub fn new(init: T) -> Self {
+        Self {
+            #[cfg(hydrate)]
+            alien_signal: ::alien_signals::Signal::new(init),
+            #[cfg(not(hydrate))]
+            value: server_gc::alloc(init),
+        }
+    }
+    pub fn new_with_eq_fn(
+        init: T,
+        #[allow(unused)]
+        eq_fn: impl Fn(&T, &T) -> bool + 'static,
+    ) -> Self {
+        Self {
+            #[cfg(hydrate)]
+            alien_signal: ::alien_signals::Signal::new_with_eq_fn(init, eq_fn),
+            #[cfg(not(hydrate))]
+            value: server_gc::alloc(init),
+        }
+    }
+    
+    pub fn get(&self) -> T {
+        #[cfg(hydrate)]
+        {
+            self.alien_signal.get()
+        }
+        #[cfg(not(hydrate))]
+        {
+            // SAFETY: value is never deallocated during the lifetime of the Signal.
+            (unsafe {self.value.as_ref()}).clone()
+        }
+    }
+    
     pub fn set(&self, value: T) {
-        #[cfg(not(hydrate))]
-        {
-            // for template rendering
-            unsafe {
-                *self.current_value.get() = value;
-            }
-        }
         #[cfg(hydrate)]
         {
-            Reflect::set(
-                &self.preact_signal,
-                &"value".into(),
-                &serde_wasm_bindgen::to_value(&value).unwrap_throw(),
-            )
-            .unwrap_throw();
+            self.alien_signal.set(value);
+        }
+        #[cfg(not(hydrate))]
+        {
+            // no-op
+            let _ = value;
+        }
+    }    
+    /// set with current value
+    pub fn set_with(&self, f: impl FnOnce(&T) -> T) {
+        #[cfg(hydrate)]
+        {
+            self.alien_signal.set_with(f);
+        }
+        #[cfg(not(hydrate))]
+        {
+            // no-op
+            let _ = f;
+        }
+    }
+    /// set with mutating the value
+    pub fn set_with_mut(&self, f: impl FnOnce(&mut T)) {
+        #[cfg(hydrate)]
+        {
+            self.alien_signal.update(f);
+        }
+        #[cfg(not(hydrate))]
+        {
+            // no-op
+            let _ = f;
         }
     }
 }
 
-impl<T> Clone for Signal<T>
-where
-    T: serde::Serialize + for<'de> serde::Deserialize<'de>,
-{
-    // not require T: Clone
+#[cfg_attr(docsrs, doc(cfg(feature = "client")))]
+pub struct Computed<T> {
+    #[cfg(hydrate)]
+    alien_computed: ::alien_signals::Computed<T>,
+    /// A dummy computed value just for template rendering,
+    /// not handling any updates.
+    #[cfg(not(hydrate))]
+    value: server_gc::Pointer<T>,
+}
+impl<T> Clone for Computed<T> {
     fn clone(&self) -> Self {
         Self {
             #[cfg(hydrate)]
-            preact_signal: self.preact_signal.clone(),
-            current_value: self.current_value.clone(),
+            alien_computed: self.alien_computed.clone(),
+            #[cfg(not(hydrate))]
+            value: self.value.clone(),
         }
     }
 }
-
-impl<T> std::ops::Deref for Signal<T>
-where
-    T: serde::Serialize + for<'de> serde::Deserialize<'de>,
-{
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
+impl<T> Copy for Computed<T> {}
+impl<T: Clone + 'static> Computed<T> {
+    pub fn new(f: impl Fn() -> T + 'static) -> Self {
+        Self {
+            #[cfg(hydrate)]
+            alien_computed: ::alien_signals::Computed::new(f),
+            #[cfg(not(hydrate))]
+            value: server_gc::alloc(f()),
+        }
+    }
+    pub fn new_with_eq_fn(
+        f: impl Fn() -> T + 'static,
+        #[allow(unused)]
+        eq_fn: impl Fn(&T, &T) -> bool + 'static,
+    ) -> Self {
+        Self {
+            #[cfg(hydrate)]
+            alien_computed: ::alien_signals::Computed::new_with_eq_fn(f, eq_fn),
+            #[cfg(not(hydrate))]
+            value: server_gc::alloc(f()),
+        }
+    }
+    
+    pub fn get(&self) -> T {
+        #[cfg(hydrate)]
+        {
+            self.alien_computed.get()
+        }
         #[cfg(not(hydrate))]
         {
-            // for template rendering
-            unsafe { &*self.current_value.get() }
+            // SAFETY: value is never deallocated during the lifetime of the Computed.
+            (unsafe {self.value.as_ref()}).clone()
         }
+    }
+}
+
+#[cfg_attr(docsrs, doc(cfg(feature = "client")))]
+#[derive(Clone, Copy)]
+pub struct Effect {
+    #[cfg(hydrate)]
+    alien_effect: ::alien_signals::Effect,
+}
+impl Effect {
+    pub fn new(f: impl Fn() + 'static) -> Self {
         #[cfg(hydrate)]
-        {
-            let value = serde_wasm_bindgen::from_value(
-                // TODO: skip deserialization if value is not changed
-                Reflect::get(&self.preact_signal, &"value".into()).unwrap_throw(),
-            )
-            .unwrap_throw();
-            unsafe {
-                *self.current_value.get() = value;
-            }
-            unsafe { &*self.current_value.get() }
+        {            
+            Self { alien_effect: ::alien_signals::Effect::new(f) }
         }
-    }
-}
-
-#[doc(hidden)]
-pub struct Computed<T: serde::Serialize + for<'de> serde::Deserialize<'de>>(Signal<T>);
-
-impl<T> Clone for Computed<T>
-where
-    T: serde::Serialize + for<'de> serde::Deserialize<'de>,
-{
-    fn clone(&self) -> Self {
-        Self(self.0.clone())
-    }
-}
-
-impl<T> std::ops::Deref for Computed<T>
-where
-    T: serde::Serialize + for<'de> serde::Deserialize<'de>,
-{
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        self.0.deref()
-    }
-}
-
-impl<T, F> super::client_attribute<F> for Computed<T>
-where
-    T: serde::Serialize + for<'de> serde::Deserialize<'de>,
-    F: Fn() -> T + 'static,
-{
-    fn new(getter: F) -> Self {
         #[cfg(not(hydrate))]
         {
-            // for template rendering
-            Self(Signal::new(getter()))
+            f();
+            Self {}
         }
+    }
+    
+    pub fn dispose(self) {
         #[cfg(hydrate)]
         {
-            let init = getter();
-
-            let preact_computed = runtime_js::computed(
-                Closure::<dyn Fn() -> JsValue>::new(move || {
-                    serde_wasm_bindgen::to_value(&getter()).unwrap_throw()
-                })
-                .into_js_value()
-                .unchecked_into(),
-            );
-
-            Self(Signal {
-                preact_signal: preact_computed,
-                current_value: std::rc::Rc::new(std::cell::UnsafeCell::new(init)),
-            })
+            self.alien_effect.dispose();
+        }
+        #[cfg(not(hydrate))]
+        {
+            // no-op
         }
     }
 }
 
-/// `computed!([deps, ...], || -> T { ... })` creates a `Computed<T>` signal
-/// that automatically updates when any of the `deps` signals change.
-///
-/// ## Example
-/// ```
-/// use uibeam::{UI, Beam, Signal, callback, computed};
-///
-/// #[derive(serde::Serialize, serde::Deserialize)]
-/// pub struct ComputedExample;
-///
-/// #[uibeam::client(island)]
-/// impl Beam for ComputedExample {
-///     fn render(self) -> UI {
-///         let count = Signal::new(0u32);
-///
-///         let count_squared = computed!([count], || {
-///             (*count).pow(2)
-///         });
-///
-///         let increment = callback!([count], |_| {
-///             count.set(*count + 1);
-///         });
-///
-///         UI! {
-///             <div class="w-[144px]">
-///                 <p class="text-2xl font-bold text-center">
-///                     "Count: "{*count}
-///                 </p>
-///                 <p class="text-2xl font-bold text-center">
-///                     "Count Squared: "{*count_squared}
-///                 </p>
-///                 <div class="text-center">
-///                     <button
-///                         class="cursor-pointer bg-blue-500 w-[32px] py-1 text-white rounded-md"
-///                         onclick={increment}
-///                     >"+"</button>
-///                 </div>
-///             </div>
-///         }
-///     }
-/// }
-/// ```
 #[cfg_attr(docsrs, doc(cfg(feature = "client")))]
-#[macro_export]
-macro_rules! computed {
-    ($($t:tt)*) => {
-        $crate::client::Computed::new($crate::callback!($($t)*))
-    };
+#[derive(Clone, Copy)]
+pub struct EffectScope {
+    #[cfg(hydrate)]
+    alien_effect_scope: ::alien_signals::EffectScope,
 }
-
-#[doc(hidden)]
-pub struct Effect;
-
-impl<F> super::client_attribute<F> for Effect
-where
-    F: Fn() + 'static,
-{
-    fn new(#[cfg_attr(not(hydrate), allow(unused))] f: F) -> Self {
+impl EffectScope {
+    pub fn new(f: impl FnOnce() + 'static) -> Self {
+        #[cfg(hydrate)]
+        {            
+            Self { alien_effect_scope: ::alien_signals::EffectScope::new(f) }
+        }
+        #[cfg(not(hydrate))]
+        {
+            f();
+            Self {}
+        }
+    }
+    
+    pub fn dispose(self) {
         #[cfg(hydrate)]
         {
-            let f = Closure::<dyn Fn()>::new(f).into_js_value().unchecked_into();
-            runtime_js::effect(f);
+            self.alien_effect_scope.dispose();
         }
-        Self
-    }
-}
-
-/// `effect!([deps, ...], || { ... })` creates a reactive effect that automatically
-/// re-runs whenever any of the `deps` signals change.
-///
-/// ## Example
-/// ```
-/// use uibeam::{UI, Beam, Signal, callback, effect};
-/// use web_sys::console;
-///
-/// #[derive(serde::Serialize, serde::Deserialize)]
-/// pub struct EffectExample;
-///
-/// #[uibeam::client(island)]
-/// impl Beam for EffectExample {
-///     fn render(self) -> UI {
-///         let count = Signal::new(0);
-///
-///         effect!([count], || {
-///             console::log_1(&format!("Count changed: {}", *count).into());
-///         });
-///
-///         let increment = callback!([count], |_| {
-///             count.set(*count + 1);
-///         });
-///
-///         UI! {
-///             <div class="w-[144px]">
-///                 <p class="text-2xl font-bold text-center">
-///                     "Count: "{*count}
-///                 </p>
-///                 <div class="text-center">
-///                     <button
-///                         class="cursor-pointer bg-blue-500 w-[32px] py-1 text-white rounded-md"
-///                         onclick={increment}
-///                     >"+"</button>
-///                 </div>
-///             </div>
-///         }
-///     }
-/// }
-/// ```
-#[cfg_attr(docsrs, doc(cfg(feature = "client")))]
-#[macro_export]
-macro_rules! effect {
-    ($($t:tt)*) => {
-        $crate::client::Effect::new($crate::callback!($($t)*))
-    };
-}
-
-#[doc(hidden)]
-pub struct Batch;
-
-impl<F> super::client_attribute<F> for Batch
-where
-    F: Fn() + 'static,
-{
-    fn new(#[cfg_attr(not(hydrate), allow(unused))] f: F) -> Self {
-        #[cfg(hydrate)]
+        #[cfg(not(hydrate))]
         {
-            let f = Closure::<dyn Fn()>::new(f).into_js_value().unchecked_into();
-            runtime_js::effect(f);
+            // no-op
         }
-        Self
     }
-}
-
-#[cfg_attr(docsrs, doc(cfg(feature = "client")))]
-#[macro_export]
-macro_rules! batch {
-    ($($t:tt)*) => {
-        $crate::client::Batch::new($crate::callback!($($t)*))
-    };
-}
-
-#[doc(hidden)]
-pub struct Untracked;
-
-impl<F> super::client_attribute<F> for Untracked
-where
-    F: Fn() + 'static,
-{
-    fn new(#[cfg_attr(not(hydrate), allow(unused))] f: F) -> Self {
-        #[cfg(hydrate)]
-        {
-            let f = Closure::<dyn Fn()>::new(f).into_js_value().unchecked_into();
-            runtime_js::effect(f);
-        }
-        Self
-    }
-}
-
-#[cfg_attr(docsrs, doc(cfg(feature = "client")))]
-#[macro_export]
-macro_rules! untracked {
-    ($($t:tt)*) => {
-        $crate::client::Untracked::new($crate::callback!($($t)*))
-    };
 }
