@@ -112,7 +112,7 @@ extern "C" {
     /// 
     /// The `wasm_callback_by_id` signature is:
     /// 
-    /// ```rust
+    /// ```txt
     /// Fn(u32, web_sys::Event)
     /// ```
     #[wasm_bindgen(js_name = delegateEvent)]
@@ -123,7 +123,7 @@ extern "C" {
     /// - `tag_name`: The custom element name.
     /// - `wasm_factory`: 
     /// 
-    /// ```rust
+    /// ```txt
     /// Fn(root: web_sys::Node, serialized_props: String)
     /// ```
     #[wasm_bindgen(js_name = registerIsland)]
