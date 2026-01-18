@@ -113,7 +113,7 @@ extern "C" {
     /// The `wasm_callback_by_id` signature is:
     /// 
     /// ```txt
-    /// Fn(u32, web_sys::Event)
+    /// (u32, web_sys::Event) -> ()
     /// ```
     #[wasm_bindgen(js_name = delegateEvent)]
     pub fn delegate_event(root: web_sys::Node, event_type: &'static str, wasm_callback_by_id: js_sys::Function);
@@ -124,7 +124,8 @@ extern "C" {
     /// - `wasm_factory`: 
     /// 
     /// ```txt
-    /// Fn(root: web_sys::Node, serialized_props: String)
+    /// (root: web_sys::Node, serialized_props: String) -> (() -> ())
+    /// /* returns cleanup */
     /// ```
     #[wasm_bindgen(js_name = registerIsland)]
     pub fn register_island(tag_name: &'static str, wasm_factory: js_sys::Function);
