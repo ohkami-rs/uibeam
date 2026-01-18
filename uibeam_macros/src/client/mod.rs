@@ -47,10 +47,9 @@ pub(super) fn expand(args: TokenStream, input: TokenStream) -> syn::Result<Token
             ));
         }
     };
-    let hydrater_name = format_ident!("__uibeam_hydrate_{self_name}__");
-    let hydrater_name_str = syn::LitStr::new(&hydrater_name.to_string(), hydrater_name.span());
-
-    let impl_island_boundary = is_island_boundary.then(|| {
+    let tag_name = format_ident!("uibeam-{}", self_name.to_string().replace('_', '-').to_lowercase());
+    let registerfn_name = format_ident!("__uibeam_register_{self_name}__");
+    let registerfn_name_str = syn::LitStr::new(&registerfn_name.to_string(), registerfn_name.span());
         let (impl_generics, ty_generics, where_clause) = impl_beam.generics.split_for_impl();
         quote! {
             impl #impl_generics ::uibeam::IslandBoundary for #self_ty #ty_generics #where_clause {}
@@ -90,29 +89,14 @@ pub(super) fn expand(args: TokenStream, input: TokenStream) -> syn::Result<Token
         let mut stmts = fn_render.block.stmts.clone();
         insert_client_directive_to_ui_macros(&mut stmts);
 
-        fn_render.block = if is_island_boundary {
-            if crate::cfg_hydrate() {
-                parse_quote!({
-                    use ::uibeam::client_attribute as _;
-                    #(#stmts)*
-                })
-            } else {
-                parse_quote!({
-                    use ::uibeam::client_attribute as _;
-                    let props = ::uibeam::client::serialize_props(&self);
-                    let dry_ui = {
-                        #(#stmts)*
-                    };
-                    ::uibeam::UI! {
-                        <div
-                            data-uibeam-hydrater=#hydrater_name_str
-                            data-uibeam-props={props}
-                        >
-                            {dry_ui}
-                        </div>
-                    }
-                })
-            }
+        fn_render.block = if is_island_boundary && !crate::cfg_hydrate() {
+            parse_quote!({
+                use ::uibeam::client_attribute as _;
+                let props = ::uibeam::client::serialize_props(&self);
+                ::uibeam::UI! {
+                    <#tag_name props=#props />
+                }
+            })
         } else {
             parse_quote!({
                 use ::uibeam::client_attribute as _;
@@ -123,30 +107,34 @@ pub(super) fn expand(args: TokenStream, input: TokenStream) -> syn::Result<Token
         impl_beam
     };
 
-    let hydrater = (crate::cfg_hydrate() && is_island_boundary).then(|| {
+    let registerfn = (is_island_boundary && crate::cfg_hydrate()).then(|| {
         quote! {
             #[doc(hidden)]
             #[allow(unused, non_snake_case)]
-            pub mod #hydrater_name {
+            pub mod #registerfn_name {
                 use super::#self_name;
                 use ::uibeam::client::wasm_bindgen;
-                use ::uibeam::client::wasm_bindgen::{JsCast, UnwrapThrowExt};
+                use ::uibeam::client::wasm_bindgen::{Closure, JsCast, UnwrapThrowExt};
+                use ::uibeam::client::web_sys::Node;
+                use ::uibeam::client::js_sys::Function;
 
                 #[doc(hidden)]
                 #[allow(unused, non_snake_case)]
                 #[wasm_bindgen::prelude::wasm_bindgen]
-                pub fn #hydrater_name(
-                    props: ::uibeam::client::js_sys::Object,
-                    container: ::uibeam::client::web_sys::Node,
-                ) {
-                    ::uibeam::client::hydrate(
-                        ::uibeam::client::VNode::new(
-                            ::uibeam::client::NodeType::component::<#self_name>(),
-                            props,
-                            const {vec![]},
-                        ),
-                        container,
-                    )
+                pub fn #registerfn_name() {
+                    let renderfn: Function = Closure::<dyn Fn(Node, String) -> Function>::new(
+                        |root, serialized_props| -> ::uibeam::client::js_sys::Function {
+                            let props = ::uibeam::client::deserialize_props(&serialize_props);
+                            let scope = ::uibeam::client::EffectScope::new(move || {                            
+                                let ui = <#self as ::uibeam::Beam>::render(props);
+                                root.append_child(::uibeam::shoot(ui));
+                            });
+                            Closure::<dyn FnOnce()>::new(
+                                move || scope.dispose()
+                            ).into_js_value().unchecked_into()
+                        }
+                    ).into_js_value().unchecked_into();
+                    ::uibeam::client::runtime::register_island(#tag_name, rederfn);
                 }
             }
         }
@@ -155,7 +143,7 @@ pub(super) fn expand(args: TokenStream, input: TokenStream) -> syn::Result<Token
     Ok(quote! {
         #impl_island_boundary
         #impl_beam
-        #hydrater
+        #registerfn
     })
 }
 

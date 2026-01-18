@@ -63,7 +63,7 @@ export function delegateEvent(root, eventType, wasmCallbackByID) {
     })
 }
 
-export function registerIsland(tagName, wasmFactory) {
+export function registerIsland(tagName, renderByWasm) {
     if (customElements.get(tagName)) return;
     customElements.define(tagName, class extends HTMLElement {
         constructor() {
@@ -73,7 +73,7 @@ export function registerIsland(tagName, wasmFactory) {
         connectedCallback() {
             const serializedProps = this.getAttribute('props') || '{}';
             try {
-                this.cleanup = wasmFactory(this, serializedProps);
+                this.cleanup = renderByWasm(this, serializedProps);
             } catch (err) {
                 console.error(`[uibeam] <${tagName}> hydration failed: ${err}`);
             }
@@ -121,12 +121,12 @@ extern "C" {
     /// ## Params
     /// 
     /// - `tag_name`: The custom element name.
-    /// - `wasm_factory`: 
+    /// - `render_by_wasm`: 
     /// 
     /// ```txt
     /// (root: web_sys::Node, serialized_props: String) -> (() -> ())
     /// /* returns cleanup */
     /// ```
     #[wasm_bindgen(js_name = registerIsland)]
-    pub fn register_island(tag_name: &'static str, wasm_factory: js_sys::Function);
+    pub fn register_island(tag_name: &'static str, render_by_wasm: js_sys::Function);
 }
