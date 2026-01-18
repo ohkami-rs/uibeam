@@ -43,7 +43,7 @@ export function delegateEvent(root, eventType, wasmCallbackByID) {
             if (eventid) {
                 Object.defineProperty(event, 'currentTarget', {
                     configurable: true,
-                    get() {return target}
+                    value: target,
                 });
                 
                 try {
@@ -62,6 +62,30 @@ export function delegateEvent(root, eventType, wasmCallbackByID) {
         }
     })
 }
+
+export function registerIsland(tagName, wasmFactory) {
+    if (customElements.get(tagName)) return;
+    customElements.define(tagName, class extends HTMLElement {
+        constructor() {
+            super();
+            this.cleanup = null;
+        }
+        connectedCallback() {
+            const serializedProps = this.getAttribute('props') || '{}';
+            try {
+                this.cleanup = wasmFactory(this, serializedProps);
+            } catch (err) {
+                console.error(`[uibeam] <${tagName}> hydration failed: ${err}`);
+            }
+        }
+        disconnectedCallback() {
+            if (this.cleanup) {
+                this.cleanup();
+                this.cleanup = null;
+            }
+        }
+    });
+}
 "#)]
 extern "C" {
     /// ## Params
@@ -78,7 +102,7 @@ extern "C" {
     /// 
     /// A list of `Node`s corresponded with the `paths`.
     #[wasm_bindgen(js_name = collectNodes)]
-    fn collect_nodes(root: web_sys::Node, paths: Vec<&'static str>) -> Vec<web_sys::Node>;
+    pub fn collect_nodes(root: web_sys::Node, paths: Vec<&'static str>) -> Vec<web_sys::Node>;
     
     /// ## Params
     /// 
@@ -92,5 +116,16 @@ extern "C" {
     /// Fn(u32, web_sys::Event)
     /// ```
     #[wasm_bindgen(js_name = delegateEvent)]
-    fn delegate_event(root: web_sys::Node, event_type: &'static str, wasm_callback_by_id: &js_sys::Function);
+    pub fn delegate_event(root: web_sys::Node, event_type: &'static str, wasm_callback_by_id: js_sys::Function);
+    
+    /// ## Params
+    /// 
+    /// - `tag_name`: The custom element name.
+    /// - `wasm_factory`: 
+    /// 
+    /// ```rust
+    /// Fn(root: web_sys::Node, serialized_props: String)
+    /// ```
+    #[wasm_bindgen(js_name = registerIsland)]
+    pub fn register_island(tag_name: &'static str, wasm_factory: js_sys::Function);
 }
