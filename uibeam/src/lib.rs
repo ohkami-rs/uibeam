@@ -393,6 +393,13 @@ const _: () = {
     fn too_large_error_message(int: impl std::fmt::Display) -> String {
         format!("can't use `{int}` as attribute value: too largem")
     }
+        
+    #[cfg(feature = "client")]
+    impl<E: Into<web_sys::Event>> From<Box<dyn Fn(E)>> for AttributeValue {
+        fn from(it) -> Self {
+            AttributeValue::EventHandler(Box::new(move |e| it(e.into())))
+        }
+    }
 };
 
 #[doc(hidden)]
@@ -432,7 +439,8 @@ impl UI {
                     }
                     for expression in &interpolators {
                         size += match expression {
-                            Interpolator::Children(children) => children.0.len(),
+                            // Interpolator::Children(children) => children.0.len(),
+                            Interpolator::Text,If,For todo!
                             Interpolator::Attribute(value) => match value {
                                 AttributeValue::Text(text) => {
                                     1/* " */ + text.len() + 1 /* " */
