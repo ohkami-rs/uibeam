@@ -251,13 +251,25 @@ impl UI {
 }
 
 #[doc(hidden)]
+pub struct InterpolationExpr<T>(
+    #[cfg(not(hydrate))]
+    pub T,
+    #[cfg(hydrate)]
+    /// to handle reactivity
+    pub Box<dyn Fn() -> T>
+);
+
+#[doc(hidden)]
 pub enum Interpolator {
     /// interpolation of a HTML attribute value:
     /// - `class={foo}`
     /// - `checked={true}`
     /// - `width={100}`
-    Attribute(AttributeValue),
-    Text(Cow<'static str>),
+    Attribute(InterpolationExpr<AttributeValue>),
+    /// ```UI
+    /// <p>"Count: "{count.get()}</p>
+    /// ```
+    Text(InterpolationExpr<Cow<'static str>>),
     /// ```UI
     /// <div>
     ///     {if condition {
@@ -265,27 +277,21 @@ pub enum Interpolator {
     ///     }}
     /// </div>
     /// ```
-    If(If),
+    If {
+        condition: InterpolationExpr<bool>,
+        then: InterpolationExpr<UI>,
+        else_if: Vec<If>,
+        else: InterpolationExpr<UI>,
+    },
     /// ```UI
     /// <ul>{for i in 0..10 {
     ///     <li>"i: "{i}</li>
     /// }}</ul>
     /// ```
-    For(For),
-}
-
-#[doc(hidden)]
-pub struct If {
-    condition_fn: Box<dyn Fn() -> bool>,
-    then: ,
-    else_if: Vec<If>,
-    else: ,
-}
-
-#[doc(hidden)]
-pub struct For {
-    iterator_fn: Box<dyn Fn() -> Vec<_>>,
-    item_fn: Box<dyn Fn() -> UI>,
+    For {
+        iterator: InterpolationExpr<Vec<_>>,
+        item: InterpolationExpr<UI>,
+    },
 }
 
 #[doc(hidden)]
