@@ -103,7 +103,7 @@ impl ToTokens for EventHandlerAnnotation {
 
 /// Derives `({HTML-escaped literal pieces}, {interpolating expressions})`
 /// from the `NodeTokens`
-pub(crate) fn transform(
+pub(crate) fn codegen(
     directives: &[Directive],
     tokens: NodeTokens,
 ) -> syn::Result<(Vec<Piece>, Vec<Interpolation>, Vec<EventHandlerAnnotation>)> {

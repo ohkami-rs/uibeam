@@ -1,5 +1,5 @@
 mod parse;
-mod transform;
+mod codegen;
 
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -14,29 +14,25 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
 
     if crate::cfg_hydrate() {
         #[cfg(not(feature = "client"))]
-        {
-            Err(syn::Error::new(
-                proc_macro2::Span::call_site(),
-                "`hydrate` cfg can not be activated without uibeam's `client` feature",
-            ))
-        }
-        #[cfg(feature = "client")]
-        {
-            let uis = nodes
-                .clone()
-                .into_iter()
-                .map(|node| {
-                    let vdom_tokens = transform::hydrate::transform(node)?;
-                    Ok(quote! {
-                        ::uibeam::UI::new_unchecked(#vdom_tokens)
-                    })
+        return Err(syn::Error::new(
+            proc_macro2::Span::call_site(),
+            "`hydrate` cfg can not be activated without uibeam's `client` feature",
+        ));
+        
+        let uis = nodes
+            .clone()
+            .into_iter()
+            .map(|node| {
+                let vdom_tokens = codegen::hydrate::codegen(node)?;
+                Ok(quote! {
+                    ::uibeam::UI::new_unchecked(#vdom_tokens)
                 })
-                .collect::<syn::Result<Vec<_>>>()?;
-
-            Ok(quote! {
-                <::uibeam::UI>::from_iter([#(#uis),*])
             })
-        }
+            .collect::<syn::Result<Vec<_>>>()?;
+
+        Ok(quote! {
+            <::uibeam::UI>::from_iter([#(#uis),*])
+        })
     } else {
         if nodes
             .first()
@@ -53,7 +49,7 @@ pub(super) fn expand(input: TokenStream) -> syn::Result<TokenStream> {
                 let is_html_tag = node.children_of_enclosing_tag("html").is_some();
 
                 let (mut literals, expressions, ehannotations) =
-                    transform::server::transform(&directives, node)?;
+                    codegen::server::codegen(&directives, node)?;
 
                 if is_html_tag {
                     literals

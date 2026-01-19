@@ -61,7 +61,7 @@ pub use uibeam_macros::client;
 
 use std::borrow::Cow;
 #[cfg(feature = "client")]
-use client::hydrate::{NodePath, ReactivePart, EventListener};
+use client::hydrate::{NodePath, Reactivity};
 
 #[doc(hidden)]
 #[allow(non_camel_case_types)]
@@ -77,9 +77,7 @@ pub trait client_attribute<T> {
 pub struct UI {
     template: Cow<'static, str>,
     #[cfg(all(feature = "client", hydrate))]
-    reactive_parts: Vec<(NodePath, Vec<ReactivePart>)>,
-    #[cfg(all(feature = "client", hydrate))]
-    eventlisteners: Vec<(NodePath, Vec<EventListener>)>,
+    reactivities: Vec<(NodePath, Vec<Reactivity>)>,
 );
 
 /// # `Beam` - UIBeam's component system
@@ -194,28 +192,21 @@ pub fn shoot(ui: UI) -> ::web_sys::Node {
         };
     }
     
-    let root: ::web_sys::DocumentFragment = CACHED_TEMPLATE.with(|t| {
+    let island_root: ::web_sys::DocumentFragment = CACHED_TEMPLATE.with(|t| {
         t.content().clone_node(true).unechecked_into()
     });
     
-    for (path, parts) in self.reactive_parts {
+    for (path, rs) in self.reactivities {
         let node = path.traverse().expect("invalid path");
-        for part in parts {
-            part.apply(node);
-        }
-    }
-    for (path, listeners) in self.eventlisteners {
-        let node = path.traverse().expect("invalid path");
-        for listener in listeners {
-            listener.apply_in_root(root.unchecked_ref(), node);
+        for r in rs {
+            r.apply_in_island(island_root, node);
         }
     }
     
-    root.unchecked_into()
+    island_root.unchecked_into()
 }
 
 impl FromIterator<UI> for UI {
-    #[cfg(not(all(feature = "client", hydrate)))]
     #[inline]
     fn from_iter<T: IntoIterator<Item = UI>>(iter: T) -> Self {
         let mut result = String::new();
@@ -224,16 +215,8 @@ impl FromIterator<UI> for UI {
         }
         UI(Cow::Owned(result))
     }
-
-    #[cfg(all(feature = "client", hydrate))]
-    fn from_iter<T: IntoIterator<Item = UI>>(iter: T) -> Self {
-        UI(client::VNode::fragment(
-            iter.into_iter().map(|UI(vdom)| vdom).collect::<Vec<_>>(),
-        ))
-    }
 }
 
-#[cfg(not(all(feature = "client", hydrate)))]
 impl UI {
     pub const EMPTY: UI = UI(Cow::Borrowed(""));
 
@@ -274,12 +257,35 @@ pub enum Interpolator {
     /// - `checked={true}`
     /// - `width={100}`
     Attribute(AttributeValue),
-    /// interpolation of HTML elements or nodes within a parent element:
-    /// - `<div>{children}</div>`
-    /// - `<div>{iter.map(|i| UI! { ... })}</div>`
-    /// - `<div>{condition.then(|| UI! { ... })}</div>`
-    /// - `<p>My name is {me.name}</p>` (in text node)
-    Children(UI),
+    Text(Cow<'static str>),
+    /// ```UI
+    /// <div>
+    ///     {if condition {
+    ///         <p>"condition holds!"</p>
+    ///     }}
+    /// </div>
+    /// ```
+    If(If),
+    /// ```UI
+    /// <ul>{for i in 0..10 {
+    ///     <li>"i: "{i}</li>
+    /// }}</ul>
+    /// ```
+    For(For),
+}
+
+#[doc(hidden)]
+pub struct If {
+    condition_fn: Box<dyn Fn() -> bool>,
+    then: ,
+    else_if: Vec<If>,
+    else: ,
+}
+
+#[doc(hidden)]
+pub struct For {
+    iterator_fn: Box<dyn Fn() -> Vec<_>>,
+    item_fn: Box<dyn Fn() -> UI>,
 }
 
 #[doc(hidden)]
@@ -287,22 +293,8 @@ pub enum AttributeValue {
     Text(Cow<'static, str>),
     Integer(i64),
     Boolean(bool),
-}
-#[cfg(all(feature = "client", hydrate))]
-impl From<AttributeValue> for wasm_bindgen::JsValue {
-    fn from(value: AttributeValue) -> wasm_bindgen::JsValue {
-        match value {
-            AttributeValue::Integer(int) => int.into(),
-            AttributeValue::Boolean(boo) => boo.into(),
-            AttributeValue::Text(text) => match uibeam_html::escape(&text) {
-                Cow::Owned(escaped) => escaped.into(),
-                Cow::Borrowed(_) => match text {
-                    Cow::Owned(s) => s.into(),
-                    Cow::Borrowed(s) => s.into(),
-                },
-            },
-        }
-    }
+    #[cfg(feature = "client")]
+    EventHandler(Box<dyn Fn(::web_sys::Event)>),
 }
 const _: () = {
     impl From<bool> for AttributeValue {
@@ -394,48 +386,6 @@ const _: () = {
     #[inline(never)]
     fn too_large_error_message(int: impl std::fmt::Display) -> String {
         format!("can't use `{int}` as attribute value: too largem")
-    }
-};
-
-#[doc(hidden)]
-pub trait IntoChildren<T, const ESCAPE: bool = true> {
-    fn into_children(self) -> UI;
-}
-const _: () = {
-    impl<const ESCAPE: bool> IntoChildren<UI, ESCAPE> for UI {
-        fn into_children(self) -> UI {
-            self
-        }
-    }
-
-    // note that `Option<UI>` implements `IntoChildren` because `Option` is `IntoIterator`
-    impl<const ESCAPE: bool, I> IntoChildren<(I,), ESCAPE> for I
-    where
-        I: IntoIterator<Item = UI>,
-    {
-        #[inline(always)]
-        fn into_children(self) -> UI {
-            UI::from_iter(self)
-        }
-    }
-
-    impl<const ESCAPE: bool, D: std::fmt::Display> IntoChildren<&dyn std::fmt::Display, ESCAPE> for D {
-        fn into_children(self) -> UI {
-            let text = self.to_string();
-
-            let text = if ESCAPE {
-                match escape(&text) {
-                    // this means `text` is already escaped, so we can avoid allocation,
-                    // just using `text` directly
-                    Cow::Borrowed(_) => text,
-                    Cow::Owned(escaped) => escaped,
-                }
-            } else {
-                text
-            };
-
-            UI(Cow::Owned(text));
-        }
     }
 };
 

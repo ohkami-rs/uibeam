@@ -38,7 +38,11 @@ impl NodePath {
     }
 }
 
-pub(crate) enum ReactivePart {
+pub(crate) enum Reactivity {
+    EventListener {
+        event_type: &'static str,
+        handler: Box<dyn Fn(Event)>,
+    },
     Text {
         value_fn: Box<dyn Fn() -> String>,
     },
@@ -51,9 +55,27 @@ pub(crate) enum ReactivePart {
      * For,
      */
 }
-impl ReactivePart {
-    pub(crate) fn apply(&self, node: &Node) {
+impl Reactivity {
+    pub(crate) fn apply_in_island(&self, island_root: &Node, node: &Node) {
         match self {
+            Self::EventListener { event_type, handler } => {
+                thread_local! {
+                    static EVENT_CALLBACKS: std::cell::RefCell<Vec<Box<dyn Fn(Event)>>>;
+                }
+
+                let callback_index = EVENT_CALLBACKS.with_borrow_mut(|c| {
+                    let index = c.len();
+                    c.push(self.handler);
+                    index
+                });
+                node.set_attribute(format!("uibeam-{}-id", callback_index));
+                
+                let wasm_callback_by_id = ::wasm_bindgen::Closure::<dyn Fn(u32, Event)>::new(|eventid, event| {
+                    EVENT_CALLBACKS.with_borrow(|c| c[eventid](event))
+                });
+                
+                crate::client::runtime::delegate_event(root, self.event_type, wasm_callback_by_id);  
+            }
             Self::Text { value_fn } => {
                 crate::Effect::new(move || {
                     node.set_text_content(value_fn());
@@ -65,30 +87,5 @@ impl ReactivePart {
                 })
             }
         }
-    }
-}
-
-pub(crate) struct EventListener {
-    event_type: &'static str,
-    handler: Box<dyn Fn(Event)>,
-}
-impl EventListener {
-    pub(crate) fn apply_in_root(&self, root: &Node, node: &Node) {
-        thread_local! {
-            static EVENT_CALLBACKS: std::cell::RefCell<Vec<Box<dyn Fn(Event)>>>;
-        }
-
-        let callback_index = EVENT_CALLBACKS.with_borrow_mut(|c| {
-            let index = c.len();
-            c.push(self.handler);
-            index
-        });
-        node.set_attribute(format!("uibeam-{}-id", callback_index));
-        
-        let wasm_callback_by_id = ::wasm_bindgen::Closure::<dyn Fn(u32, Event)>::new(|eventid, event| {
-            EVENT_CALLBACKS.with_borrow(|c| c[eventid](event))
-        });
-        
-        crate::client::runtime::delegate_event(root, self.event_type, wasm_callback_by_id);
     }
 }
