@@ -63,17 +63,17 @@ impl ToTokens for Interpolation {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
             Interpolation::Attribute(expression) => tokens.extend(quote! {
-                ::uibeam::Interpolator::Attribute(::uibeam::AttributeValue::from(
+                ::uibeam::Dynamic::Attribute(::uibeam::AttributeValue::from(
                     #expression
                 ))
             }),
             Interpolation::Children(expression) => tokens.extend(quote! {
-                ::uibeam::Interpolator::Children(::uibeam::IntoChildren::<_, true>::into_children(
+                ::uibeam::Dynamic::Children(::uibeam::IntoChildren::<_, true>::into_children(
                     #expression
                 ))
             }),
             Interpolation::UnsafeRawChildren(expression) => tokens.extend(quote! {
-                ::uibeam::Interpolator::Children(::uibeam::IntoChildren::<_, false>::into_children(
+                ::uibeam::Dynamic::Children(::uibeam::IntoChildren::<_, false>::into_children(
                     #expression
                 ))
             }),

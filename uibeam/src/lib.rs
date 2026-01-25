@@ -251,57 +251,189 @@ impl UI {
 }
 
 #[doc(hidden)]
-pub struct InterpolationExpr<T>(
+pub struct DynamicExpr<T>(
     #[cfg(not(hydrate))]
-    pub T,
+    T,
     #[cfg(hydrate)]
     /// to handle reactivity
-    pub Box<dyn Fn() -> T>
+    Box<dyn Fn() -> T>
 );
+impl<T> DynamicExpr<T> {
+    #[doc(hidden)]
+    pub fn new(t: T) -> Self {
+        DynamicExpr(
+            #[cfg(not(hydrate))]
+            t,
+            #[cfg(hydrate)]
+            Box::new(move || t)
+        )
+    }
+}
 
 #[doc(hidden)]
-pub enum Interpolator {
-    /// interpolation of a HTML attribute value:
+pub enum Dynamic {
     /// - `class={foo}`
     /// - `checked={true}`
     /// - `width={100}`
-    Attribute(InterpolationExpr<AttributeValue>),
+    Attribute(DynamicExpr<AttributeValue>),
+    /// e.g. `onclick={move |_| console::log_1(&"clicked".into())}`
+    #[cfg(feature = "client")]
+    EventHandler(Box<dyn Fn(::web_sys::Event)>),
     /// ```UI
     /// <p>"Count: "{count.get()}</p>
     /// ```
-    Text(InterpolationExpr<Cow<'static str>>),
+    Text(DynamicExpr<Cow<'static str>>),
+    /// directly emmbeded string, intentionally skipping HTML-escape:
+    /// 
+    /// ```UI
+    /// <div>
+    ///     unsafe { reliable_html_string() }
+    /// </div>
+    /// ```
+    UnsafeRawHtmlString(DynamicExpr<Cow<'static, str>>),
     /// ```UI
     /// <div>
     ///     {if condition {
     ///         <p>"condition holds!"</p>
+    ///     } else if condition2 {
+    ///         <p>"another condition holds!"</p>
+    ///     } else {
+    ///         <p>"no conditions hold"</p>
     ///     }}
     /// </div>
     /// ```
     If {
-        condition: InterpolationExpr<bool>,
-        then: InterpolationExpr<UI>,
+        condition: DynamicExpr<bool>,
+        then: DynamicExpr<UI>,
         else_if: Vec<If>,
-        else: InterpolationExpr<UI>,
+        else: DynamicExpr<UI>,
     },
     /// ```UI
-    /// <ul>{for i in 0..10 {
-    ///     <li>"i: "{i}</li>
+    /// <ul>{for name in ["abc", "def", "ghi"] {
+    ///     <li key={name}>"name: "{name}</li>
     /// }}</ul>
     /// ```
     For {
-        iterator: InterpolationExpr<Vec<_>>,
-        item: InterpolationExpr<UI>,
+        iterator: DynamicExpr<Vec<Box<dyn Any>>>,
+        item: Box<dyn Fn(Box<dyn Any>) -> UI>,
     },
 }
+
+#[cfg(feature = "client")]
+const _: () = {
+    macro_rules! EventHandler {
+        ($( $EventType:ty { $($listenername:ident),+ $(,)? } )*) => {
+            $(
+                impl AttributeValue {
+                    #[doc(hidden)]
+                    pub fn $listenername(handler: impl Fn($EventType) -> ()) -> Self {
+                        Self::EventHandler(Box::new(move |event: web_sys::Event| {
+                            handler(web_sys::Event::from(event))
+                        }))
+                    }
+                }
+            )*
+        };
+    }
+    EventHandler! {
+        web_sys::Event {
+            onafterprint,
+            onbeforeprint,
+            onbeforeunload,
+            onbeforematch,
+            onchange,
+            onfullscreenchange,
+            onfullscreenerror,
+            onload,
+            onscroll,
+            onscrollend,
+            onoffline,
+            ononline,
+        }
+        web_sys::AnimationEvent {
+            onanimationcancel,
+            onanimationend,
+            onanimationiteration,
+            onanimationstart,
+        }
+        web_sys::ClipboardEvent {
+            oncopy,
+            oncut,
+            onpaste,
+        }
+        web_sys::CompositionEvent {
+            oncompositionend,
+            oncompositionstart,
+            oncompositionupdate,
+        }
+        web_sys::FocusEvent {
+            onblur,
+            onfocus,
+            onfocusin,
+            onfocusout,
+        }
+        web_sys::InputEvent {
+            oninput,
+            onbeforeinput,
+        }
+        web_sys::KeyboardEvent {
+            onkeydown,
+            onkeyup,
+        }
+        web_sys::MouseEvent {
+            onauxclick,
+            oncontextmenu,
+            ondblclick,
+            onmousedown,
+            onmouseenter,
+            onmouseleave,
+            onmousemove,
+            onmouseout,
+            onmouseover,
+            onmouseup,
+        }
+        web_sys::PointerEvent {
+            onclick,
+            ongotpointercapture,
+            onlostpointercapture,
+            onpointercancel,
+            onpointerdown,
+            onpointerenter,
+            onpointerleave,
+            onpointermove,
+            onpointerout,
+            onpointerover,
+            onpointerrawupdate,
+            onpointerup,
+        }
+        web_sys::TouchEvent {
+            ontouchcancel,
+            ontouchend,
+            ontouchmove,
+            ontouchstart,
+        }
+        web_sys::TransitionEvent {
+            ontransitioncancel,
+            ontransitionend,
+            ontransitionrun,
+            ontransitionstart,
+        }
+        web_sys::UiEvent {
+            onresize,
+        }
+        web_sys::WheelEvent {
+            onwheel,
+        }
+    }
+};
 
 #[doc(hidden)]
 pub enum AttributeValue {
     Text(Cow<'static, str>),
-    Integer(i64),
+    Integer(isize),
     Boolean(bool),
-    #[cfg(feature = "client")]
-    EventHandler(Box<dyn Fn(::web_sys::Event)>),
 }
+#[doc(hidden)]
 const _: () = {
     impl From<bool> for AttributeValue {
         #[inline(always)]
@@ -345,15 +477,12 @@ const _: () = {
     }
     impl From<i64> for AttributeValue {
         fn from(it: i64) -> Self {
-            AttributeValue::Integer(it)
+            AttributeValue::Integer(it.try_into().unwrap_or_else(|_| panic!("{}", &too_large_error_message(it)))
         }
     }
     impl From<isize> for AttributeValue {
         fn from(it: isize) -> Self {
-            AttributeValue::Integer(
-                it.try_into()
-                    .unwrap_or_else(|_| panic!("{}", &too_large_error_message(it))),
-            )
+            AttributeValue::Integer(it)
         }
     }
     impl From<u8> for AttributeValue {
@@ -369,7 +498,8 @@ const _: () = {
     impl From<u32> for AttributeValue {
         #[inline(always)]
         fn from(it: u32) -> Self {
-            AttributeValue::Integer(it.into())
+            AttributeValue::Integer(it.try_into()
+                .unwrap_or_else(|_| panic!("{}", &too_large_error_message(it)))
         }
     }
     impl From<u64> for AttributeValue {
@@ -391,20 +521,13 @@ const _: () = {
     #[cold]
     #[inline(never)]
     fn too_large_error_message(int: impl std::fmt::Display) -> String {
-        format!("can't use `{int}` as attribute value: too largem")
-    }
-        
-    #[cfg(feature = "client")]
-    impl<E: Into<web_sys::Event>> From<Box<dyn Fn(E)>> for AttributeValue {
-        fn from(it) -> Self {
-            AttributeValue::EventHandler(Box::new(move |e| it(e.into())))
-        }
+        format!("can't use `{int}` as attribute value: too larger")
     }
 };
 
 #[doc(hidden)]
 impl UI {
-    #[cfg(not(all(feature = "client", hydrate)))]
+    #[cfg(not(hydrate))]
     /// tends to be used by the `UI!` macro internally.
     ///
     /// ## SAFETY
@@ -417,7 +540,7 @@ impl UI {
     ///    `new_unchecked` itself does not check or escape)
     pub unsafe fn new_unchecked<const N: usize>(
         template_pieces: &'static [&'static str],
-        interpolators: [Interpolator; N],
+        interpolators: [Dynamic; N],
     ) -> Self {
         #[cfg(debug_assertions)]
         {
@@ -439,19 +562,24 @@ impl UI {
                     }
                     for expression in &interpolators {
                         size += match expression {
-                            // Interpolator::Children(children) => children.0.len(),
-                            Interpolator::Text,If,For todo!
-                            Interpolator::Attribute(value) => match value {
+                            Dynamic::Attribute(value) => match value {
                                 AttributeValue::Text(text) => {
                                     1/* " */ + text.len() + 1 /* " */
                                 }
                                 AttributeValue::Integer(_) => {
-                                    1/* " */ + 4/* max-class length of typically used integer attribute values */ + 1 /* " */
+                                    1/* " */ + 4/* max-level length of typically used integer attribute values */ + 1 /* " */
                                 }
                                 AttributeValue::Boolean(_) => {
-                                    0 /* not push any tokens */
+                                    0 /* never push any tokens */
                                 }
-                            },
+                            }
+                            Dynamic::EventHandler(_) => {
+                                0 /* never push any tokens in template rendering */
+                            }
+                            Dynamic::Text(text) => text.len() * 2, /* sufficient size even when taking HTML-espaces into consideration */
+                            Dynamic::UnsafeRawHtmlString(raw) => raw.len(),
+                            Dynamic::If { condition, then, else_if, else } => {},
+                            Dynamic::For { iterator, item } => {},
                         }
                     }
                     size
@@ -460,10 +588,10 @@ impl UI {
                 for i in 0..N {
                     buf.push_str(template_pieces[i]);
                     match &interpolators[i] {
-                        Interpolator::Children(children) => {
-                            buf.push_str(&children.0);
+                        Dynamic::Text(text) => {
+                            buf.push_str(&escape(text));
                         }
-                        Interpolator::Attribute(value) => {
+                        Dynamic::Attribute(value) => {
                             #[cfg(debug_assertions)]
                             {
                                 // expect like
@@ -564,7 +692,7 @@ mod test {
             (unsafe {
                 UI::new_unchecked(
                     &[r##"<div class="##, r##"></div>"##],
-                    [Interpolator::Attribute(AttributeValue::from("foo"))],
+                    [Dynamic::Attribute(AttributeValue::from("foo"))],
                 )
             })
             .0,
@@ -576,12 +704,12 @@ mod test {
                 UI::new_unchecked(
                     &[r##"<article class="##, r##">"##, r##"</article>"##],
                     [
-                        Interpolator::Attribute(AttributeValue::from("main-article")),
-                        Interpolator::Children(IntoChildren::<_, true>::into_children(
+                        Dynamic::Attribute(AttributeValue::from("main-article")),
+                        Dynamic::Children(IntoChildren::<_, true>::into_children(
                             (1..=3_usize).map(|i| {
                                 UI::new_unchecked(
                                     &[r##"<p>i="##, r##"</p>"##],
-                                    [Interpolator::Children(
+                                    [Dynamic::Children(
                                         IntoChildren::<_, true>::into_children(i.to_string()),
                                     )],
                                 )
