@@ -76,8 +76,8 @@ pub trait client_attribute<T> {
 /// See `UI!` for more details.
 pub struct UI {
     template: Cow<'static, str>,
-    #[cfg(all(feature = "client", hydrate))]
-    reactivities: Vec<(NodePath, Vec<Reactivity>)>,
+    #[cfg(hydrate)]
+    reactivities: Vec<(NodePath, Reactivity)>,
 );
 
 /// # `Beam` - UIBeam's component system
@@ -240,7 +240,7 @@ impl UI {
                 )
             },
             _ => {
-                let mut buf = String::with_capacity(uis.iter().map(|ui| ui.0.len()).sum());
+                let mut buf = String::with_capacity(uis.iter().map(|ui| ui.template.len()).sum());
                 for ui in uis {
                     buf.push_str(&ui.0);
                 }
@@ -253,22 +253,11 @@ impl UI {
 #[doc(hidden)]
 pub struct DynamicExpr<T>(
     #[cfg(not(hydrate))]
-    T,
+    pub T,
     #[cfg(hydrate)]
     /// to handle reactivity
-    Box<dyn Fn() -> T>
+    pub Box<dyn Fn() -> T>,
 );
-impl<T> DynamicExpr<T> {
-    #[doc(hidden)]
-    pub fn new(t: T) -> Self {
-        DynamicExpr(
-            #[cfg(not(hydrate))]
-            t,
-            #[cfg(hydrate)]
-            Box::new(move || t)
-        )
-    }
-}
 
 #[doc(hidden)]
 pub enum Dynamic {
@@ -305,8 +294,8 @@ pub enum Dynamic {
     If {
         condition: DynamicExpr<bool>,
         then: DynamicExpr<UI>,
-        else_if: Vec<If>,
-        else: DynamicExpr<UI>,
+        else_if: Option<Vec<(DynamicExpr<bool>, DynamicExpr<UI>)>>,
+        else: Option<DynamicExpr<UI>>,
     },
     /// ```UI
     /// <ul>{for name in ["abc", "def", "ghi"] {
@@ -315,7 +304,7 @@ pub enum Dynamic {
     /// ```
     For {
         iterator: DynamicExpr<Vec<Box<dyn Any>>>,
-        item: Box<dyn Fn(Box<dyn Any>) -> UI>,
+        item_fn: Box<dyn Fn(Box<dyn Any>) -> UI>,
     },
 }
 
@@ -525,138 +514,236 @@ const _: () = {
     }
 };
 
-#[doc(hidden)]
-impl UI {
-    #[cfg(not(hydrate))]
-    /// tends to be used by the `UI!` macro internally.
-    ///
-    /// ## SAFETY
-    ///
-    /// 1. `template_pieces` must have 0 = N or exactly `N + 1` pieces.
-    /// 2. `template_pieces` must be concatenated into
-    ///    a valid HTML string with any `interpolators` in place.
-    /// 3. Each piece in `template_pieces` must be already HTML-escaped.
-    ///    (intended to be escaped in `UI!` macro internally /
-    ///    `new_unchecked` itself does not check or escape)
-    pub unsafe fn new_unchecked<const N: usize>(
-        template_pieces: &'static [&'static str],
-        interpolators: [Dynamic; N],
-    ) -> Self {
-        #[cfg(debug_assertions)]
-        {
-            let len = template_pieces.len();
-            assert!(
-                (len == 0 && N == 0) || len == N + 1,
+#[cfg(not(hydrate))]
+const _: () = {
+    enum Interpolation {
+        Attribute(AttributeValue),
+        #[cfg(feature = "client")]
+        EventHandler,
+        Text(DynamicExpr<Cow<'static str>>),
+        UnsafeRawHtmlString(DynamicExpr<Cow<'static, str>>),
+        Children(UI),
+    }
+    impl From<Dynamic> for Interpolation {
+        fn from(dynamic: Dynamic) -> Interpolation {
+            match dynamic {
+                Dynamic::Attribute(x) => Interpolation::Attribute(x),
+                #[cfg(feature = "client")]
+                Dynamic::EventHandler(_) => Interpolation::EventHandler,
+                Dynamic::Text(x) => Interpolation::Text(x),
+                Dynamic::UnsafeRawHtmlString(x) => Interpolation::UnsafeRawHtmlString(x),
+                Dynamic::If { condition, then, else_if, else } => Interpolation::Children({
+                    if condition {
+                        then
+                    } else if let Some(else_if) = else_if
+                        .into_iter()
+                        .flatten()
+                        .find_map(|(cond, ui)| cond.then_some(ui))
+                    {
+                        else_if
+                    } else if let Some(else) = else {
+                        else
+                    } else {
+                        UI::EMPTY
+                    }
+                }),
+                Dynamic::For { iterator, item_fn } => Interpolation::Children({
+                    iterator.into_iter().map(item_fn).collect()
+                })
+            }
+        }
+    }
+    impl Interpolation {
+        fn len(&self) -> usize {
+            match self {
+                Self::Attribute(x) => match x {
+                    AttributeValue::Text(text) => {
+                        1/* " */ + text.len() * 2/* escape margin */ + 1 /* " */
+                    }
+                    AttributeValue::Integer(_) => {
+                        1/* " */ + 4/* max-level length of typically used integer attribute values */ + 1 /* " */
+                    }
+                    AttributeValue::Boolean(_) => {
+                        0 /* never push any tokens */
+                    }
+                }
+                #[cfg(feature = "client")]
+                Self::EventHandler => 0, /* never push any tokens */
+                Self::Text(x) => x.len() * 2, /* espace margin */
+                Self::UnsafeRawHtmlString(x) => x.len(),
+                Self::Children(x) => x.template.len(),
+            }
+        }
+    }
+    
+    impl UI {
+        /// tends to be used by the `UI!` macro internally.
+        ///
+        /// ## SAFETY
+        ///
+        /// 1. `template_pieces` must have 0 = N or exactly `N + 1` pieces.
+        /// 2. `template_pieces` must be concatenated into
+        ///    a valid HTML string with any `interpolations` in place.
+        /// 3. Each piece in `template_pieces` must be already HTML-escaped.
+        ///    (intended to be escaped in `UI!` macro internally /
+        ///    `new_unchecked` itself does not check or escape)
+        #[doc(hidden)]
+        pub unsafe fn new_unchecked<const N: usize>(
+            template_pieces: &'static [&'static str],
+            interpolations: [Dynamic; N],
+        ) -> Self {
+            debug_assert!(
+                {
+                    let len = template_pieces.len();
+                    (len == 0 && N == 0) || len == N + 1
+                }
                 "invalid template_pieces.len(): {len} where N = {N}: template_pieces must have 0 = N or exactly N + 1 pieces"
             );
-        }
-
-        match template_pieces.len() {
-            0 => UI::EMPTY,
-            1 => UI(Cow::Borrowed(template_pieces[0])),
-            _ => {
-                let mut buf = String::with_capacity({
-                    let mut size = 0;
-                    for piece in template_pieces {
-                        size += piece.len();
-                    }
-                    for expression in &interpolators {
-                        size += match expression {
-                            Dynamic::Attribute(value) => match value {
-                                AttributeValue::Text(text) => {
-                                    1/* " */ + text.len() + 1 /* " */
-                                }
-                                AttributeValue::Integer(_) => {
-                                    1/* " */ + 4/* max-level length of typically used integer attribute values */ + 1 /* " */
-                                }
-                                AttributeValue::Boolean(_) => {
-                                    0 /* never push any tokens */
-                                }
-                            }
-                            Dynamic::EventHandler(_) => {
-                                0 /* never push any tokens in template rendering */
-                            }
-                            Dynamic::Text(text) => text.len() * 2, /* sufficient size even when taking HTML-espaces into consideration */
-                            Dynamic::UnsafeRawHtmlString(raw) => raw.len(),
-                            Dynamic::If { condition, then, else_if, else } => {},
-                            Dynamic::For { iterator, item } => {},
+            
+            macro_rules! delete_entire_attribute {
+                () => {                    
+                    let Some(sp) = buf.rfind(|c| {
+                        matches!(c, ' ' | '\t' | '\n' | '\x0C' | '\r')
+                    }) else {
+                        unreachable!("`buf` is a part of a valid HTML string and then at least one whitespace exists before an attribute name")
+                    };
+                    buf.truncate(sp);
+                };
+            }
+            
+            match template_pieces.len() {
+                0 => UI::EMPTY,
+                1 => UI(Cow::Borrowed(template_pieces[0])),
+                _ => {
+                    let interpolations = interpolations.map(Interpolation::from);
+                    
+                    let mut buf = String::with_capacity({
+                        let mut size = 0;
+                        for piece in template_pieces {
+                            size += piece.len();
                         }
-                    }
-                    size
-                });
-
-                for i in 0..N {
-                    buf.push_str(template_pieces[i]);
-                    match &interpolators[i] {
-                        Dynamic::Text(text) => {
-                            buf.push_str(&escape(text));
+                        for i in &interpolations {
+                            size += match i {
+                                Interpolation::Attribute(value) => match value {
+                                    AttributeValue::Text(text) => {
+                                        1/* " */ + text.len() + 1 /* " */
+                                    }
+                                    AttributeValue::Integer(_) => {
+                                        1/* " */ + 4/* max-level length of typically used integer attribute values */ + 1 /* " */
+                                    }
+                                    AttributeValue::Boolean(_) => {
+                                        0 /* never push any tokens */
+                                    }
+                                }
+                                Interpolation::EventHandler => {
+                                    0 /* never push any tokens in template rendering */
+                                }
+                                Interpolation::Text(text) => text.len() * 2, /* sufficient size even when taking HTML-espaces into consideration */
+                                Interpolation::UnsafeRawHtmlString(raw) => raw.len(),
+                                Interpolation::Children(ui) => ui.template.len(),
+                            }
                         }
-                        Dynamic::Attribute(value) => {
-                            #[cfg(debug_assertions)]
-                            {
-                                // expect like
-                                //
+                        size
+                    });
+                    
+                    for i in 0..N {
+                        buf.push_str(template_pieces[i]);
+                        match &interpolations[i] {
+                            Interpolation::EventHandler => {
+                                delete_entire_attribute!();
+                            }
+                            Interpolation::Text(text) => {
+                                buf.push_str(&escape(text));
+                            }
+                            Interpolation::UnsafeRawHtmlString(s) => {
+                                buf.push_str(&s);
+                            }
+                            Interpolation::Children(ui) => {
+                                buf.push_str(&ui.template);
+                            }
+                            Interpolation::Attribute(value) => {
                                 // ```in UI!{}
                                 // <div class={}
                                 //            |
                                 //            /-- this `value` is here
                                 // ```
-                                assert!(buf.ends_with('='));
-                            }
-                            match value {
-                                AttributeValue::Text(text) => {
-                                    buf.push('"');
-                                    buf.push_str(&escape(text));
-                                    buf.push('"');
-                                }
-                                AttributeValue::Integer(int) => {
-                                    // here we don't need to escape
-                                    buf.push('"');
-                                    buf.push_str(&int.to_string());
-                                    buf.push('"');
-                                }
-                                AttributeValue::Boolean(boolean) => {
-                                    // if `boolean` is `true`, we'll just leave the attribute name :
-                                    //
-                                    // ```in UI!{}
-                                    // <input type="checkbox" checked={true}
-                                    //
-                                    // // to
-                                    //
-                                    // <input type="checkbox" checked
-                                    // ```
-                                    //
-                                    // if `boolean` is `false`, we'll remove up to the attribute name :
-                                    //
-                                    // ```in UI!{}
-                                    // <input type="checkbox" checked={false}
-                                    //
-                                    // // to
-                                    //
-                                    // <input type="checkbox"
-                                    // ```
-                                    //
-                                    // this can be done by removing after the last whitespace of current `buf`
-                                    // (because the SAFETY contract encusres `buf` is a part of a valid HTML string
-                                    // and then at least one whitespace exists before an attribute name)
-                                    let Some('=') = buf.pop() else { unreachable!() };
-                                    if !*boolean {
-                                        let Some(sp) = buf.rfind(|c| {
-                                            matches!(c, ' ' | '\t' | '\n' | '\x0C' | '\r')
-                                        }) else {
-                                            unreachable!()
-                                        };
-                                        buf.truncate(sp);
+                                debug_assert!(buf.ends_with('='));
+                                match value {
+                                    AttributeValue::Text(text) => {
+                                        buf.push('"');
+                                        buf.push_str(&escape(text));
+                                        buf.push('"');
+                                    }
+                                    AttributeValue::Integer(int) => {
+                                        // here we don't need to escape
+                                        buf.push('"');
+                                        buf.push_str(&int.to_string());
+                                        buf.push('"');
+                                    }
+                                    AttributeValue::Boolean(boolean) => {
+                                        // if `boolean` is `true`, we'll just leave the attribute name :
+                                        //
+                                        // ```in UI!{}
+                                        // <input type="checkbox" checked={true}
+                                        //
+                                        // // to
+                                        //
+                                        // <input type="checkbox" checked
+                                        // ```
+                                        //
+                                        // if `boolean` is `false`, we'll remove up to the attribute name :
+                                        //
+                                        // ```in UI!{}
+                                        // <input type="checkbox" checked={false}
+                                        //
+                                        // // to
+                                        //
+                                        // <input type="checkbox"
+                                        // ```
+                                        //
+                                        // this can be done by removing after the last whitespace of current `buf`
+                                        // (because the SAFETY contract encusres `buf` is a part of a valid HTML string
+                                        // and then at least one whitespace exists before an attribute name)
+                                        let Some('=') = buf.pop() else { unreachable!() };
+                                        if !*boolean {
+                                            delete_entire_attribute!();
+                                        }
                                     }
                                 }
                             }
                         }
                     }
+                    buf.push_str(template_pieces[N]);
+                    UI(Cow::Owned(buf))
                 }
-                buf.push_str(template_pieces[N]);
-                UI(Cow::Owned(buf))
             }
         }
+    }
+};
+
+#[cfg(hydrate)]
+impl UI {
+    /// On browser, this is needed in `if` or `for` parts that conditionally generate new UIs.
+    /// 
+    /// ## SAFETY
+    /// 
+    /// `skelton_template` MUST be valid HTML that:
+    /// 
+    /// - skips rendering entire attribute if its value is reactive.
+    /// - skips rendering `if` or `for`.
+    #[doc(hidden)]
+    pub unsafe fn new_unchecked_in_island(
+        island_root: &Node
+        skelton_template: &'static str,
+        reactivities: Vec<(NodePath, Reactivity)>,
+    ) -> Self {
+        let node = html_from_string(skelton_template);
+        reactivities.for_each(|(path, r)| {
+            let target_node = path.traverse(island_root).expect("NodePath traversal failed");
+            r.apply_in_island(island_root);
+        });
+        Self(node)
+        
     }
 }
 
