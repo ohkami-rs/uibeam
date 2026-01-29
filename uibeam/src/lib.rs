@@ -744,6 +744,16 @@ impl UI {
             r.apply_in_island(island_root);
         });
         Self(node)
+        
+        todo!{/** TODO
+            
+            どうせこういう形 ( not(hydrate) のほうでしか Dynamic とやらを使わない実装 )
+            になるならそもそも Dynamic は不要で Interpolation だけでいい
+            
+            (if や for の場合でも各 brabch に `UI! {}` を被せて
+            "適切な Interpolation::Children(UI) を作る Rust コード" を生成できるので)
+            
+        */}
     }
 }
 

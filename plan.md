@@ -1,6 +1,6 @@
-## Compiling Strategy
+## `client` Feature Strategy
 
-### Source Code
+### Example Source Code
 
 *counter.rs*
 ```rust
@@ -49,9 +49,16 @@ impl<T: Display> Beam for CounterButton<T> {
 }
 ```
 
-### Generated Code
+### Key Codes
 
 #### `cfg(not(hydrate))`
+
+```rust
+struct UI {
+    template: Cow<'static, str>,
+    island_tag_names: Vec<&'static str>,
+}
+```
 
 ```rust
 impl Beam for Counter {
@@ -132,20 +139,23 @@ impl Beam for Counter {
 #[wasm_bindgen]
 #[doc(hidden)]
 #[allow(non_snake_case)]
-pub fn register_Counter() {
+pub fn __hydrate_Counter() {
     ::uibeam::client::runtime::register_island(
         "uibeam-counter",        
         Closure::<dyn Fn(Node, String) -> Function>::new(
             |shadow_root, serialized_props| -> ::uibeam::client::js_sys::Function {
                 let this = ::uibeam::client::deserialize_props::<Counter>(&serialize_props);
                 let scope = ::uibeam::client::EffectScope::new(move || {
-                    let reactivities = <Counter as ::uibeam::Beam>::render(this).reactivities;                
-                    ::std::iter::Iterator::zip(
+                    let reactivities = <Counter as ::uibeam::Beam>::render(this).reactivities;
+                    let event_types = ::std::iter::Iterator::zip(
                         // bulk-convert `NodePath`s (encoded to strings) to DOM Nodes in ahead
                         // to mimize Rust-JS FFI cost.
                         ::uibeam::client::runtime::collect_nodes(shadow_root, reactivities.path_list()),
                         reactivities.reactivities()
-                    ).for_each(|(target_node, r)| r.apply_in_island(shadow_root, target_node));
+                    ).filter_map(|(target_node, r)| r.apply_in_island(shadow_root, target_node));
+                    // bulk-delegate events 
+                    // to minimize Rust-JS FFI cost.
+                    ::uibeam::client::runtime::delegate_events(event_types);
                 });
                 // returns cleanup function
                 Closure::<dyn FnOnce()>::new(
@@ -155,4 +165,16 @@ pub fn register_Counter() {
         ).into_js_value().unchecked_into::<::uibeam::client::js_sys::Function>()
     );
 }
+```
+
+```js
+(async () => {
+  const { default: init, ...items } = await import('/.uibeam/hydrate.js');
+  await init();
+  for (const [name, f] of Object.entires(items)) {
+    if name.startsWith('__hydrate') && typeof f === 'function' {
+      f();
+    }
+  }
+})();
 ```
