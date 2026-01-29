@@ -723,7 +723,8 @@ const _: () = {
 
 #[cfg(hydrate)]
 impl UI {
-    /// On browser, this is needed in `if` or `for` parts that conditionally generate new UIs.
+    /// This is needed in `Reactivity::{If, For}::apply_in_island`, especially `For`'s,
+    /// that need ability to generate new `UI`s of each item based on conditions or lists.
     /// 
     /// ## SAFETY
     /// 
@@ -743,7 +744,6 @@ impl UI {
             r.apply_in_island(island_root);
         });
         Self(node)
-        
     }
 }
 

@@ -63,28 +63,28 @@ export function delegateEvent(root, eventType, wasmCallbackByID) {
     })
 }
 
-export function registerIsland(tagName, renderByWasm) {
-    if (customElements.get(tagName)) return;
-    customElements.define(tagName, class extends HTMLElement {
-        constructor() {
-            super();
-            this.cleanup = null;
-        }
-        connectedCallback() {
-            const serializedProps = this.getAttribute('props') || '{}';
-            try {
-                this.cleanup = renderByWasm(this, serializedProps);
-            } catch (err) {
-                console.error(`[uibeam] <${tagName}> hydration failed: ${err}`);
-            }
-        }
-        disconnectedCallback() {
-            if (this.cleanup) {
-                this.cleanup();
+export function registerIsland(tagName, hydrateByWasm) {
+    if (!customElements.get(tagName)) {
+        customElements.define(tagName, class extends HTMLElement {
+            constructor() {
+                super();
                 this.cleanup = null;
             }
-        }
-    });
+            connectedCallback() {
+                try {
+                    this.cleanup = hydrateByWasm(this, this.getAttribute('props') || '{}');
+                } catch (err) {
+                    console.error(`[uibeam] <${tagName}> hydration failed: ${err}`);
+                }
+            }
+            disconnectedCallback() {
+                if (this.cleanup) {
+                    this.cleanup();
+                    this.cleanup = null;
+                }
+            }
+        });
+    }
 }
 "#)]
 extern "C" {
