@@ -17,7 +17,7 @@ impl Beam for Counter {
             count.set_mut(|c| *c += 1);
         };
         let handle_decrement_click = |_| {
-            count.set_mut(|c| *c += 1);
+            count.set_mut(|c| *c -= 1);
         };
         
         UI! {
@@ -49,7 +49,7 @@ impl<T: Display> Beam for CounterButton<T> {
 }
 ```
 
-### Key Codes
+### Key Idea
 
 #### `cfg(not(hydrate))`
 
@@ -69,12 +69,16 @@ impl Beam for Counter {
             count.set_mut(|c| *c += 1);
         };
         let handle_decrement_click = |_| {
-            count.set_mut(|c| *c += 1);
+            count.set_mut(|c| *c -= 1);
         };
         
         UI! {
-            // island by Declarative Shadow DOM.
-            // `uibeam-counter` is defined by the Wasm & wrapper JS.
+            // Generates island by the Declarative Shadow DOM.
+            // `uibeam-counter` will be later `define`d as a custom element by the Wasm & wrapper JS
+            // and all its Rust logic run at that time,
+            // while the static template itself is immediately rendered when the HTML is loaded.
+            // 
+            // i.e. the hydration is achieved by the custom element definition.
             <uibeam-counter>
                 <template shadowrootmode="open">
                     <div>
@@ -107,7 +111,7 @@ impl Beam for Counter {
             count.set_mut(|c| *c += 1);
         };
         let handle_decrement_click = |_| {
-            count.set_mut(|c| *c += 1);
+            count.set_mut(|c| *c -= 1);
         };
         
         UI::new_unchecked(

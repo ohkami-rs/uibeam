@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <h1>Rendered in Server Side</h1>
+    <uibeam-button>
+      <template shadowrootmode="open">
+        <p>Hello, DSD!</p><button type="button">Button in DSD</button></template>
+    </uibeam-button>
+    
+    <script>
+      customElements.define(
+        "uibeam-button",
+        class extends HTMLElement {
+          constructor() {
+            super();
+          }
+          connectedCallback() {
+            const root = this.shadowRoot;
+            console.log("root:", root);
+            const intermidiateTextNode = root.firstChild;
+            console.log("intermediateTextNode:", intermidiateTextNode);
+            const p = root.firstChild.nextSibling;
+            console.log("p:", p);
+            const button = root.firstChild.nextSibling.nextSibling;
+            console.log("button:", button);
+            
+            root.firstChild.nextSibling.nextSibling.addEventListener(
+              "click",
+              (e) => {
+                console.log("[click]", e);
+              }
+            );
+          }
+        }
+      );
+    </script>
+  </body>
+</html>
