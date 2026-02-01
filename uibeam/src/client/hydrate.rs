@@ -78,7 +78,11 @@ impl Reactivity {
             }
             Self::Text { value_fn } => {
                 crate::Effect::new(move || {
-                    node.set_text_content(value_fn());
+                    /*
+                     * #[cfg(debug_assertions)]
+                     * check `node` is TextNode
+                     */
+                    node.set_node_value(value_fn());
                 });
             }
             Self::Attribute { name, value_fn } => {
