@@ -379,3 +379,44 @@ impl Beam for TodoList {
     }
 }
 ```
+
+```rust
+/* JUST IMAGE */
+impl Reactivity {
+    fn apply_with_root(self, root: &Node, target_node: &Node) {
+        match self {
+            Self::Text {  }
+            Self::Attribute {  }
+            Self::If { condition_fn, render_fn } => {
+                #[cfg(debug_assertions)]
+                {
+                    assert!(target_node is <uibeam-if>);
+                }
+                let shadow_root = target_node.shadowRoot;
+                let scope = EffectScope::new(move || {
+                    if condition_fn() {
+                        let UI { template, reactivities } = render_fn();
+                        shadow_root.innerHTML = template;
+                        for (node, r) in reactivities {
+                            r.apply_with_root(shadow_root, node);
+                        }
+                    } else {
+                        shadow_root.innerHTML = "";
+                        scope.dispose();
+                   }
+                });
+            }
+            Self::For { iterator_fn, key_fn, render_fn } => {
+                #[cfg(debug_assertions)]
+                {
+                    assert!(target_node is <uibeam-if>);
+                }
+                let previous_items = Signal::new(vec![]);
+                Effect::new(move || {
+                    
+                });
+            }
+        }
+    }
+}
+```

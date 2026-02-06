@@ -4,9 +4,12 @@
     <h1>Rendered in Server Side</h1>
     <uibeam-button>
       <template shadowrootmode="open">
-        <p>Hello, DSD!</p><button type="button">Button in DSD</button></template>
+        <p>Hello, DSD!</p><button type="button">Button in DSD</button>
+      </template>
     </uibeam-button>
-    
+    <button id="log-track-button">
+        Click to log track
+    </button>
     <script>
       customElements.define(
         "uibeam-button",
@@ -23,14 +26,32 @@
             console.log("p:", p);
             const button = root.firstChild.nextSibling.nextSibling;
             console.log("button:", button);
-            
-            root.firstChild.nextSibling.nextSibling.addEventListener(
+            button.addEventListener(
               "click",
               (e) => {
                 console.log("[click]", e);
               }
             );
           }
+        }
+      );
+      document.getElementById("log-track-button").addEventListener(
+        "click",
+        (e) => {
+          console.log("body:", document.body);
+          console.log("body.firstChild:", document.body.firstChild);
+          console.log("body.firstChild.nextSibling:", document.body.firstChild.nextSibling);
+          console.log("body.firstChild.nextSibling.nextSibling:", document.body.firstChild.nextSibling.nextSibling);
+          console.log("body.firstChild.nextSibling.nextSibling.nextSibling:", document.body.firstChild.nextSibling.nextSibling.nextSibling);
+          console.log(
+            "body.firstChild.nextSibling.nextSibling.nextSibling.shadowRoot:",
+            document.body.firstChild.nextSibling.nextSibling.nextSibling.shadowRoot
+          );
+          const shadowRoot = document.body.firstChild.nextSibling.nextSibling.nextSibling.shadowRoot;
+          console.log("shadowRoot.firstChild:", shadowRoot.firstChild);
+          console.log("shadowRoot.firstChild.nextSibling:", shadowRoot.firstChild.nextSibling);
+          console.log("shadowRoot.firstChild.nextSibling.nextSibling:", shadowRoot.firstChild.nextSibling.nextSibling);
+          console.log("shadowRoot.firstChild.nextSibling.nextSibling.nextSibling:", shadowRoot.firstChild.nextSibling.nextSibling.nextSibling);
         }
       );
     </script>
