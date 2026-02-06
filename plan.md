@@ -14,10 +14,10 @@ impl Beam for Counter {
         let count = Signal::new(self.initial_count);
         
         let handle_increment_click = |_| {
-            count.set_mut(|c| *c += 1);
+            count.set_with_mut(|c| *c += 1);
         };
         let handle_decrement_click = |_| {
-            count.set_mut(|c| *c -= 1);
+            count.set_with_mut(|c| *c -= 1);
         };
         
         UI! {
@@ -66,10 +66,10 @@ impl Beam for Counter {
         let count = Signal::new(self.initial_count);
         
         let handle_increment_click = |_| {
-            count.set_mut(|c| *c += 1);
+            count.set_with_mut(|c| *c += 1);
         };
         let handle_decrement_click = |_| {
-            count.set_mut(|c| *c -= 1);
+            count.set_with_mut(|c| *c -= 1);
         };
         
         // As current behavior does, `UI!` automatically eliminates intermediate whitespaces.
@@ -149,13 +149,13 @@ impl Beam for CounterButton {
     ) -> Reactivities {
         reactivities
             .register(
-                basepath.join(const {NodePath::from_static(&[])}), // <button>
+                basepath.join(const {NodePath::from_static(&[0])}), // <button>
                 Reactivity::EventListener("click", self.onclick)
             );
         self.children
             .register_reactivities(
                 reactivities,
-                basepath.join(const {NodePath::from_static(&[0])}), // TextNode
+                basepath.join(const {NodePath::from_static(&[0, 0])}), // TextNode (in <button>)
             )
     }
 }
@@ -171,26 +171,26 @@ impl Beam for Counter {
         let count = Signal::new(self.initial_count);
         
         let handle_increment_click = |_| {
-            count.set_mut(|c| *c += 1);
+            count.set_with_mut(|c| *c += 1);
         };
         let handle_decrement_click = |_| {
-            count.set_mut(|c| *c -= 1);
+            count.set_with_mut(|c| *c -= 1);
         };
         
         reactivities
             .register(
-                basepath.join(const {NodePath::from_static(&[0, 0, 0])}), // TextNode (in <p></p>)
+                basepath.join(const {NodePath::from_static(&[0, 0, 0])}), // TextNode (in <p>)
                 Reactivity::Text(move || {count.get()})
             );
         (CounterButton { onclick: handle_increment_click })
             .register_reactivities(
                 reactivities,
-                basepath.join(const {NodePath::from_static(&[0, 0, 1])}),
+                basepath.join(const {NodePath::from_static(&[0, 0, 1])}), // CounterButton (1st)
             );
         (CounterButton { onclick: handle_decrement_click })
             .register_reactivities(
                 reactivities,
-                basepath.join(const {NodePath::from_static(&[0, 0, 1, 1])}),
+                basepath.join(const {NodePath::from_static(&[0, 0, 1, 1])}), // CounterButton (2nd)
             )
     }
 }
@@ -245,4 +245,137 @@ pub fn __hydrate_Counter() {
     }
   }
 })();
+```
+
+### Conditional/Iterative Rendering
+
+Builtin components: `If` and `For`
+
+#### Example Source
+
+```rust
+struct TodoList {
+    user_is_ken: bool,
+    items: Vec<String>,
+}
+impl Beam for TodoList {
+    fn render(self) -> UI {
+        let items = Signal::new(self.items);
+        
+        let handle_click_add = |_| {
+            items.set_with_mut(|vec| vec.push("TODO".to_string()));
+        };
+        
+        UI! {
+            <p>"If/For example"</p>
+            // `<If {expr:bool}>`: special syntax just for `If` builtin component
+            <If {self.user_is_ken}>
+                <p>"Hello, Ken!"</p>
+            </If>
+            <ul>
+                // `<For {expr in expr:IntoIterator}>`: special syntax just for `For` builtin component
+                <For {item in items} key={item}>
+                    <li>{item}</li>
+                </For>
+            </ul>
+            <button onclick={handle_click_add}>
+                "+"
+            </button>
+        }
+    }
+}
+```
+
+#### `cfg(not(hydrate))`
+
+```rust
+impl Beam for TodoList {
+    fn render(self) -> UI {
+        // dummy signal just for static template rendering
+        let items = Signal::new(self.items);
+        
+        let handle_click_add = |_| {
+            items.set_with_mut(|vec| vec.push("TODO".to_string()));
+        };
+        
+        if false {
+            const fn assert_eventhandler<E>(f: impl Fn(E)) {}
+            const _: () = {
+                assert_eventhandler::<::uibeam::client::PointerEvent>(handle_click_add);
+            };
+        }
+        unsafe {
+            UI::new_unchecked(
+                ["<p>If/For example</p>", "<ul>", "</ul><button>+</button>"],
+                [
+                    Dynamic::UI({
+                        let content: UI = if self.user_is_ken {
+                            unsafe {UI::new_unchecked(["<p>Hello, Ken!</p>"], [])}
+                        } else {
+                            UI::EMPTY
+                        };
+                        UI! {
+                            <uibeam-if> // hydration marker
+                            <template shadowrootmode="open">
+                                unsafe {::uibeam::shoot(content)}
+                            </template>
+                            </uibeam-if>
+                        }
+                    }),
+                    Dynamic::Children({
+                        let content: UI = std::iter::IntoIterator::into_iter(items).map(|item| UI! {
+                            <li>{item}</li>
+                        }).collect();
+                        UI! {
+                            <uibeam-for> // hydration marker
+                            <template shadowrootmode="open">
+                                unsafe {::uibeam::shoot(content)}
+                            </template>
+                            </uibeam-for>
+                        }
+                    })
+                ]
+            )
+        }
+    }
+}
+```
+
+#### `cfg(hydrate)`
+
+```rust
+impl Beam for TodoList {
+    fn register_reactivities(
+        self,
+        reactivities: &mut Reactivities,
+        basepath: NodePath,
+    ) -> Reactivities {
+        let items = Signal::new(self.items);
+        
+        let handle_click_add = |_| {
+            items.set_with_mut(|vec| vec.push("TODO".to_string()));
+        };
+        
+        reactivities
+            .register(
+                basepath.join(const {NodePath::from_static(&[0,1])}), // If
+                Reactivity::If {
+                    condition_fn: move || -> bool {self.user_is_ken},
+                    render_fn: move || UI! {
+                        <p>"Hello, Ken!"</p>
+                    },
+                },
+            )
+            .register(
+                basepath.join(const {NodePath::from_static(&[0, 1, 1, 0])}), // For
+                Reactivity::For {
+                    iterator_fn: move || {items},
+                    key_fn: Some(move |item| {item}),
+                    render_fn: move |item| UI! {
+                        <li>{item}</li>
+                    }
+                }
+            );
+    }
+}
 ```
